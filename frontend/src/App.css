@@ -1,0 +1,9 @@
+.page-header {
+    background: #00003f;
+    color: #fff;
+}
+[data-bs-theme='dark'] .page-header {
+    background: #fff;
+    color: #000;
+    border-color: var(--bs-border-color);
+}

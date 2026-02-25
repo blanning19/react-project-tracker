@@ -1,5 +1,6 @@
+import { tokenStore } from "./tokens";
+
 export function logout(navigate) {
-    localStorage.removeItem('access');
-    localStorage.removeItem('refresh');
-    navigate('/login');
+    tokenStore.clear();
+    navigate("/login");
 }

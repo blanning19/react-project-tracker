@@ -1,19 +1,36 @@
 // src/auth/tokens.js
+// Minimal hardening:
+// - keep the access token in-memory when possible
+// - mirror access in sessionStorage (survives refresh, but clears on browser close)
+// - keep refresh in localStorage (see README for the "best" cookie-based option)
+
+let inMemoryAccess = null;
+
 export const tokenStore = {
     getAccess() {
-        return localStorage.getItem('access');
+        return inMemoryAccess || sessionStorage.getItem("access");
     },
     setAccess(token) {
-        localStorage.setItem('access', token);
+        inMemoryAccess = token;
+        if (token) {
+            sessionStorage.setItem("access", token);
+        } else {
+            sessionStorage.removeItem("access");
+        }
     },
     getRefresh() {
-        return localStorage.getItem('refresh');
+        return localStorage.getItem("refresh");
     },
     setRefresh(token) {
-        localStorage.setItem('refresh', token);
+        if (token) {
+            localStorage.setItem("refresh", token);
+        } else {
+            localStorage.removeItem("refresh");
+        }
     },
     clear() {
-        localStorage.removeItem('access');
-        localStorage.removeItem('refresh');
+        inMemoryAccess = null;
+        sessionStorage.removeItem("access");
+        localStorage.removeItem("refresh");
     },
 };

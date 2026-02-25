@@ -1,54 +1,31 @@
-from rest_framework import viewsets, permissions
-from rest_framework.response import Response
+from rest_framework import permissions, viewsets
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
 
-from .models import Project, ProjectManager, Employees
-from .serializers import ProjectSerializer, ProjectManagerSerializer, EmployeesSerializer
+from .models import Employees, Project, ProjectManager
+from .serializers import EmployeesSerializer, ProjectManagerSerializer, ProjectSerializer
 
 
-class ProjectManagerViewset(viewsets.ViewSet):
+class ProjectManagerViewset(viewsets.ReadOnlyModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
-    queryset = ProjectManager.objects.all()
+    queryset = ProjectManager.objects.all().order_by("name")
     serializer_class = ProjectManagerSerializer
 
-    def list(self, request):
-        queryset = ProjectManager.objects.all()
-        serializer = self.serializer_class(queryset, many=True)
-        return Response(serializer.data)
 
-
-class EmployeesViewset(viewsets.ViewSet):
+class EmployeesViewset(viewsets.ReadOnlyModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
-    queryset = Employees.objects.all()
+    queryset = Employees.objects.all().order_by("last_name", "first_name")
     serializer_class = EmployeesSerializer
-
-    def list(self, request):
-        queryset = Employees.objects.all()
-        serializer = self.serializer_class(queryset, many=True)
-        return Response(serializer.data)
 
 
 class ProjectViewset(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
-    queryset = Project.objects.all()
+    queryset = Project.objects.all().order_by("-modified")
     serializer_class = ProjectSerializer
-
-    def create(self, request, *args, **kwargs):
-        print("POST DATA:", request.data)
-
-        serializer = self.get_serializer(data=request.data)
-        if not serializer.is_valid():
-            print("VALIDATION ERRORS:", serializer.errors)
-            return Response(serializer.errors, status=400)
-
-        self.perform_create(serializer)
-        return Response(serializer.data, status=201)
 
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def me(request):
-    return Response(
-        {"id": request.user.id, "username": request.user.username, "email": request.user.email}
-    )
+    return Response({"id": request.user.id, "username": request.user.username, "email": request.user.email})

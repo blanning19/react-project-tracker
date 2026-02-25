@@ -1,15 +1,27 @@
-import { useNavigate, NavLink } from 'react-router-dom';
-import ThemeToggle from './ThemeToggle';
-import { Button } from 'react-bootstrap';
+import { NavLink, useNavigate } from "react-router-dom";
+import { Button } from "react-bootstrap";
+
+import { isCookieAuth } from "../auth/mode";
+import { tokenStore } from "../auth/tokens";
+import FetchInstance from "./fetchClient";
+import ThemeToggle from "./ThemeToggle";
 
 export default function Navbar({ content }) {
     const navigate = useNavigate();
-    const isLoggedIn = Boolean(localStorage.getItem('access'));
+    const isLoggedIn = Boolean(tokenStore.getAccess());
 
-    const handleLogout = () => {
-        localStorage.removeItem('access');
-        localStorage.removeItem('refresh');
-        navigate('/login');
+    const handleLogout = async () => {
+        tokenStore.clear();
+
+        if (isCookieAuth) {
+            try {
+                await FetchInstance.post("auth/logout/", {});
+            } catch {
+                // ignore
+            }
+        }
+
+        navigate("/login");
     };
 
     return (
@@ -17,7 +29,7 @@ export default function Navbar({ content }) {
             <div className="d-flex">
                 <aside
                     className="border-end bg-body-tertiary d-flex flex-column"
-                    style={{ width: 260, minHeight: '100vh', position: 'sticky', top: 0 }}
+                    style={{ width: 260, minHeight: "100vh", position: "sticky", top: 0 }}
                 >
                     <div className="p-3 border-bottom d-flex align-items-center justify-content-between">
                         <NavLink className="navbar-brand fw-semibold m-0 text-decoration-none" to="/">
@@ -32,9 +44,7 @@ export default function Navbar({ content }) {
                                 <NavLink
                                     to="/"
                                     end
-                                    className={({ isActive }) =>
-                                        `nav-link d-flex align-items-center${isActive ? ' active' : ''}`
-                                    }
+                                    className={({ isActive }) => `nav-link d-flex align-items-center${isActive ? " active" : ""}`}
                                 >
                                     Home
                                 </NavLink>
@@ -43,9 +53,7 @@ export default function Navbar({ content }) {
                             <li className="nav-item">
                                 <NavLink
                                     to="/about"
-                                    className={({ isActive }) =>
-                                        `nav-link d-flex align-items-center${isActive ? ' active' : ''}`
-                                    }
+                                    className={({ isActive }) => `nav-link d-flex align-items-center${isActive ? " active" : ""}`}
                                 >
                                     About
                                 </NavLink>
@@ -54,9 +62,7 @@ export default function Navbar({ content }) {
                             <li className="nav-item">
                                 <NavLink
                                     to="/create"
-                                    className={({ isActive }) =>
-                                        `nav-link d-flex align-items-center${isActive ? ' active' : ''}`
-                                    }
+                                    className={({ isActive }) => `nav-link d-flex align-items-center${isActive ? " active" : ""}`}
                                 >
                                     Create
                                 </NavLink>
@@ -70,12 +76,7 @@ export default function Navbar({ content }) {
                                 Logout
                             </Button>
                         ) : (
-                            <Button
-                                variant="outline-primary"
-                                size="sm"
-                                className="w-100"
-                                onClick={() => navigate('/login')}
-                            >
+                            <Button variant="outline-primary" size="sm" className="w-100" onClick={() => navigate("/login")}>
                                 Login
                             </Button>
                         )}

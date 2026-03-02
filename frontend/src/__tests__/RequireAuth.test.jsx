@@ -123,7 +123,7 @@ describe('RequireAuth', () => {
             </MemoryRouter>
         );
 
-        expect(screen.getByText('Loginnpm run l Page')).toBeInTheDocument();
+        expect(screen.getByText('Login Page')).toBeInTheDocument();
         expect(screen.getByTestId('location').textContent).toBe('/login');
     });
 });

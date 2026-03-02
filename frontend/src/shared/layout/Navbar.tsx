@@ -27,6 +27,7 @@ const navItems: NavItem[] = [
     { to: "/create", label: "Create", icon: <Plus {...iconProps} /> },
 ];
 
+
 export default function Navbar({ drawerWidth = 260, content }: NavbarProps) {
     const navigate = useNavigate();
     const isLoggedIn = Boolean(tokenStore.getAccess());
@@ -101,7 +102,7 @@ export default function Navbar({ drawerWidth = 260, content }: NavbarProps) {
                     <Button variant="outline-secondary" size="sm" onClick={() => setMobileOpen(true)} aria-label="Open navigation">
                         <Menu size={18} />
                     </Button>
-                    <div className="fw-semibold">Project Tracker</div>
+                    <div className="fw-semibold text-danger">PROJECT TRACKER NEW</div>
                     <ThemeToggle />
                 </div>
             </div>

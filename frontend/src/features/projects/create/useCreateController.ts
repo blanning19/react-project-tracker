@@ -33,6 +33,12 @@ export function useCreateController() {
     const [loading, setLoading] = useState(true);
 
     /**
+     * Indicates whether the create request is currently in flight.
+     * This is used to disable the submit button and prevent duplicate submits.
+     */
+    const [isSubmitting, setIsSubmitting] = useState(false);
+
+    /**
      * Human-readable API error shown near the top of the form.
      */
     const [apiError, setApiError] = useState("");
@@ -97,6 +103,7 @@ export function useCreateController() {
      */
     const submission = async (data: ProjectFormValues) => {
         setApiError("");
+        setIsSubmitting(true);
 
         const payload = formToPayload(data);
 
@@ -105,7 +112,9 @@ export function useCreateController() {
             navigate("/");
         } catch (err) {
             console.error("POST projects failed:", err);
-            setApiError(getApiErrorMessage(err, "Failed to create project"));
+            setApiError(getApiErrorMessage(err, "Request failed"));
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
@@ -116,5 +125,6 @@ export function useCreateController() {
         employees,
         loading,
         apiError,
+        isSubmitting,
     };
 }

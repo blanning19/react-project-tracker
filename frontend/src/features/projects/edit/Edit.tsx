@@ -18,12 +18,14 @@ function Edit(): JSX.Element {
         employees,
         loading,
         apiError,
+        isSubmitting,
     } = useEditController();
 
     return (
         <ProjectFormPageView
-            title="Edit records"
+            title="Edit Project"
             submitLabel="Save Changes"
+            submittingLabel="Saving..."
             control={control}
             errors={errors}
             handleSubmit={handleSubmit}
@@ -32,6 +34,7 @@ function Edit(): JSX.Element {
             employees={employees}
             loading={loading}
             apiError={apiError}
+            isSubmitting={isSubmitting}
         />
     );
 }

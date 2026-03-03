@@ -51,7 +51,7 @@ describe("Edit", () => {
 
         render(<Edit />);
 
-        expect(screen.getByText("Edit records")).toBeInTheDocument();
+        expect(screen.getByText("Edit Project")).toBeInTheDocument();
         expect(screen.getByRole("button", { name: "Save Changes" })).toBeInTheDocument();
     });
 
@@ -86,7 +86,7 @@ describe("Edit", () => {
 
         render(<Edit />);
 
-        expect(screen.getByText("Edit records")).toBeInTheDocument();
+        expect(screen.getByText("Edit Project")).toBeInTheDocument();
         expect(screen.getByText("Failed to load project data.")).toBeInTheDocument();
     });
 });

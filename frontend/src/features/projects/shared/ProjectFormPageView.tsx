@@ -14,6 +14,7 @@ import type { PersonOption, ProjectFormValues } from "../models/project.types";
 interface ProjectFormPageViewProps {
     title: string;
     submitLabel: string;
+    submittingLabel: string;
     control: Control<ProjectFormValues>;
     errors: FieldErrors<ProjectFormValues>;
     handleSubmit: UseFormHandleSubmit<ProjectFormValues>;
@@ -22,6 +23,7 @@ interface ProjectFormPageViewProps {
     employees: PersonOption[];
     loading: boolean;
     apiError: string;
+    isSubmitting: boolean;
 }
 
 /**
@@ -33,11 +35,12 @@ interface ProjectFormPageViewProps {
  * - render the shared project fields component
  * - wire the form submit handler to the supplied controller action
  *
- * This prevents duplicate view code across CreateView and EditView.
+ * This prevents duplicate view code across Create and Edit.
  */
 function ProjectFormPageView({
     title,
     submitLabel,
+    submittingLabel,
     control,
     errors,
     handleSubmit,
@@ -46,6 +49,7 @@ function ProjectFormPageView({
     employees,
     loading,
     apiError,
+    isSubmitting,
 }: ProjectFormPageViewProps): JSX.Element {
     if (loading) {
         return (
@@ -81,9 +85,16 @@ function ProjectFormPageView({
                             statusOptions={STATUS_OPTIONS}
                         />
 
-                        <div className="d-flex justify-content-end">
-                            <Button type="submit" variant="primary" style={{ width: "30%" }}>
-                                {submitLabel}
+                        <div className="d-flex justify-content-end gap-2">
+                            <Button type="submit" variant="primary" disabled={isSubmitting}>
+                                {isSubmitting ? (
+                                    <>
+                                        <Spinner animation="border" size="sm" className="me-2" />
+                                        {submittingLabel}
+                                    </>
+                                ) : (
+                                    submitLabel
+                                )}
                             </Button>
                         </div>
                     </Form>

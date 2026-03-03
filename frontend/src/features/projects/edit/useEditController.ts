@@ -15,6 +15,7 @@ import {
     PROJECT_SCHEMA,
     projectToFormValues,
 } from "../shared/projectFormConfig";
+import { getApiErrorMessage } from "../shared/getApiErrorMessage";
 
 /**
  * Controller hook for the Edit feature.
@@ -49,6 +50,12 @@ export function useEditController() {
     const [loading, setLoading] = useState(true);
 
     /**
+     * Indicates whether the update request is currently in flight.
+     * This is used to disable the submit button and prevent duplicate submits.
+     */
+    const [isSubmitting, setIsSubmitting] = useState(false);
+
+    /**
      * Human-readable API error shown near the top of the form.
      */
     const [apiError, setApiError] = useState("");
@@ -66,9 +73,19 @@ export function useEditController() {
         resolver: yupResolver(PROJECT_SCHEMA),
     });
 
-    const { setValue } = form;
+    const { reset } = form;
 
     useEffect(() => {
+        /**
+         * Handle a missing or malformed route id immediately so the page does
+         * not remain stuck in a loading state.
+         */
+        if (!projectId) {
+            setApiError("Project id is missing.");
+            setLoading(false);
+            return;
+        }
+
         /**
          * Loads all data required by the edit page:
          * - project manager lookup list
@@ -91,15 +108,7 @@ export function useEditController() {
 
                 setProjectManagers(projectManagerData);
                 setEmployees(employeeData);
-
-                const formValues = projectToFormValues(projectData);
-
-                Object.entries(formValues).forEach(([key, value]) => {
-                    setValue(key as keyof ProjectFormValues, value, {
-                        shouldValidate: false,
-                        shouldDirty: false,
-                    });
-                });
+                reset(projectToFormValues(projectData));
             } catch (err) {
                 console.error(
                     "Edit getData failed:",
@@ -113,10 +122,8 @@ export function useEditController() {
             }
         };
 
-        if (projectId) {
-            void getData();
-        }
-    }, [projectId, setValue]);
+        void getData();
+    }, [projectId, reset]);
 
     /**
      * Submits updated project values to the backend.
@@ -129,34 +136,29 @@ export function useEditController() {
      * - extracts validation/server error details on failure
      */
     const submission = async (data: ProjectFormValues) => {
+        if (!projectId) {
+            setApiError("Project id is missing.");
+            return;
+        }
+
         setApiError("");
+        setIsSubmitting(true);
 
         try {
             await updateProject(projectId, formToPayload(data));
             navigate("/");
         } catch (err) {
-            const status =
-                (err as { response?: { status?: number }; status?: number })?.response?.status ??
-                (err as { status?: number })?.status;
-
-            const body =
-                (err as {
-                    response?: { data?: Record<string, string[]> };
-                    data?: Record<string, string[]>;
-                })?.response?.data ??
-                (err as { data?: Record<string, string[]> })?.data;
-
-            console.error("PUT project failed:", status, body ?? err);
-
-            if (body && typeof body === "object") {
-                setApiError(Object.values(body).flat().join(" ") || "Validation error.");
-            } else if (status) {
-                setApiError(`Request failed (${status}).`);
-            } else {
-                setApiError("An unexpected error occurred.");
-            }
+            console.error("PUT project failed:", err);
+            setApiError(getApiErrorMessage(err, "Request failed"));
+        } finally {
+            setIsSubmitting(false);
         }
     };
+
+    /**
+     * form:
+     *...form is here to expose the full React Hook Form API from the controller without manually listing every property.
+     */
 
     return {
         ...form,
@@ -165,5 +167,6 @@ export function useEditController() {
         employees,
         loading,
         apiError,
+        isSubmitting,
     };
 }

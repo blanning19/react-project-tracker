@@ -4,6 +4,7 @@ import { Badge, Card, Col, Container, ListGroup, Row } from "react-bootstrap";
  * Describes one feature shown in the About page feature grid.
  */
 type FeatureItem = {
+    icon: string;
     title: string;
     body: string;
 };
@@ -12,6 +13,7 @@ type FeatureItem = {
  * Props for the reusable feature card component.
  */
 type FeatureCardProps = {
+    icon: string;
     title: string;
     body: string;
 };
@@ -20,6 +22,13 @@ type FeatureCardProps = {
  * Props for the reusable tech stack card component.
  */
 type TechStackCardProps = {
+    items: string[];
+};
+
+/**
+ * Props for the reusable highlights card component.
+ */
+type HighlightsCardProps = {
     items: string[];
 };
 
@@ -36,7 +45,7 @@ const STACK_ITEMS: string[] = [
     "React Bootstrap",
     "Django + Django REST Framework",
     "PostgreSQL",
-    "JWT Auth (SimpleJWT)",
+    "JWT authentication (SimpleJWT)",
 ];
 
 /**
@@ -46,44 +55,108 @@ const STACK_ITEMS: string[] = [
  */
 const FEATURE_ITEMS: FeatureItem[] = [
     {
+        icon: "📁",
         title: "Project lifecycle tracking",
-        body: "Create, edit, and manage projects with names, dates, comments, and status.",
+        body: "Create, update, and manage projects with names, comments, status, and target dates.",
     },
     {
+        icon: "👥",
         title: "Team assignment",
-        body: "Assign a project manager and select multiple employees for each project.",
+        body: "Assign one project manager and attach multiple employees to each project record.",
     },
     {
-        title: "Validation + clean UX",
-        body: "Client-side form validation (Yup) with server-side API validation for consistent data.",
+        icon: "✅",
+        title: "Reliable validation",
+        body: "Use client-side and server-side validation together to keep project data clean and consistent.",
     },
     {
+        icon: "🔒",
         title: "Secure API access",
-        body: "JWT-based authentication for protected routes and API calls.",
+        body: "Protect routes and backend requests with JWT-based authentication.",
     },
     {
-        title: "Scalable API design",
-        body: "REST endpoints with paginated list responses and detail endpoints for CRUD.",
+        icon: "🔎",
+        title: "Search, sorting, and filtering",
+        body: "Quickly find projects and organize the list view with search, status filtering, sorting, and pagination.",
+    },
+    {
+        icon: "📱",
+        title: "Responsive user experience",
+        body: "Use a table layout on larger screens and a card-based layout on smaller screens for better readability.",
     },
 ];
 
 /**
- * Small reusable header block for the page title and top-level stack badges.
+ * Short summary bullets displayed in the right-side highlights card.
  *
- * This is extracted into its own component so the main About component stays
- * focused on page composition instead of markup details.
+ * These provide a quick business-level summary for users who do not need the
+ * full technical breakdown.
  */
-function AboutHeader(): JSX.Element {
-    return (
-        <div className="page-header px-3 py-2 mb-3 border rounded d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between gap-2">
-            <strong>About Project Tracker</strong>
+const HIGHLIGHT_ITEMS: string[] = [
+    "Track ownership, assignments, and project status in one place.",
+    "Keep project data organized with clear validation and structured forms.",
+    "Support both desktop and mobile-friendly views for daily use.",
+];
 
-            <div className="d-flex gap-2 flex-wrap">
-                <Badge bg="secondary">React</Badge>
-                <Badge bg="secondary">Django REST</Badge>
-                <Badge bg="secondary">Postgres</Badge>
-            </div>
-        </div>
+/**
+ * Polished hero-style header for the About page.
+ *
+ * This creates a stronger visual entry point than a simple title row while
+ * still staying lightweight and consistent with Bootstrap styling.
+ */
+function AboutHero(): JSX.Element {
+    return (
+        <Card className="shadow-sm border-0 mb-4 bg-body-tertiary">
+            <Card.Body className="p-4">
+                <Row className="g-4 align-items-center">
+                    <Col lg={8}>
+                        <div className="d-flex flex-wrap gap-2 mb-3">
+                            <Badge bg="dark">Project Tracker</Badge>
+                            <Badge bg="secondary">React</Badge>
+                            <Badge bg="secondary">Django REST</Badge>
+                            <Badge bg="secondary">PostgreSQL</Badge>
+                        </div>
+
+                        <h1 className="h3 mb-2">Organize projects with a cleaner, more practical workflow.</h1>
+
+                        <p className="text-body-secondary mb-0">
+                            Project Tracker helps teams manage project ownership, assignments, status, and scheduling
+                            in one structured interface backed by a modern full-stack architecture.
+                        </p>
+                    </Col>
+
+                    <Col lg={4}>
+                        <Card className="border-0 shadow-sm">
+                            <Card.Body>
+                                <div className="fw-semibold mb-3">Quick snapshot</div>
+
+                                <div className="d-flex flex-column gap-2">
+                                    <div className="d-flex justify-content-between">
+                                        <span className="text-body-secondary">Frontend</span>
+                                        <span className="fw-semibold">React + Vite</span>
+                                    </div>
+
+                                    <div className="d-flex justify-content-between">
+                                        <span className="text-body-secondary">Backend</span>
+                                        <span className="fw-semibold">Django REST</span>
+                                    </div>
+
+                                    <div className="d-flex justify-content-between">
+                                        <span className="text-body-secondary">Database</span>
+                                        <span className="fw-semibold">PostgreSQL</span>
+                                    </div>
+
+                                    <div className="d-flex justify-content-between">
+                                        <span className="text-body-secondary">Auth</span>
+                                        <span className="fw-semibold">JWT</span>
+                                    </div>
+                                </div>
+                            </Card.Body>
+                        </Card>
+                    </Col>
+                </Row>
+            </Card.Body>
+        </Card>
     );
 }
 
@@ -93,12 +166,23 @@ function AboutHeader(): JSX.Element {
  * Typing the props makes the expected data shape explicit and helps catch
  * mistakes when the component is reused elsewhere.
  */
-function FeatureCard({ title, body }: FeatureCardProps): JSX.Element {
+function FeatureCard({ icon, title, body }: FeatureCardProps): JSX.Element {
     return (
-        <Card className="h-100 shadow-sm">
+        <Card className="h-100 shadow-sm border-0">
             <Card.Body>
-                <div className="fw-semibold mb-1">{title}</div>
-                <div>{body}</div>
+                <div className="d-flex align-items-start gap-3">
+                    <div
+                        className="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0 bg-body-tertiary"
+                        style={{ width: 44, height: 44, fontSize: 20 }}
+                    >
+                        <span aria-hidden="true">{icon}</span>
+                    </div>
+
+                    <div>
+                        <div className="fw-semibold mb-2">{title}</div>
+                        <div className="text-body-secondary">{body}</div>
+                    </div>
+                </div>
             </Card.Body>
         </Card>
     );
@@ -111,7 +195,7 @@ function FeatureCard({ title, body }: FeatureCardProps): JSX.Element {
  */
 function TechStackCard({ items }: TechStackCardProps): JSX.Element {
     return (
-        <Card className="shadow-sm mb-4">
+        <Card className="shadow-sm border-0 mb-4">
             <Card.Body>
                 <Card.Title className="mb-3">Tech stack</Card.Title>
 
@@ -128,25 +212,85 @@ function TechStackCard({ items }: TechStackCardProps): JSX.Element {
 }
 
 /**
+ * Card that surfaces a few quick application highlights.
+ *
+ * This gives the right column a more balanced layout and helps summarize value
+ * without requiring users to read the full feature list first.
+ */
+function HighlightsCard({ items }: HighlightsCardProps): JSX.Element {
+    return (
+        <Card className="shadow-sm border-0">
+            <Card.Body>
+                <Card.Title className="mb-3">Why it is useful</Card.Title>
+
+                <ListGroup variant="flush">
+                    {items.map((item) => (
+                        <ListGroup.Item key={item} className="px-0">
+                            {item}
+                        </ListGroup.Item>
+                    ))}
+                </ListGroup>
+            </Card.Body>
+        </Card>
+    );
+}
+
+/**
+ * Section introducing the feature grid.
+ *
+ * Keeping this as a small reusable block improves readability in the main page
+ * component and makes the layout easier to scan.
+ */
+function SectionIntro({
+    eyebrow,
+    title,
+    body,
+}: {
+    eyebrow: string;
+    title: string;
+    body: string;
+}): JSX.Element {
+    return (
+        <div className="mb-3">
+            <div className="text-uppercase small fw-semibold text-body-secondary mb-1">{eyebrow}</div>
+            <div className="h5 mb-2">{title}</div>
+            <div className="text-body-secondary">{body}</div>
+        </div>
+    );
+}
+
+/**
  * Bottom summary card that explains the core project relationship model.
  *
  * This gives the user a quick mental model of how project managers and
- * employees relate to projects without needing backend knowledge.
+ * employees relate to projects without requiring backend knowledge.
  */
 function DataModelSummaryCard(): JSX.Element {
     return (
-        <Card className="shadow-sm mt-4">
-            <Card.Body className="d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between gap-3">
-                <div>
-                    <div className="fw-semibold">Data model at a glance</div>
-                    <div className="text-muted">
-                        Projects reference one project manager and can include many employees, with status and date fields for scheduling and reporting.
-                    </div>
-                </div>
+        <Card className="shadow-sm border-0 mt-4">
+            <Card.Body className="p-4">
+                <Row className="g-4 align-items-start">
+                    <Col lg={8}>
+                        <div className="text-uppercase small fw-semibold text-body-secondary mb-1">Data model</div>
+                        <div className="h5 mb-2">How project data is organized</div>
+                        <div className="text-body-secondary">
+                            Each project stores a name, comments, status, start date, end date, one assigned project
+                            manager, and any number of employee assignments.
+                        </div>
+                    </Col>
 
-                <div className="text-muted small">
-                    Tip: Keep your lookup lists (Project Managers, Employees) populated so forms can render assignments quickly.
-                </div>
+                    <Col lg={4}>
+                        <Card className="border-0 bg-body-tertiary">
+                            <Card.Body className="p-3">
+                                <div className="fw-semibold mb-2">Helpful tip</div>
+                                <div className="small text-body-secondary">
+                                    Keep your employee and project manager lookup data populated so project forms stay
+                                    fast and easy to use.
+                                </div>
+                            </Card.Body>
+                        </Card>
+                    </Col>
+                </Row>
             </Card.Body>
         </Card>
     );
@@ -164,22 +308,22 @@ function DataModelSummaryCard(): JSX.Element {
 function About(): JSX.Element {
     return (
         <Container className="py-4">
-            <AboutHeader />
+            <AboutHero />
 
             <Row className="g-4">
                 <Col lg={8}>
-                    <Card className="shadow-sm">
-                        <Card.Body>
-                            <Card.Title className="mb-2">What this app does</Card.Title>
-
-                            <Card.Text className="mb-4">
-                                Project Tracker is a lightweight, practical way to keep projects organized—who owns them, who’s assigned, what status they’re in, and the timeline they’re targeting. It’s built as a modern React frontend backed by a Django REST API with a PostgreSQL database.
-                            </Card.Text>
+                    <Card className="shadow-sm border-0">
+                        <Card.Body className="p-4">
+                            <SectionIntro
+                                eyebrow="Overview"
+                                title="What this app does"
+                                body="Project Tracker is a lightweight application for organizing projects, tracking ownership, assigning team members, and monitoring status over time."
+                            />
 
                             <Row className="g-3">
                                 {FEATURE_ITEMS.map((feature) => (
                                     <Col md={6} key={feature.title}>
-                                        <FeatureCard title={feature.title} body={feature.body} />
+                                        <FeatureCard icon={feature.icon} title={feature.title} body={feature.body} />
                                     </Col>
                                 ))}
                             </Row>
@@ -189,6 +333,7 @@ function About(): JSX.Element {
 
                 <Col lg={4}>
                     <TechStackCard items={STACK_ITEMS} />
+                    <HighlightsCard items={HIGHLIGHT_ITEMS} />
                 </Col>
             </Row>
 

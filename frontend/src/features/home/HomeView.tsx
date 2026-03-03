@@ -1,35 +1,10 @@
-import type { Dispatch, SetStateAction } from "react";
+import type { ReactNode } from "react";
 import Dayjs from "dayjs";
 import { Link } from "react-router-dom";
 import { Alert, Badge, Button, Container, Form, Pagination, Spinner, Table } from "react-bootstrap";
 import { HOME_PAGE_SIZE_OPTIONS, HOME_STATUS_FILTER_OPTIONS } from "./home.constants";
 import type { ProjectRecord } from "../projects/models/project.types";
-import type { HomeSortDirection, HomeSortKey, HomeStatusFilter } from "./home.types";
-
-interface HomeViewProps {
-    loading: boolean;
-    apiError: string;
-    total: number;
-    totalPages: number;
-    safePage: number;
-    start: number;
-    end: number;
-    pageSize: number;
-    pageRows: ProjectRecord[];
-    refreshing: boolean;
-    searchTerm: string;
-    statusFilter: HomeStatusFilter;
-    hasActiveFilters: boolean;
-    sortKey: HomeSortKey;
-    sortDir: HomeSortDirection;
-    sortIcon: (key: HomeSortKey) => string;
-    getData: (options?: { isRefresh?: boolean }) => Promise<void>;
-    setPage: Dispatch<SetStateAction<number>>;
-    setPageSize: Dispatch<SetStateAction<number>>;
-    onSearchChange: (value: string) => void;
-    onStatusFilterChange: (value: HomeStatusFilter) => void;
-    toggleSort: (key: HomeSortKey) => void;
-}
+import type { HomeSortDirection, HomeSortKey, HomeStatusFilter, HomeViewProps } from "./home.types";
 
 type AriaSortValue = "ascending" | "descending" | "none";
 
@@ -142,6 +117,65 @@ function getVisiblePages(currentPage: number, totalPages: number): Array<number 
 
     // In the middle, show the current page with one neighbor on each side.
     return [1, "ellipsis-left", currentPage - 1, currentPage, currentPage + 1, "ellipsis-right", totalPages];
+}
+
+/**
+ * Small reusable row for the mobile project card layout.
+ * Keeps labels consistent and visually compact on narrow screens.
+ */
+function MobileField({
+    label,
+    value,
+}: {
+    label: string;
+    value: ReactNode;
+}): JSX.Element {
+    return (
+        <div className="mb-2">
+            <div className="small text-body-secondary">{label}</div>
+            <div>{value}</div>
+        </div>
+    );
+}
+
+/**
+ * Mobile-friendly project card used on smaller screens where a table becomes cramped.
+ */
+function ProjectMobileCard({ row }: { row: ProjectRecord }): JSX.Element {
+    return (
+        <div className="border rounded p-3 mb-3 bg-body">
+            <div className="d-flex align-items-start justify-content-between gap-2 mb-3">
+                <div className="fw-semibold fs-6">{row.name ?? ""}</div>
+                <Badge bg={getStatusBadgeVariant(row.status)}>{row.status ?? ""}</Badge>
+            </div>
+
+            <MobileField label="Comments" value={row.comments ?? ""} />
+            <MobileField label="Start date" value={row.start_date ? Dayjs(row.start_date).format("MM-DD-YYYY") : ""} />
+            <MobileField label="End date" value={row.end_date ? Dayjs(row.end_date).format("MM-DD-YYYY") : ""} />
+
+            <div className="d-flex align-items-center gap-2 pt-2">
+                <Button
+                    as={Link}
+                    to={`/edit/${row.id}`}
+                    variant="outline-primary"
+                    size="sm"
+                    title={`Edit ${row.name ?? "project"}`}
+                >
+                    Edit
+                </Button>
+
+                <Button
+                    as={Link}
+                    to={`/delete/${row.id}`}
+                    variant="outline-danger"
+                    size="sm"
+                    title={`Delete ${row.name ?? "project"}`}
+                >
+                    Delete
+                </Button>
+            </div>
+        </div>
+    );
 }
 
 function HomeView({
@@ -268,137 +302,158 @@ function HomeView({
                         </div>
                     </div>
 
-                    {/* Responsive table wrapper with a small in-place refresh indicator. */}
-                    <div className="table-responsive border rounded">
+                    {/* Desktop/tablet table layout. */}
+                    <div className="d-none d-md-block">
+                        <div className="table-responsive border rounded">
+                            {refreshing && (
+                                <div className="d-flex align-items-center gap-2 small text-body-secondary p-2 border-bottom">
+                                    <Spinner animation="border" size="sm" />
+                                    <span>Refreshing projects...</span>
+                                </div>
+                            )}
+
+                            <Table striped hover responsive className="mb-0 align-middle">
+                                <thead className="table-light">
+                                    <tr>
+                                        <th scope="col" className="text-nowrap" aria-sort={getAriaSortValue(sortKey, sortDir, "name")}>
+                                            <SortHeader
+                                                label="Name"
+                                                sortKey="name"
+                                                activeSortKey={sortKey}
+                                                activeSortDir={sortDir}
+                                                onSort={toggleSort}
+                                                icon={sortIcon("name")}
+                                            />
+                                        </th>
+
+                                        <th scope="col" className="text-nowrap" aria-sort={getAriaSortValue(sortKey, sortDir, "status")}>
+                                            <SortHeader
+                                                label="Status"
+                                                sortKey="status"
+                                                activeSortKey={sortKey}
+                                                activeSortDir={sortDir}
+                                                onSort={toggleSort}
+                                                icon={sortIcon("status")}
+                                            />
+                                        </th>
+
+                                        <th scope="col" className="text-nowrap" aria-sort={getAriaSortValue(sortKey, sortDir, "comments")}>
+                                            <SortHeader
+                                                label="Comments"
+                                                sortKey="comments"
+                                                activeSortKey={sortKey}
+                                                activeSortDir={sortDir}
+                                                onSort={toggleSort}
+                                                icon={sortIcon("comments")}
+                                            />
+                                        </th>
+
+                                        <th scope="col" className="text-nowrap" aria-sort={getAriaSortValue(sortKey, sortDir, "start_date")}>
+                                            <SortHeader
+                                                label="Start date"
+                                                sortKey="start_date"
+                                                activeSortKey={sortKey}
+                                                activeSortDir={sortDir}
+                                                onSort={toggleSort}
+                                                icon={sortIcon("start_date")}
+                                            />
+                                        </th>
+
+                                        <th scope="col" className="text-nowrap" aria-sort={getAriaSortValue(sortKey, sortDir, "end_date")}>
+                                            <SortHeader
+                                                label="End date"
+                                                sortKey="end_date"
+                                                activeSortKey={sortKey}
+                                                activeSortDir={sortDir}
+                                                onSort={toggleSort}
+                                                icon={sortIcon("end_date")}
+                                            />
+                                        </th>
+
+                                        <th scope="col" className="text-nowrap" style={{ width: 170 }}>
+                                            Actions
+                                        </th>
+                                    </tr>
+                                </thead>
+
+                                <tbody>
+                                    {pageRows.length === 0 ? (
+                                        <tr>
+                                            <td colSpan={6} className="text-center text-body-secondary py-4">
+                                                {hasActiveFilters
+                                                    ? "No projects match your current search or filters."
+                                                    : "No projects yet. Create your first project."}
+                                            </td>
+                                        </tr>
+                                    ) : (
+                                        pageRows.map((row) => (
+                                            <tr key={row.id}>
+                                                <td className="fw-semibold">{row.name ?? ""}</td>
+
+                                                <td>
+                                                    <Badge bg={getStatusBadgeVariant(row.status)}>{row.status ?? ""}</Badge>
+                                                </td>
+
+                                                <td style={{ maxWidth: 520, whiteSpace: "normal" }}>{row.comments ?? ""}</td>
+
+                                                <td className="text-nowrap">
+                                                    {row.start_date ? Dayjs(row.start_date).format("MM-DD-YYYY") : ""}
+                                                </td>
+
+                                                <td className="text-nowrap">
+                                                    {row.end_date ? Dayjs(row.end_date).format("MM-DD-YYYY") : ""}
+                                                </td>
+
+                                                {/* Keep row actions compact while still exposing edit and delete directly. */}
+                                                <td className="text-nowrap">
+                                                    <div className="d-flex align-items-center gap-2">
+                                                        <Button
+                                                            as={Link}
+                                                            to={`/edit/${row.id}`}
+                                                            variant="outline-primary"
+                                                            size="sm"
+                                                            title={`Edit ${row.name ?? "project"}`}
+                                                        >
+                                                            Edit
+                                                        </Button>
+
+                                                        <Button
+                                                            as={Link}
+                                                            to={`/delete/${row.id}`}
+                                                            variant="outline-danger"
+                                                            size="sm"
+                                                            title={`Delete ${row.name ?? "project"}`}
+                                                        >
+                                                            Delete
+                                                        </Button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ))
+                                    )}
+                                </tbody>
+                            </Table>
+                        </div>
+                    </div>
+
+                    {/* Mobile card layout. */}
+                    <div className="d-md-none">
                         {refreshing && (
-                            <div className="d-flex align-items-center gap-2 small text-body-secondary p-2 border-bottom">
+                            <div className="d-flex align-items-center gap-2 small text-body-secondary p-2 border rounded mb-3">
                                 <Spinner animation="border" size="sm" />
                                 <span>Refreshing projects...</span>
                             </div>
                         )}
 
-                        <Table striped hover responsive className="mb-0 align-middle">
-                            <thead className="table-light">
-                                <tr>
-                                    <th scope="col" className="text-nowrap" aria-sort={getAriaSortValue(sortKey, sortDir, "name")}>
-                                        <SortHeader
-                                            label="Name"
-                                            sortKey="name"
-                                            activeSortKey={sortKey}
-                                            activeSortDir={sortDir}
-                                            onSort={toggleSort}
-                                            icon={sortIcon("name")}
-                                        />
-                                    </th>
-
-                                    <th scope="col" className="text-nowrap" aria-sort={getAriaSortValue(sortKey, sortDir, "status")}>
-                                        <SortHeader
-                                            label="Status"
-                                            sortKey="status"
-                                            activeSortKey={sortKey}
-                                            activeSortDir={sortDir}
-                                            onSort={toggleSort}
-                                            icon={sortIcon("status")}
-                                        />
-                                    </th>
-
-                                    <th scope="col" className="text-nowrap" aria-sort={getAriaSortValue(sortKey, sortDir, "comments")}>
-                                        <SortHeader
-                                            label="Comments"
-                                            sortKey="comments"
-                                            activeSortKey={sortKey}
-                                            activeSortDir={sortDir}
-                                            onSort={toggleSort}
-                                            icon={sortIcon("comments")}
-                                        />
-                                    </th>
-
-                                    <th scope="col" className="text-nowrap" aria-sort={getAriaSortValue(sortKey, sortDir, "start_date")}>
-                                        <SortHeader
-                                            label="Start date"
-                                            sortKey="start_date"
-                                            activeSortKey={sortKey}
-                                            activeSortDir={sortDir}
-                                            onSort={toggleSort}
-                                            icon={sortIcon("start_date")}
-                                        />
-                                    </th>
-
-                                    <th scope="col" className="text-nowrap" aria-sort={getAriaSortValue(sortKey, sortDir, "end_date")}>
-                                        <SortHeader
-                                            label="End date"
-                                            sortKey="end_date"
-                                            activeSortKey={sortKey}
-                                            activeSortDir={sortDir}
-                                            onSort={toggleSort}
-                                            icon={sortIcon("end_date")}
-                                        />
-                                    </th>
-
-                                    {/* Narrower actions column because the row now uses a compact action layout. */}
-                                    <th scope="col" className="text-nowrap" style={{ width: 170 }}>
-                                        Actions
-                                    </th>
-                                </tr>
-                            </thead>
-
-                            <tbody>
-                                {pageRows.length === 0 ? (
-                                    <tr>
-                                        <td colSpan={6} className="text-center text-body-secondary py-4">
-                                            {hasActiveFilters
-                                                ? "No projects match your current search or filters."
-                                                : "No projects yet. Create your first project."}
-                                        </td>
-                                    </tr>
-                                ) : (
-                                    pageRows.map((row) => (
-                                        <tr key={row.id}>
-                                            <td className="fw-semibold">{row.name ?? ""}</td>
-
-                                            <td>
-                                                <Badge bg={getStatusBadgeVariant(row.status)}>{row.status ?? ""}</Badge>
-                                            </td>
-
-                                            <td style={{ maxWidth: 520, whiteSpace: "normal" }}>{row.comments ?? ""}</td>
-
-                                            <td className="text-nowrap">
-                                                {row.start_date ? Dayjs(row.start_date).format("MM-DD-YYYY") : ""}
-                                            </td>
-
-                                            <td className="text-nowrap">
-                                                {row.end_date ? Dayjs(row.end_date).format("MM-DD-YYYY") : ""}
-                                            </td>
-
-                                            {/* Keep row actions compact while still exposing edit and delete directly. */}
-                                            <td className="text-nowrap">
-                                                <div className="d-flex align-items-center gap-2">
-                                                    <Button
-                                                        as={Link}
-                                                        to={`/edit/${row.id}`}
-                                                        variant="outline-primary"
-                                                        size="sm"
-                                                        title={`Edit ${row.name ?? "project"}`}
-                                                    >
-                                                        Edit
-                                                    </Button>
-
-                                                    <Button
-                                                        as={Link}
-                                                        to={`/delete/${row.id}`}
-                                                        variant="outline-danger"
-                                                        size="sm"
-                                                        title={`Delete ${row.name ?? "project"}`}
-                                                    >
-                                                        Delete
-                                                    </Button>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    ))
-                                )}
-                            </tbody>
-                        </Table>
+                        {pageRows.length === 0 ? (
+                            <div className="border rounded p-4 text-center text-body-secondary">
+                                {hasActiveFilters
+                                    ? "No projects match your current search or filters."
+                                    : "No projects yet. Create your first project."}
+                            </div>
+                        ) : (
+                            pageRows.map((row) => <ProjectMobileCard key={row.id} row={row} />)
+                        )}
                     </div>
 
                     {/* Footer area with record range text and a more modern numbered pagination control. */}

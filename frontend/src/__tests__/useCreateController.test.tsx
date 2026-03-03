@@ -1,19 +1,21 @@
 import { renderHook, waitFor, act } from "@testing-library/react";
 import { describe, test, expect, beforeEach, vi } from "vitest";
 import * as yup from "yup";
-import { useCreateController } from "../features/projects/create/useCreateController";
+import { useEditController } from "../features/projects/edit/useEditController";
 import * as projectApi from "../features/projects/models/project.api";
 
 const mockNavigate = vi.fn();
 
 vi.mock("react-router-dom", () => ({
     useNavigate: () => mockNavigate,
+    useParams: () => ({ id: "42" }),
 }));
 
 vi.mock("../features/projects/models/project.api", () => ({
-    createProject: vi.fn(),
     getEmployees: vi.fn(),
+    getProject: vi.fn(),
     getProjectManagers: vi.fn(),
+    updateProject: vi.fn(),
 }));
 
 vi.mock("../features/projects/shared/projectFormConfig", () => ({
@@ -39,16 +41,26 @@ vi.mock("../features/projects/shared/projectFormConfig", () => ({
         ...data,
         transformed: true,
     })),
+    projectToFormValues: vi.fn(() => ({
+        name: "Loaded Project",
+        comments: "Existing project comments",
+        status: "Open",
+        projectmanager: "1",
+        employees: ["10", "11"],
+        start_date: "2026-03-01",
+        end_date: "2026-03-31",
+    })),
 }));
 
-describe("useCreateController", () => {
+describe("useEditController", () => {
     beforeEach(() => {
         vi.clearAllMocks();
     });
 
-    test("loads project managers and employees on mount", async () => {
+    test("loads lookup data and existing project data on mount", async () => {
         const mockedGetProjectManagers = projectApi.getProjectManagers as ReturnType<typeof vi.fn>;
         const mockedGetEmployees = projectApi.getEmployees as ReturnType<typeof vi.fn>;
+        const mockedGetProject = projectApi.getProject as ReturnType<typeof vi.fn>;
 
         mockedGetProjectManagers.mockResolvedValue([
             { id: 1, first_name: "Alice", last_name: "Manager" },
@@ -58,7 +70,12 @@ describe("useCreateController", () => {
             { id: 10, first_name: "Bob", last_name: "Employee" },
         ]);
 
-        const { result } = renderHook(() => useCreateController());
+        mockedGetProject.mockResolvedValue({
+            id: 42,
+            name: "Loaded Project",
+        });
+
+        const { result } = renderHook(() => useEditController());
 
         await waitFor(() => {
             expect(result.current.loading).toBe(false);
@@ -66,43 +83,48 @@ describe("useCreateController", () => {
 
         expect(mockedGetProjectManagers).toHaveBeenCalledTimes(1);
         expect(mockedGetEmployees).toHaveBeenCalledTimes(1);
-        expect(result.current.projectManagers).toEqual([
-            { id: 1, first_name: "Alice", last_name: "Manager" },
-        ]);
-        expect(result.current.employees).toEqual([
-            { id: 10, first_name: "Bob", last_name: "Employee" },
-        ]);
+        expect(mockedGetProject).toHaveBeenCalledWith("42");
+
+        expect(result.current.getValues("name")).toBe("Loaded Project");
+        expect(result.current.getValues("comments")).toBe("Existing project comments");
+        expect(result.current.getValues("status")).toBe("Open");
+        expect(result.current.getValues("projectmanager")).toBe("1");
+        expect(result.current.getValues("employees")).toEqual(["10", "11"]);
         expect(result.current.apiError).toBe("");
     });
 
-    test("sets an api error when dropdown lookup loading fails", async () => {
+    test("sets an api error when edit page data loading fails", async () => {
         const mockedGetProjectManagers = projectApi.getProjectManagers as ReturnType<typeof vi.fn>;
         const mockedGetEmployees = projectApi.getEmployees as ReturnType<typeof vi.fn>;
+        const mockedGetProject = projectApi.getProject as ReturnType<typeof vi.fn>;
+        const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
-        mockedGetProjectManagers.mockRejectedValue(new Error("lookup failed"));
+        mockedGetProjectManagers.mockResolvedValue([]);
         mockedGetEmployees.mockResolvedValue([]);
+        mockedGetProject.mockRejectedValue(new Error("project load failed"));
 
-        const { result } = renderHook(() => useCreateController());
+        const { result } = renderHook(() => useEditController());
 
         await waitFor(() => {
             expect(result.current.loading).toBe(false);
         });
 
-        expect(result.current.apiError).toBe("Failed to load dropdown data.");
-        expect(result.current.projectManagers).toEqual([]);
-        expect(result.current.employees).toEqual([]);
-    });
+        expect(result.current.apiError).toBe("Failed to load project data.");
 
-    test("submits a new project and navigates home on success", async () => {
+        consoleErrorSpy.mockRestore();
+    });
+    test("submits updated project data and navigates home on success", async () => {
         const mockedGetProjectManagers = projectApi.getProjectManagers as ReturnType<typeof vi.fn>;
         const mockedGetEmployees = projectApi.getEmployees as ReturnType<typeof vi.fn>;
-        const mockedCreateProject = projectApi.createProject as ReturnType<typeof vi.fn>;
+        const mockedGetProject = projectApi.getProject as ReturnType<typeof vi.fn>;
+        const mockedUpdateProject = projectApi.updateProject as ReturnType<typeof vi.fn>;
 
         mockedGetProjectManagers.mockResolvedValue([]);
         mockedGetEmployees.mockResolvedValue([]);
-        mockedCreateProject.mockResolvedValue({ id: 123 });
+        mockedGetProject.mockResolvedValue({ id: 42 });
+        mockedUpdateProject.mockResolvedValue({ id: 42 });
 
-        const { result } = renderHook(() => useCreateController());
+        const { result } = renderHook(() => useEditController());
 
         await waitFor(() => {
             expect(result.current.loading).toBe(false);
@@ -110,20 +132,21 @@ describe("useCreateController", () => {
 
         await act(async () => {
             await result.current.submission({
-                name: "New Project",
-                comments: "Create flow test",
-                status: "Open",
-                projectmanager: "1",
-                employees: ["10", "11"],
+                name: "Updated Project",
+                comments: "Updated comments",
+                status: "Completed",
+                projectmanager: "2",
+                employees: ["10"],
                 start_date: "2026-03-01",
-                end_date: "2026-03-15",
+                end_date: "2026-03-20",
             });
         });
 
-        expect(mockedCreateProject).toHaveBeenCalledTimes(1);
-        expect(mockedCreateProject).toHaveBeenCalledWith(
+        expect(mockedUpdateProject).toHaveBeenCalledTimes(1);
+        expect(mockedUpdateProject).toHaveBeenCalledWith(
+            "42",
             expect.objectContaining({
-                name: "New Project",
+                name: "Updated Project",
                 transformed: true,
             })
         );
@@ -131,24 +154,23 @@ describe("useCreateController", () => {
         expect(result.current.apiError).toBe("");
     });
 
-    test("flattens backend validation errors into apiError on create failure", async () => {
+    test("shows a status-based error when update fails without validation body", async () => {
         const mockedGetProjectManagers = projectApi.getProjectManagers as ReturnType<typeof vi.fn>;
         const mockedGetEmployees = projectApi.getEmployees as ReturnType<typeof vi.fn>;
-        const mockedCreateProject = projectApi.createProject as ReturnType<typeof vi.fn>;
+        const mockedGetProject = projectApi.getProject as ReturnType<typeof vi.fn>;
+        const mockedUpdateProject = projectApi.updateProject as ReturnType<typeof vi.fn>;
+        const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
         mockedGetProjectManagers.mockResolvedValue([]);
         mockedGetEmployees.mockResolvedValue([]);
-        mockedCreateProject.mockRejectedValue({
+        mockedGetProject.mockResolvedValue({ id: 42 });
+        mockedUpdateProject.mockRejectedValue({
             response: {
-                status: 400,
-                data: {
-                    name: ["This field is required."],
-                    employees: ["Select at least one employee."],
-                },
+                status: 500,
             },
         });
 
-        const { result } = renderHook(() => useCreateController());
+        const { result } = renderHook(() => useEditController());
 
         await waitFor(() => {
             expect(result.current.loading).toBe(false);
@@ -156,19 +178,19 @@ describe("useCreateController", () => {
 
         await act(async () => {
             await result.current.submission({
-                name: "",
+                name: "Updated Project",
                 comments: "",
                 status: "Open",
-                projectmanager: "",
+                projectmanager: "1",
                 employees: [],
                 start_date: "",
                 end_date: "",
             });
         });
 
-        expect(result.current.apiError).toBe(
-            "This field is required. Select at least one employee."
-        );
+        expect(result.current.apiError).toBe("Request failed (500).");
         expect(mockNavigate).not.toHaveBeenCalled();
+
+        consoleErrorSpy.mockRestore();
     });
 });

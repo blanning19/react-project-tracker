@@ -287,4 +287,95 @@ describe("useHomeController", () => {
 
         expect(result.current.pageRows[0].name).toBe("Bravo Project");
     });
+
+    test("uses refreshing state during a refresh load", async () => {
+        const mockedListProjects = projectApi.listProjects as ReturnType<typeof vi.fn>;
+
+        mockedListProjects
+            .mockResolvedValueOnce([
+                {
+                    id: 1,
+                    name: "Alpha Project",
+                    status: "Open",
+                    comments: "Initial planning work",
+                    start_date: "2026-03-01",
+                    end_date: "2026-03-10",
+                },
+            ])
+            .mockImplementationOnce(
+                () =>
+                    new Promise((resolve) => {
+                        setTimeout(() => {
+                            resolve([
+                                {
+                                    id: 1,
+                                    name: "Alpha Project",
+                                    status: "Open",
+                                    comments: "Initial planning work",
+                                    start_date: "2026-03-01",
+                                    end_date: "2026-03-10",
+                                },
+                            ]);
+                        }, 0);
+                    })
+            );
+
+        const { result } = renderHook(() => useHomeController());
+
+        await waitFor(() => {
+            expect(result.current.loading).toBe(false);
+        });
+
+        expect(result.current.refreshing).toBe(false);
+
+        act(() => {
+            void result.current.getData({ isRefresh: true });
+        });
+
+        expect(result.current.refreshing).toBe(true);
+
+        await waitFor(() => {
+            expect(result.current.refreshing).toBe(false);
+        });
+    });
+
+    test("keeps existing data when a refresh request fails", async () => {
+        const mockedListProjects = projectApi.listProjects as ReturnType<typeof vi.fn>;
+        const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+        mockedListProjects
+            .mockResolvedValueOnce([
+                {
+                    id: 1,
+                    name: "Alpha Project",
+                    status: "Open",
+                    comments: "Initial planning work",
+                    start_date: "2026-03-01",
+                    end_date: "2026-03-10",
+                },
+            ])
+            .mockRejectedValueOnce(new Error("refresh failed"));
+
+        const { result } = renderHook(() => useHomeController());
+
+        await waitFor(() => {
+            expect(result.current.loading).toBe(false);
+        });
+
+        expect(result.current.data).toHaveLength(1);
+
+        act(() => {
+            void result.current.getData({ isRefresh: true });
+        });
+
+        await waitFor(() => {
+            expect(result.current.refreshing).toBe(false);
+        });
+
+        expect(result.current.apiError).toBe("Failed to load projects.");
+        expect(result.current.data).toHaveLength(1);
+
+        consoleErrorSpy.mockRestore();
+    });
+
 });

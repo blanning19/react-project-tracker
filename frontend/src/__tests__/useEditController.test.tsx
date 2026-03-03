@@ -98,17 +98,26 @@ describe("useEditController", () => {
         const mockedGetEmployees = projectApi.getEmployees as ReturnType<typeof vi.fn>;
         const mockedGetProject = projectApi.getProject as ReturnType<typeof vi.fn>;
 
-        mockedGetProjectManagers.mockResolvedValue([]);
-        mockedGetEmployees.mockResolvedValue([]);
-        mockedGetProject.mockRejectedValue(new Error("project load failed"));
+        /**
+         * Suppress expected console.error noise for this intentional error-path test.
+         */
+        const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
-        const { result } = renderHook(() => useEditController());
+        try {
+            mockedGetProjectManagers.mockResolvedValue([]);
+            mockedGetEmployees.mockResolvedValue([]);
+            mockedGetProject.mockRejectedValue(new Error("project load failed"));
 
-        await waitFor(() => {
-            expect(result.current.loading).toBe(false);
-        });
+            const { result } = renderHook(() => useEditController());
 
-        expect(result.current.apiError).toBe("Failed to load project data.");
+            await waitFor(() => {
+                expect(result.current.loading).toBe(false);
+            });
+
+            expect(result.current.apiError).toBe("Failed to load project data.");
+        } finally {
+            consoleErrorSpy.mockRestore();
+        }
     });
 
     test("submits updated project data and navigates home on success", async () => {
@@ -158,34 +167,43 @@ describe("useEditController", () => {
         const mockedGetProject = projectApi.getProject as ReturnType<typeof vi.fn>;
         const mockedUpdateProject = projectApi.updateProject as ReturnType<typeof vi.fn>;
 
-        mockedGetProjectManagers.mockResolvedValue([]);
-        mockedGetEmployees.mockResolvedValue([]);
-        mockedGetProject.mockResolvedValue({ id: 42 });
-        mockedUpdateProject.mockRejectedValue({
-            response: {
-                status: 500,
-            },
-        });
+        /**
+         * Suppress expected console.error noise for this intentional error-path test.
+         */
+        const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
-        const { result } = renderHook(() => useEditController());
-
-        await waitFor(() => {
-            expect(result.current.loading).toBe(false);
-        });
-
-        await act(async () => {
-            await result.current.submission({
-                name: "Updated Project",
-                comments: "",
-                status: "Open",
-                projectmanager: "1",
-                employees: [],
-                start_date: "",
-                end_date: "",
+        try {
+            mockedGetProjectManagers.mockResolvedValue([]);
+            mockedGetEmployees.mockResolvedValue([]);
+            mockedGetProject.mockResolvedValue({ id: 42 });
+            mockedUpdateProject.mockRejectedValue({
+                response: {
+                    status: 500,
+                },
             });
-        });
 
-        expect(result.current.apiError).toBe("Request failed (500).");
-        expect(mockNavigate).not.toHaveBeenCalled();
+            const { result } = renderHook(() => useEditController());
+
+            await waitFor(() => {
+                expect(result.current.loading).toBe(false);
+            });
+
+            await act(async () => {
+                await result.current.submission({
+                    name: "Updated Project",
+                    comments: "",
+                    status: "Open",
+                    projectmanager: "1",
+                    employees: [],
+                    start_date: "",
+                    end_date: "",
+                });
+            });
+
+            expect(result.current.apiError).toBe("Request failed (500).");
+            expect(mockNavigate).not.toHaveBeenCalled();
+        } finally {
+            consoleErrorSpy.mockRestore();
+        }
     });
 });

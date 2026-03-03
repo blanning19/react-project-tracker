@@ -2,8 +2,9 @@ import type { Dispatch, SetStateAction } from "react";
 import Dayjs from "dayjs";
 import { Link } from "react-router-dom";
 import { Alert, Badge, Button, Container, Form, Pagination, Spinner, Table } from "react-bootstrap";
+import { HOME_PAGE_SIZE_OPTIONS, HOME_STATUS_FILTER_OPTIONS } from "./home.constants";
 import type { ProjectRecord } from "../projects/models/project.types";
-import type { HomeSortKey, HomeStatusFilter } from "./home.types";
+import type { HomeSortDirection, HomeSortKey, HomeStatusFilter } from "./home.types";
 
 interface HomeViewProps {
     loading: boolean;
@@ -19,6 +20,8 @@ interface HomeViewProps {
     searchTerm: string;
     statusFilter: HomeStatusFilter;
     hasActiveFilters: boolean;
+    sortKey: HomeSortKey;
+    sortDir: HomeSortDirection;
     sortIcon: (key: HomeSortKey) => string;
     getData: (options?: { isRefresh?: boolean }) => Promise<void>;
     setPage: Dispatch<SetStateAction<number>>;
@@ -28,6 +31,43 @@ interface HomeViewProps {
     toggleSort: (key: HomeSortKey) => void;
 }
 
+type AriaSortValue = "ascending" | "descending" | "none";
+
+/**
+ * Returns the correct aria-sort value for a sortable table column.
+ * Screen readers use this to announce the active sort direction.
+ */
+function getAriaSortValue(
+    activeSortKey: HomeSortKey,
+    activeSortDir: HomeSortDirection,
+    columnSortKey: HomeSortKey
+): AriaSortValue {
+    if (activeSortKey !== columnSortKey) {
+        return "none";
+    }
+
+    return activeSortDir === "asc" ? "ascending" : "descending";
+}
+
+/**
+ * Builds a clear screen-reader label for a sortable column button.
+ * The label explains both the current state and what activating the button will do next.
+ */
+function getSortButtonAriaLabel(
+    label: string,
+    activeSortKey: HomeSortKey,
+    activeSortDir: HomeSortDirection,
+    columnSortKey: HomeSortKey
+): string {
+    if (activeSortKey !== columnSortKey) {
+        return `Sort by ${label} ascending`;
+    }
+
+    return activeSortDir === "asc"
+        ? `${label} sorted ascending. Activate to sort descending`
+        : `${label} sorted descending. Activate to sort ascending`;
+}
+
 /**
  * Renders a compact sortable table header button.
  * This keeps the header clickable without making it look like a full action button.
@@ -35,22 +75,31 @@ interface HomeViewProps {
 function SortHeader({
     label,
     sortKey,
+    activeSortKey,
+    activeSortDir,
     onSort,
     icon,
 }: {
     label: string;
     sortKey: HomeSortKey;
+    activeSortKey: HomeSortKey;
+    activeSortDir: HomeSortDirection;
     onSort: (key: HomeSortKey) => void;
     icon: string;
 }): JSX.Element {
+    const isActive = activeSortKey === sortKey;
+    const srStatus = !isActive ? "Not currently sorted" : activeSortDir === "asc" ? "Sorted ascending" : "Sorted descending";
+
     return (
         <button
             type="button"
             className="btn btn-link p-0 text-decoration-none text-reset fw-semibold"
+            aria-label={getSortButtonAriaLabel(label, activeSortKey, activeSortDir, sortKey)}
             onClick={() => onSort(sortKey)}
         >
-            {label}
-            {icon}
+            <span>{label}</span>
+            <span aria-hidden="true">{icon}</span>
+            <span className="visually-hidden">. {srStatus}.</span>
         </button>
     );
 }
@@ -76,10 +125,7 @@ function getStatusBadgeVariant(status: string | null | undefined): string {
  * Builds a compact page list for the pagination control.
  * The result always favors a small, readable page window with ellipses when needed.
  */
-function getVisiblePages(
-    currentPage: number,
-    totalPages: number
-): Array<number | "ellipsis-left" | "ellipsis-right"> {
+function getVisiblePages(currentPage: number, totalPages: number): Array<number | "ellipsis-left" | "ellipsis-right"> {
     if (totalPages <= 7) {
         return Array.from({ length: totalPages }, (_, index) => index + 1);
     }
@@ -95,15 +141,7 @@ function getVisiblePages(
     }
 
     // In the middle, show the current page with one neighbor on each side.
-    return [
-        1,
-        "ellipsis-left",
-        currentPage - 1,
-        currentPage,
-        currentPage + 1,
-        "ellipsis-right",
-        totalPages,
-    ];
+    return [1, "ellipsis-left", currentPage - 1, currentPage, currentPage + 1, "ellipsis-right", totalPages];
 }
 
 function HomeView({
@@ -120,6 +158,8 @@ function HomeView({
     searchTerm,
     statusFilter,
     hasActiveFilters,
+    sortKey,
+    sortDir,
     sortIcon,
     getData,
     setPage,
@@ -178,9 +218,7 @@ function HomeView({
                     <div className="d-flex flex-column flex-md-row gap-3 align-items-md-end justify-content-between mb-3">
                         <div className="d-flex flex-column flex-md-row gap-3">
                             <Form.Group>
-                                <Form.Label className="small text-body-secondary mb-1">
-                                    Search
-                                </Form.Label>
+                                <Form.Label className="small text-body-secondary mb-1">Search</Form.Label>
 
                                 <Form.Control
                                     type="text"
@@ -193,9 +231,7 @@ function HomeView({
                             </Form.Group>
 
                             <Form.Group>
-                                <Form.Label className="small text-body-secondary mb-1">
-                                    Status
-                                </Form.Label>
+                                <Form.Label className="small text-body-secondary mb-1">Status</Form.Label>
 
                                 <Form.Select
                                     value={statusFilter}
@@ -203,10 +239,11 @@ function HomeView({
                                         onStatusFilterChange(e.target.value as HomeStatusFilter);
                                     }}
                                 >
-                                    <option value="All">All</option>
-                                    <option value="Open">Open</option>
-                                    <option value="In progress">In progress</option>
-                                    <option value="Completed">Completed</option>
+                                    {HOME_STATUS_FILTER_OPTIONS.map((option) => (
+                                        <option key={option} value={option}>
+                                            {option}
+                                        </option>
+                                    ))}
                                 </Form.Select>
                             </Form.Group>
                         </div>
@@ -222,7 +259,7 @@ function HomeView({
                                     onPageSizeChange(Number(e.target.value));
                                 }}
                             >
-                                {[5, 10, 20, 50].map((count) => (
+                                {HOME_PAGE_SIZE_OPTIONS.map((count) => (
                                     <option key={count} value={count}>
                                         {count}
                                     </option>
@@ -243,53 +280,63 @@ function HomeView({
                         <Table striped hover responsive className="mb-0 align-middle">
                             <thead className="table-light">
                                 <tr>
-                                    <th className="text-nowrap">
+                                    <th scope="col" className="text-nowrap" aria-sort={getAriaSortValue(sortKey, sortDir, "name")}>
                                         <SortHeader
                                             label="Name"
                                             sortKey="name"
+                                            activeSortKey={sortKey}
+                                            activeSortDir={sortDir}
                                             onSort={toggleSort}
                                             icon={sortIcon("name")}
                                         />
                                     </th>
 
-                                    <th className="text-nowrap">
+                                    <th scope="col" className="text-nowrap" aria-sort={getAriaSortValue(sortKey, sortDir, "status")}>
                                         <SortHeader
                                             label="Status"
                                             sortKey="status"
+                                            activeSortKey={sortKey}
+                                            activeSortDir={sortDir}
                                             onSort={toggleSort}
                                             icon={sortIcon("status")}
                                         />
                                     </th>
 
-                                    <th className="text-nowrap">
+                                    <th scope="col" className="text-nowrap" aria-sort={getAriaSortValue(sortKey, sortDir, "comments")}>
                                         <SortHeader
                                             label="Comments"
                                             sortKey="comments"
+                                            activeSortKey={sortKey}
+                                            activeSortDir={sortDir}
                                             onSort={toggleSort}
                                             icon={sortIcon("comments")}
                                         />
                                     </th>
 
-                                    <th className="text-nowrap">
+                                    <th scope="col" className="text-nowrap" aria-sort={getAriaSortValue(sortKey, sortDir, "start_date")}>
                                         <SortHeader
                                             label="Start date"
                                             sortKey="start_date"
+                                            activeSortKey={sortKey}
+                                            activeSortDir={sortDir}
                                             onSort={toggleSort}
                                             icon={sortIcon("start_date")}
                                         />
                                     </th>
 
-                                    <th className="text-nowrap">
+                                    <th scope="col" className="text-nowrap" aria-sort={getAriaSortValue(sortKey, sortDir, "end_date")}>
                                         <SortHeader
                                             label="End date"
                                             sortKey="end_date"
+                                            activeSortKey={sortKey}
+                                            activeSortDir={sortDir}
                                             onSort={toggleSort}
                                             icon={sortIcon("end_date")}
                                         />
                                     </th>
 
                                     {/* Narrower actions column because the row now uses a compact action layout. */}
-                                    <th className="text-nowrap" style={{ width: 170 }}>
+                                    <th scope="col" className="text-nowrap" style={{ width: 170 }}>
                                         Actions
                                     </th>
                                 </tr>
@@ -323,7 +370,7 @@ function HomeView({
                                                 {row.end_date ? Dayjs(row.end_date).format("MM-DD-YYYY") : ""}
                                             </td>
 
-                                            {/* Use one primary visible action and move destructive actions into a menu. */}
+                                            {/* Keep row actions compact while still exposing edit and delete directly. */}
                                             <td className="text-nowrap">
                                                 <div className="d-flex align-items-center gap-2">
                                                     <Button
@@ -374,11 +421,7 @@ function HomeView({
                                 }
 
                                 return (
-                                    <Pagination.Item
-                                        key={item}
-                                        active={item === safePage}
-                                        onClick={() => setPage(item)}
-                                    >
+                                    <Pagination.Item key={item} active={item === safePage} onClick={() => setPage(item)}>
                                         {item}
                                     </Pagination.Item>
                                 );
@@ -389,10 +432,7 @@ function HomeView({
                                 onClick={() => setPage((currentPage) => Math.min(totalPages, currentPage + 1))}
                             />
 
-                            <Pagination.Last
-                                disabled={safePage >= totalPages}
-                                onClick={() => setPage(totalPages)}
-                            />
+                            <Pagination.Last disabled={safePage >= totalPages} onClick={() => setPage(totalPages)} />
                         </Pagination>
                     </div>
                 </>

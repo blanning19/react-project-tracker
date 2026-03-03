@@ -1,8 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { listProjects } from "../projects/models/project.api";
 import type { ProjectRecord } from "../projects/models/project.types";
-import type { HomeSortKey, HomeStatusFilter } from "./home.types";
-
+import {
+    HOME_DEFAULT_PAGE_SIZE,
+    HOME_DEFAULT_SORT_DIRECTION,
+    HOME_DEFAULT_SORT_KEY,
+    HOME_DEFAULT_STATUS_FILTER,
+} from "./home.constants";
+import type { HomeSortDirection, HomeSortKey, HomeStatusFilter } from "./home.types";
 /**
  * Controller hook for the Home page.
  *
@@ -39,11 +44,11 @@ export function useHomeController() {
     const [apiError, setApiError] = useState("");
 
     const [page, setPage] = useState(1);
-    const [pageSize, setPageSize] = useState(10);
-    const [sortKey, setSortKey] = useState<HomeSortKey>("name");
-    const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
     const [searchTerm, setSearchTerm] = useState("");
-    const [statusFilter, setStatusFilter] = useState<HomeStatusFilter>("All");
+    const [pageSize, setPageSize] = useState(HOME_DEFAULT_PAGE_SIZE);
+    const [sortKey, setSortKey] = useState<HomeSortKey>(HOME_DEFAULT_SORT_KEY);
+    const [sortDir, setSortDir] = useState<HomeSortDirection>(HOME_DEFAULT_SORT_DIRECTION);
+    const [statusFilter, setStatusFilter] = useState<HomeStatusFilter>(HOME_DEFAULT_STATUS_FILTER);
 
     /**
      * Loads the latest list of projects from the backend.
@@ -103,9 +108,7 @@ export function useHomeController() {
 
     const toggleSort = (key: HomeSortKey) => {
         if (sortKey === key) {
-            setSortDir((currentDirection) =>
-                currentDirection === "asc" ? "desc" : "asc"
-            );
+            setSortDir((currentDirection) => currentDirection === "asc" ? "desc" : "asc");
         } else {
             setSortKey(key);
             setSortDir("asc");
@@ -123,8 +126,7 @@ export function useHomeController() {
                 (row.name ?? "").toLowerCase().includes(normalizedSearch) ||
                 (row.comments ?? "").toLowerCase().includes(normalizedSearch);
 
-            const matchesStatus =
-                statusFilter === "All" || (row.status ?? "") === statusFilter;
+            const matchesStatus = statusFilter === "All" || (row.status ?? "") === statusFilter;
 
             return matchesSearch && matchesStatus;
         });
@@ -164,11 +166,9 @@ export function useHomeController() {
     const end = start + pageSize;
     const pageRows = sortedData.slice(start, end);
 
-    const hasActiveFilters =
-        searchTerm.trim() !== "" || statusFilter !== "All";
+    const hasActiveFilters = searchTerm.trim() !== "" || statusFilter !== HOME_DEFAULT_STATUS_FILTER;
 
-    const sortIcon = (key: HomeSortKey) =>
-        sortKey !== key ? "" : sortDir === "asc" ? " ▲" : " ▼";
+    const sortIcon = (key: HomeSortKey) => sortKey !== key ? "" : sortDir === "asc" ? " ▲" : " ▼";
 
     return {
         data,
@@ -177,6 +177,8 @@ export function useHomeController() {
         apiError,
         page,
         pageSize,
+        sortKey,
+        sortDir,
         searchTerm,
         statusFilter,
         total,

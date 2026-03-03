@@ -1,41 +1,32 @@
 import type { ProjectRecord } from "../projects/models/project.types";
 
-/**
- * Supported sort keys for the Home page project list.
- *
- * These keys represent the fields the UI allows users to sort by.
- * Keeping this as a shared type prevents sort-key unions from being repeated
- * across the controller and view layers.
- */
-export type HomeSortKey =
-    | keyof ProjectRecord
-    | "comments"
-    | "status"
-    | "start_date"
-    | "end_date"
-    | "name";
+export type HomeSortKey = keyof Pick<ProjectRecord, "name" | "status" | "comments" | "start_date" | "end_date">;
 
-/**
- * Supported status filter values for the Home page.
- *
- * "All" means no status filtering is applied.
- */
+export type HomeSortDirection = "asc" | "desc";
+
 export type HomeStatusFilter = "All" | "Open" | "In progress" | "Completed";
 
-/**
- * State model for the Home page controller.
- *
- * This interface describes the core state values managed by the controller.
- * It is useful when you want a single place to understand the Home page's
- * primary data, loading behavior, pagination, sorting state, and search state.
- */
-export interface HomeControllerState {
-    data: ProjectRecord[];
+export interface HomeViewProps {
     loading: boolean;
     apiError: string;
-    searchQuery: string;
-    page: number;
+    total: number;
+    totalPages: number;
+    safePage: number;
+    start: number;
+    end: number;
     pageSize: number;
+    pageRows: ProjectRecord[];
+    refreshing: boolean;
+    searchTerm: string;
+    statusFilter: HomeStatusFilter;
+    hasActiveFilters: boolean;
     sortKey: HomeSortKey;
-    sortDir: "asc" | "desc";
+    sortDir: HomeSortDirection;
+    sortIcon: (key: HomeSortKey) => string;
+    getData: (options?: { isRefresh?: boolean }) => Promise<void>;
+    setPage: Dispatch<SetStateAction<number>>;
+    setPageSize: Dispatch<SetStateAction<number>>;
+    onSearchChange: (value: string) => void;
+    onStatusFilterChange: (value: HomeStatusFilter) => void;
+    toggleSort: (key: HomeSortKey) => void;
 }

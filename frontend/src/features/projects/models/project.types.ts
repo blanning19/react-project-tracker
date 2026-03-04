@@ -14,6 +14,7 @@ export interface ProjectRecord {
     end_date?: string | null;
     projectmanager?: number | PersonOption | null;
     employees?: Array<number | PersonOption>;
+    security_level: SecurityLevel;
 }
 
 export interface PaginatedResponse<T> {

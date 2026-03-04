@@ -145,4 +145,12 @@ describe("ProjectFormFields", () => {
         expect(screen.getByLabelText("Mattie Smith")).toBeChecked();
         expect(screen.getByLabelText("Rocco Jones")).not.toBeChecked();
     });
+
+    test("renders Security level select with default value", () => {
+        render(<TestWrapper />);
+
+        const select = screen.getByLabelText("Security level") as HTMLSelectElement;
+        expect(select).toBeInTheDocument();
+        expect(select.value).toBe("Internal");
+    });
 });

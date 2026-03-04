@@ -1,5 +1,4 @@
 from rest_framework import serializers
-
 from .models import Employees, Project, ProjectManager
 
 
@@ -13,7 +12,7 @@ class ProjectSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Project
-        fields = ("id", "name", "projectmanager", "start_date", "employees", "end_date", "comments", "status")
+        fields = ("id", "name", "projectmanager", "start_date", "employees", "end_date", "comments", "status", "security_level",)
 
     def create(self, validated_data):
         employees = validated_data.pop("employees", [])

@@ -337,6 +337,17 @@ function HomeView({
                                             />
                                         </th>
 
+                                        <th scope="col" className="text-nowrap" aria-sort={getAriaSortValue(sortKey, sortDir, "security")}>
+                                            <SortHeader
+                                                label="Security"
+                                                sortKey="security_level"
+                                                activeSortKey={sortKey}
+                                                activeSortDir={sortDir}
+                                                onSort={toggleSort}
+                                                icon={sortIcon("security")}
+                                            />
+                                        </th>
+
                                         <th scope="col" className="text-nowrap" aria-sort={getAriaSortValue(sortKey, sortDir, "comments")}>
                                             <SortHeader
                                                 label="Comments"
@@ -379,7 +390,7 @@ function HomeView({
                                 <tbody>
                                     {pageRows.length === 0 ? (
                                         <tr>
-                                            <td colSpan={6} className="text-center text-body-secondary py-4">
+                                            <td colSpan={7} className="text-center text-body-secondary py-4">
                                                 {hasActiveFilters
                                                     ? "No projects match your current search or filters."
                                                     : "No projects yet. Create your first project."}
@@ -393,6 +404,7 @@ function HomeView({
                                                 <td>
                                                     <Badge bg={getStatusBadgeVariant(row.status)}>{row.status ?? ""}</Badge>
                                                 </td>
+                                                <td className="text-nowrap">{row.security_level ?? ""}</td>
 
                                                 <td style={{ maxWidth: 520, whiteSpace: "normal" }}>{row.comments ?? ""}</td>
 

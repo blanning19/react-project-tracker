@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { Button, Col, Form, Row } from "react-bootstrap";
 import { Controller, type Control, type FieldErrors } from "react-hook-form";
 import type { PersonOption, ProjectFormValues } from "../models/project.types";
+import { SECURITY_LEVEL_OPTIONS } from "./projectFormConfig";
 
 interface ProjectFormFieldsProps {
     control: Control<ProjectFormValues>;
@@ -141,6 +142,40 @@ function ProjectFormFields({
                     />
 
                     <Form.Control.Feedback type="invalid">{errors.projectmanager?.message}</Form.Control.Feedback>
+                </Col>
+            </Row>
+            <Row className="g-3">
+                <Col md={6}>
+                    <Form.Group controlId="security_level">
+                        <Form.Label>Security level</Form.Label>
+
+                        {/* Using Controller keeps this consistent with other controlled fields, but register() also works fine. */}
+                        <Controller
+                            name="security_level"
+                            control={control}
+                            render={({ field }) => (
+                                <Form.Select
+                                    {...field}
+                                    aria-label="Security level"
+                                    isInvalid={Boolean(errors.security_level)}
+                                >
+                                    {SECURITY_LEVEL_OPTIONS.map((opt) => (
+                                        <option key={opt.id} value={opt.id}>
+                                            {opt.name}
+                                        </option>
+                                    ))}
+                                </Form.Select>
+                            )}
+                        />
+
+                        <Form.Control.Feedback type="invalid">
+                            {errors.security_level?.message}
+                        </Form.Control.Feedback>
+
+                        <Form.Text className="text-body-secondary">
+                            Use “Internal” unless the project contains sensitive customer or security data.
+                        </Form.Text>
+                    </Form.Group>
                 </Col>
             </Row>
 

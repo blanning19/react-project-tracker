@@ -9,7 +9,14 @@ export const STATUS_OPTIONS = [
     { id: "Completed", name: "Completed" },
 ];
 
-export const DEFAULT_VALUES: ProjectFormValues = { name: "", comments: "", status: "", projectmanager: "", employees: [], start_date: "", end_date: "" };
+export const SECURITY_LEVEL_OPTIONS = [
+    { id: "Public", name: "Public" },
+    { id: "Internal", name: "Internal" },
+    { id: "Confidential", name: "Confidential" },
+    { id: "Restricted", name: "Restricted" },
+];
+
+export const DEFAULT_VALUES: ProjectFormValues = { name: "", comments: "", status: "", projectmanager: "", employees: [], start_date: "", end_date: "", security_level: "Internal" };
 
 export const PROJECT_SCHEMA: yup.ObjectSchema<ProjectFormValues> = yup.object({
     name: yup.string().required("Name is a required field"),
@@ -19,6 +26,7 @@ export const PROJECT_SCHEMA: yup.ObjectSchema<ProjectFormValues> = yup.object({
     comments: yup.string().default(""),
     start_date: yup.string().required("Start date is a required field"),
     end_date: yup.string().required("End date is a required field").test("end-after-start", "The end date can not be before the start date", function (value) { return !value || !this.parent.start_date || value >= this.parent.start_date; }),
+    security_level: yup.string().oneOf(["Public", "Internal", "Confidential", "Restricted"], "Security level is invalid").required("Security level is a required field"),
 }).required();
 
 export const projectToFormValues = (project: ProjectRecord): ProjectFormValues => {
@@ -44,4 +52,5 @@ export const formToPayload = (data: ProjectFormValues) => ({
     comments: data?.comments ?? "",
     start_date: data?.start_date ? Dayjs(data.start_date).format("YYYY-MM-DD") : null,
     end_date: data?.end_date ? Dayjs(data.end_date).format("YYYY-MM-DD") : null,
+    security_level: data.security_level ?? "",
 });

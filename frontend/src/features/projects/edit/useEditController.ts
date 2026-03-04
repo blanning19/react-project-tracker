@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import { useNavigate, useParams } from "react-router-dom";
@@ -75,55 +75,51 @@ export function useEditController() {
 
     const { reset } = form;
 
-    useEffect(() => {
-        /**
-         * Handle a missing or malformed route id immediately so the page does
-         * not remain stuck in a loading state.
-         */
+    /**
+     * Loads all data required by the edit page:
+     * - project manager lookup list
+     * - employee lookup list
+     * - current project record
+     *
+     * After the data is loaded, the existing project is transformed into
+     * form field values and pushed into React Hook Form.
+     */
+    const reloadData = useCallback(async () => {
         if (!projectId) {
             setApiError("Project id is missing.");
             setLoading(false);
             return;
         }
 
-        /**
-         * Loads all data required by the edit page:
-         * - project manager lookup list
-         * - employee lookup list
-         * - current project record
-         *
-         * After the data is loaded, the existing project is transformed into
-         * form field values and pushed into React Hook Form.
-         */
-        const getData = async () => {
-            setApiError("");
-            setLoading(true);
+        setApiError("");
+        setLoading(true);
 
-            try {
-                const [projectManagerData, employeeData, projectData] = await Promise.all([
-                    getProjectManagers(),
-                    getEmployees(),
-                    getProject(projectId),
-                ]);
+        try {
+            const [projectManagerData, employeeData, projectData] = await Promise.all([
+                getProjectManagers(),
+                getEmployees(),
+                getProject(projectId),
+            ]);
 
-                setProjectManagers(projectManagerData);
-                setEmployees(employeeData);
-                reset(projectToFormValues(projectData));
-            } catch (err) {
-                console.error(
-                    "Edit getData failed:",
-                    (err as { response?: { status?: number; data?: unknown } })?.response?.status,
-                    (err as { response?: { data?: unknown } })?.response?.data ?? err
-                );
+            setProjectManagers(projectManagerData);
+            setEmployees(employeeData);
+            reset(projectToFormValues(projectData));
+        } catch (err) {
+            console.error(
+                "Edit getData failed:",
+                (err as { response?: { status?: number; data?: unknown } })?.response?.status,
+                (err as { response?: { data?: unknown } })?.response?.data ?? err
+            );
 
-                setApiError("Failed to load project data.");
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        void getData();
+            setApiError("Failed to load project data.");
+        } finally {
+            setLoading(false);
+        }
     }, [projectId, reset]);
+
+    useEffect(() => {
+        void reloadData();
+    }, [reloadData]);
 
     /**
      * Submits updated project values to the backend.
@@ -155,14 +151,10 @@ export function useEditController() {
         }
     };
 
-    /**
-     * form:
-     *...form is here to expose the full React Hook Form API from the controller without manually listing every property.
-     */
-
     return {
         ...form,
         submission,
+        reloadData,
         projectManagers,
         employees,
         loading,

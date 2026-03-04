@@ -55,8 +55,8 @@ describe("Create", () => {
 
         render(<Create />);
 
-        expect(screen.getByText("Create records")).toBeInTheDocument();
-        expect(screen.getByRole("button", { name: "Submit" })).toBeInTheDocument();
+        expect(screen.getByText("Create Project", { selector: "div" })).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "Create Project" })).toBeInTheDocument();
     });
 
     test("renders loading state from the create controller", () => {
@@ -90,7 +90,7 @@ describe("Create", () => {
 
         render(<Create />);
 
-        expect(screen.getByText("Create records")).toBeInTheDocument();
+        expect(screen.getByText("Create Project", { selector: "div" })).toBeInTheDocument();
         expect(screen.getByText("Failed to load dropdown data.")).toBeInTheDocument();
     });
 });

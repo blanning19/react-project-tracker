@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import { useNavigate } from "react-router-dom";
@@ -56,40 +56,41 @@ export function useCreateController() {
         resolver: yupResolver(PROJECT_SCHEMA),
     });
 
-    useEffect(() => {
-        /**
-         * Loads the lookup lists required to render the form fields.
-         *
-         * This includes:
-         * - project managers
-         * - employees
-         */
-        const getData = async () => {
-            setApiError("");
+    /**
+     * Loads the lookup lists required to render the form fields.
+     *
+     * This includes:
+     * - project managers
+     * - employees
+     */
+    const reloadData = useCallback(async () => {
+        setApiError("");
+        setLoading(true);
 
-            try {
-                const [projectManagerData, employeeData] = await Promise.all([
-                    getProjectManagers(),
-                    getEmployees(),
-                ]);
+        try {
+            const [projectManagerData, employeeData] = await Promise.all([
+                getProjectManagers(),
+                getEmployees(),
+            ]);
 
-                setProjectManagers(projectManagerData);
-                setEmployees(employeeData);
-            } catch (err) {
-                console.error(
-                    "GET lookup data failed:",
-                    (err as { response?: { status?: number; data?: unknown } })?.response?.status,
-                    (err as { response?: { data?: unknown } })?.response?.data ?? err
-                );
+            setProjectManagers(projectManagerData);
+            setEmployees(employeeData);
+        } catch (err) {
+            console.error(
+                "GET lookup data failed:",
+                (err as { response?: { status?: number; data?: unknown } })?.response?.status,
+                (err as { response?: { data?: unknown } })?.response?.data ?? err
+            );
 
-                setApiError("Failed to load dropdown data.");
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        void getData();
+            setApiError("Failed to load dropdown data.");
+        } finally {
+            setLoading(false);
+        }
     }, []);
+
+    useEffect(() => {
+        void reloadData();
+    }, [reloadData]);
 
     /**
      * Submits the create form to the backend.
@@ -121,6 +122,7 @@ export function useCreateController() {
     return {
         ...form,
         submission,
+        reloadData,
         projectManagers,
         employees,
         loading,

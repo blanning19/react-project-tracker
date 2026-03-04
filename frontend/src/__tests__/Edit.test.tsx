@@ -52,7 +52,7 @@ describe("Edit", () => {
         render(<Edit />);
 
         expect(screen.getByText("Edit Project")).toBeInTheDocument();
-        expect(screen.getByRole("button", { name: "Save Changes" })).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "Save changes" })).toBeInTheDocument();
     });
 
     test("renders loading state from the edit controller", () => {

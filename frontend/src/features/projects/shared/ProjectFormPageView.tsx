@@ -1,4 +1,5 @@
 import { Alert, Button, Card, Container, Form, Spinner } from "react-bootstrap";
+import { Link } from "react-router-dom";
 import type { Control, FieldErrors, UseFormHandleSubmit } from "react-hook-form";
 import ProjectFormFields from "../shared/ProjectFormFields";
 import { STATUS_OPTIONS } from "../shared/projectFormConfig";
@@ -24,6 +25,7 @@ interface ProjectFormPageViewProps {
     loading: boolean;
     apiError: string;
     isSubmitting: boolean;
+    onRetry?: () => Promise<void> | void;
 }
 
 /**
@@ -50,6 +52,7 @@ function ProjectFormPageView({
     loading,
     apiError,
     isSubmitting,
+    onRetry,
 }: ProjectFormPageViewProps): JSX.Element {
     if (loading) {
         return (
@@ -64,15 +67,24 @@ function ProjectFormPageView({
 
     return (
         <Container className="py-4">
-            <div className="page-header px-3 py-2 mb-3 border rounded">
-                <strong>{title}</strong>
+            <div className="page-header px-3 py-3 mb-3 border rounded bg-body-tertiary text-body">
+                <div className="fs-4 fw-bold text-body">{title}</div>
+                <div className="small text-body-secondary mt-1">
+                    Complete the fields below and save your project changes.
+                </div>
             </div>
 
             <Card className="shadow-sm">
                 <Card.Body>
                     {apiError && (
-                        <Alert variant="danger" className="fw-bold">
-                            {apiError}
+                        <Alert variant="danger" className="d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-center gap-2 mb-3">
+                            <div className="fw-bold">{apiError}</div>
+
+                            {onRetry && (
+                                <Button variant="outline-danger" size="sm" onClick={() => void onRetry()}>
+                                    Retry
+                                </Button>
+                            )}
                         </Alert>
                     )}
 
@@ -80,12 +92,17 @@ function ProjectFormPageView({
                         <ProjectFormFields
                             control={control}
                             errors={errors}
-                            projectmanager={projectManagers}
+                            projectManagers={projectManagers}
                             employees={employees}
                             statusOptions={STATUS_OPTIONS}
                         />
 
-                        <div className="d-flex justify-content-end gap-2">
+                        {/* Keep secondary navigation on the left and the primary submit action on the right. */}
+                        <div className="d-flex flex-column flex-sm-row justify-content-end align-items-stretch align-items-sm-center gap-2 pt-2">
+                            <Button as={Link} to="/" variant="secondary">
+                                Cancel
+                            </Button>
+
                             <Button type="submit" variant="primary" disabled={isSubmitting}>
                                 {isSubmitting ? (
                                     <>

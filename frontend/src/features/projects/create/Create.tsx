@@ -14,18 +14,21 @@ function Create(): JSX.Element {
         formState: { errors },
         handleSubmit,
         submission,
+        reloadData,
         projectManagers,
         employees,
         loading,
         apiError,
+        isSubmitting,
     } = useCreateController();
 
 
 
     return (
         <ProjectFormPageView
-            title="Create records"
-            submitLabel="Submit"
+            title="Create Project"
+            submitLabel="Create Project"
+            submittingLabel="Creating..."
             control={control}
             errors={errors}
             handleSubmit={handleSubmit}
@@ -34,6 +37,8 @@ function Create(): JSX.Element {
             employees={employees}
             loading={loading}
             apiError={apiError}
+            isSubmitting={isSubmitting}
+            onRetry={reloadData}
         />
     );
 }

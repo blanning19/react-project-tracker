@@ -14,6 +14,7 @@ function Edit(): JSX.Element {
         formState: { errors },
         handleSubmit,
         submission,
+        reloadData,
         projectManagers,
         employees,
         loading,
@@ -24,7 +25,7 @@ function Edit(): JSX.Element {
     return (
         <ProjectFormPageView
             title="Edit Project"
-            submitLabel="Save Changes"
+            submitLabel="Save changes"
             submittingLabel="Saving..."
             control={control}
             errors={errors}
@@ -35,6 +36,7 @@ function Edit(): JSX.Element {
             loading={loading}
             apiError={apiError}
             isSubmitting={isSubmitting}
+            onRetry={reloadData}
         />
     );
 }

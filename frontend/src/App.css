@@ -7,3 +7,42 @@
     color: #000;
     border-color: var(--bs-border-color);
 }
+
+/* Section card header: fixed deep green that looks good in light and dark mode. */
+.pt-section-header {
+    background-color: #0f3d2e; /* deep green */
+    border-bottom: 1px solid rgba(255, 255, 255, 0.14);
+}
+
+/* Force readable text inside the header regardless of Bootstrap utility classes. */
+.pt-section-header,
+.pt-section-header * {
+    color: #ffffff !important;
+}
+
+/* Slightly muted secondary text while staying readable. */
+.pt-section-header .text-body-secondary,
+.pt-section-header .small {
+    color: rgba(255, 255, 255, 0.78) !important;
+}
+
+/* Home table header: fixed deep green that works in light and dark mode. */
+.pt-table-header th {
+    background-color: #0f3d2e; /* deep green */
+    color: #ffffff !important;
+    border-color: rgba(255, 255, 255, 0.14) !important;
+}
+
+/* Make any header buttons/links/icons readable. */
+.pt-table-header th a,
+.pt-table-header th button,
+.pt-table-header th svg,
+.pt-table-header th .text-body-secondary {
+    color: #ffffff !important;
+}
+
+/* Optional: subtle hover for sortable headers (keeps same palette). */
+.pt-table-header th button:hover,
+.pt-table-header th a:hover {
+    opacity: 0.9;
+}

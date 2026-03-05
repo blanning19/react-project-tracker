@@ -29,15 +29,12 @@ interface ProjectFormPageViewProps {
 }
 
 /**
- * Shared form page used by both the Create and Edit features.
+ * Shared Create/Edit form page.
  *
- * Responsibilities:
- * - render the page shell and form layout
- * - show loading and API error states
- * - render the shared project fields component
- * - wire the form submit handler to the supplied controller action
- *
- * This prevents duplicate view code across Create and Edit.
+ * UI goals:
+ * - clean, scannable sections using cards
+ * - consistent error presentation
+ * - sticky footer actions so Save is always accessible
  */
 function ProjectFormPageView({
     title,
@@ -67,39 +64,42 @@ function ProjectFormPageView({
 
     return (
         <Container className="py-4">
-            <div className="page-header px-3 py-3 mb-3 border rounded bg-body-tertiary text-body">
-                <div className="fs-4 fw-bold text-body">{title}</div>
-                <div className="small text-body-secondary mt-1">
-                    Complete the fields below and save your project changes.
+            <div className="d-flex flex-column gap-1 mb-3">
+                <h1 className="h3 mb-0">{title}</h1>
+                <div className="text-body-secondary">
+                    Fill out the sections below and click <strong>Save project</strong> when ready.
                 </div>
             </div>
 
-            <Card className="shadow-sm">
-                <Card.Body>
-                    {apiError && (
-                        <Alert variant="danger" className="d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-center gap-2 mb-3">
-                            <div className="fw-bold">{apiError}</div>
+            {apiError ? (
+                <Alert
+                    variant="danger"
+                    className="d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-center gap-2"
+                >
+                    <div className="fw-semibold">{apiError}</div>
 
-                            {onRetry && (
-                                <Button variant="outline-danger" size="sm" onClick={() => void onRetry()}>
-                                    Retry
-                                </Button>
-                            )}
-                        </Alert>
-                    )}
+                    {onRetry ? (
+                        <Button variant="outline-danger" size="sm" onClick={() => void onRetry()}>
+                            Retry
+                        </Button>
+                    ) : null}
+                </Alert>
+            ) : null}
 
-                    <Form onSubmit={handleSubmit(submission)}>
-                        <ProjectFormFields
-                            control={control}
-                            errors={errors}
-                            projectManagers={projectManagers}
-                            employees={employees}
-                            statusOptions={STATUS_OPTIONS}
-                        />
+            <Form onSubmit={handleSubmit(submission)}>
+                <ProjectFormFields
+                    control={control}
+                    errors={errors}
+                    projectManagers={projectManagers}
+                    employees={employees}
+                    statusOptions={STATUS_OPTIONS}
+                />
 
-                        {/* Keep secondary navigation on the left and the primary submit action on the right. */}
-                        <div className="d-flex flex-column flex-sm-row justify-content-end align-items-stretch align-items-sm-center gap-2 pt-2">
-                            <Button as={Link} to="/" variant="secondary">
+                {/* Sticky action bar keeps primary actions available after long sections (like Employees). */}
+                <div className="position-sticky bottom-0 pt-3 pb-3 bg-body">
+                    <Card className="shadow-sm">
+                        <Card.Body className="d-flex justify-content-between align-items-center gap-2">
+                            <Button as={Link} to="/" variant="outline-secondary" disabled={isSubmitting}>
                                 Cancel
                             </Button>
 
@@ -113,10 +113,10 @@ function ProjectFormPageView({
                                     submitLabel
                                 )}
                             </Button>
-                        </div>
-                    </Form>
-                </Card.Body>
-            </Card>
+                        </Card.Body>
+                    </Card>
+                </div>
+            </Form>
         </Container>
     );
 }

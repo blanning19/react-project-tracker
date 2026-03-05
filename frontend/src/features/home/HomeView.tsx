@@ -313,7 +313,7 @@ function HomeView({
                             )}
 
                             <Table striped hover responsive className="mb-0 align-middle">
-                                <thead className="table-light">
+                                <thead className="pt-table-header">
                                     <tr>
                                         <th scope="col" className="text-nowrap" aria-sort={getAriaSortValue(sortKey, sortDir, "name")}>
                                             <SortHeader

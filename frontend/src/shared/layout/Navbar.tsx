@@ -31,17 +31,15 @@ const navItems: NavItem[] = [
 export default function Navbar({ drawerWidth = 260, content }: NavbarProps) {
     const navigate = useNavigate();
     const isLoggedIn = Boolean(tokenStore.getAccess());
-    const [collapsed, setCollapsed] = useState(false);
     const [mobileOpen, setMobileOpen] = useState(false);
 
     const expandedWidth = drawerWidth + 40;
     const collapsedWidth = 76;
     const currentWidth = collapsed ? collapsedWidth : expandedWidth;
 
-    useEffect(() => {
-        const saved = window.localStorage.getItem("pt.sidebar.collapsed");
-        if (saved === "1") setCollapsed(true);
-    }, []);
+    const [collapsed, setCollapsed] = useState(() => {
+        return window.localStorage.getItem("pt.sidebar.collapsed") === "1";
+    });
 
     useEffect(() => {
         window.localStorage.setItem("pt.sidebar.collapsed", collapsed ? "1" : "0");

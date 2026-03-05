@@ -34,13 +34,6 @@ function toggleSelectedValue(values: string[], id: string): string[] {
     return values.includes(id) ? values.filter((value) => value !== id) : [...values, id];
 }
 
-/**
- * Builds a small human-readable count label for the selected employee list.
- */
-function getSelectedCountLabel(count: number): string {
-    return `${count} selected`;
-}
-
 function ProjectFormFields({
     control,
     errors,

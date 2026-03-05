@@ -1,7 +1,7 @@
 import { FormEvent, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { isCookieAuth } from "../../auth/mode";
-import { tokenStore } from "../../auth/tokens";
+import { isCookieAuth } from "../../shared/auth/mode";
+import { tokenStore } from "../../shared/auth/tokens";
 import FetchInstance from "../../shared/http/fetchClient";
 
 export const useLoginController = () => {

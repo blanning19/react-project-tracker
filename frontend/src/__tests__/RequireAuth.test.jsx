@@ -2,9 +2,9 @@ import { describe, test, expect, beforeEach, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter, Routes, Route, useLocation } from 'react-router-dom';
 import RequireAuth from '../features/auth/RequireAuth';
-import { tokenStore } from '../auth/tokens';
+import { tokenStore } from '../shared/auth/tokens';
 
-vi.mock('../auth/tokens', () => ({
+vi.mock('../shared/auth/tokens', () => ({
     tokenStore: {
         getAccess: vi.fn(),
         getRefresh: vi.fn(),

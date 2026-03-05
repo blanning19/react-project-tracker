@@ -1,5 +1,5 @@
-import { isCookieAuth } from "../../auth/mode";
-import { tokenStore } from "../../auth/tokens";
+import { isCookieAuth } from "../auth/mode";
+import { tokenStore } from "../auth/tokens";
 import type { ApiError, FetchResponse } from "../types/http";
 
 /**

@@ -123,6 +123,7 @@ SIMPLE_JWT = {
     # Tune these to your needs
     "ACCESS_TOKEN_LIFETIME": int(os.getenv("JWT_ACCESS_MINUTES", "10")),  # minutes
     "REFRESH_TOKEN_LIFETIME": int(os.getenv("JWT_REFRESH_DAYS", "7")),    # days
+    "SIGNING_KEY": os.environ.get("DJANGO_JWT_SIGNING_KEY", SECRET_KEY),
 }
 
 # NOTE: Django expects timedelta objects for lifetimes; we convert below.

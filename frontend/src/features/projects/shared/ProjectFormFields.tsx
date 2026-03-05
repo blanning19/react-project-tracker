@@ -240,7 +240,7 @@ function ProjectFormFields({
                             <div className="d-flex justify-content-center align-items-center" style={{ minWidth: "140px" }}>
                                 <Button
                                     type="button"
-                                    variant="outline-secondary"
+                                    variant="secondary"
                                     size="sm"
                                     disabled={!employeeSearch}
                                     onClick={() => setEmployeeSearch("")}

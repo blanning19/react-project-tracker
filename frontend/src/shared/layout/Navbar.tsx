@@ -2,8 +2,8 @@ import { ReactNode, useEffect, useMemo, useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { Button, Offcanvas } from "react-bootstrap";
 import { Home, Info, Plus, Menu, PanelLeftClose, PanelLeftOpen, LogIn, LogOut } from "lucide-react";
-import { isCookieAuth } from "../../auth/mode";
-import { tokenStore } from "../../auth/tokens";
+import { isCookieAuth } from "../auth/mode";
+import { tokenStore } from "../auth/tokens";
 import FetchInstance from "../http/fetchClient";
 import ThemeToggle from "../theme/ThemeToggle";
 
@@ -35,11 +35,12 @@ export default function Navbar({ drawerWidth = 260, content }: NavbarProps) {
 
     const expandedWidth = drawerWidth + 40;
     const collapsedWidth = 76;
-    const currentWidth = collapsed ? collapsedWidth : expandedWidth;
 
     const [collapsed, setCollapsed] = useState(() => {
         return window.localStorage.getItem("pt.sidebar.collapsed") === "1";
     });
+
+    const currentWidth = collapsed ? collapsedWidth : expandedWidth;
 
     useEffect(() => {
         window.localStorage.setItem("pt.sidebar.collapsed", collapsed ? "1" : "0");

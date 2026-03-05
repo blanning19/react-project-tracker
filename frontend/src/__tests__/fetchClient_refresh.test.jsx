@@ -1,6 +1,6 @@
 import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
 import FetchInstance from '../shared/http/fetchClient';
-import { tokenStore } from '../auth/tokens';
+import { tokenStore } from '../shared/auth/tokens';
 
 /**
  * Force these tests into bearer-token mode.
@@ -22,7 +22,7 @@ vi.mock('../auth/mode', () => ({
  * This is more accurate than writing directly to localStorage because the
  * fetch client reads and writes tokens through tokenStore.
  */
-vi.mock('../auth/tokens', () => ({
+vi.mock('../shared/auth/tokens', () => ({
     tokenStore: {
         getAccess: vi.fn(),
         getRefresh: vi.fn(),

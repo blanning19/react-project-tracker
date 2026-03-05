@@ -1,6 +1,6 @@
 import { ReactNode } from "react";
 import { Navigate, useLocation } from "react-router-dom";
-import { tokenStore } from "../../auth/tokens";
+import { tokenStore } from "../../shared/auth/tokens";
 
 const isJwtExpired = (token: string) => {
     try {

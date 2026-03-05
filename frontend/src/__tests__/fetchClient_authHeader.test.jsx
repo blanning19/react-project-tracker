@@ -1,5 +1,5 @@
 import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
-import FetchInstance from '../components/fetchClient';
+import FetchInstance from '../shared/http/fetchClient';
 import { tokenStore } from '../auth/tokens';
 
 /**

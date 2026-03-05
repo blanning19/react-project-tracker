@@ -1,6 +1,6 @@
 import Dayjs from "dayjs";
 import * as yup from "yup";
-import type { ProjectFormValues, ProjectRecord } from "../models/project.types";
+import type { ProjectFormValues, ProjectRecord, SecurityLevel } from "../models/project.types";
 
 export const STATUS_OPTIONS = [
     { id: "", name: "None" },
@@ -16,7 +16,16 @@ export const SECURITY_LEVEL_OPTIONS = [
     { id: "Restricted", name: "Restricted" },
 ];
 
-export const DEFAULT_VALUES: ProjectFormValues = { name: "", comments: "", status: "", projectmanager: "", employees: [], start_date: "", end_date: "", security_level: "Internal" };
+export const DEFAULT_VALUES: ProjectFormValues = {
+    name: "",
+    comments: "",
+    status: "",
+    projectmanager: "",
+    employees: [],
+    start_date: "",
+    end_date: "",
+    security_level: "Internal",
+};
 
 export const PROJECT_SCHEMA: yup.ObjectSchema<ProjectFormValues> = yup.object({
     name: yup.string().required("Name is a required field"),
@@ -41,6 +50,7 @@ export const projectToFormValues = (project: ProjectRecord): ProjectFormValues =
         employees: emps.map((employee) => String(typeof employee === "object" && employee ? employee.id : employee)).filter(Boolean),
         start_date: project?.start_date ? Dayjs(project.start_date).format("YYYY-MM-DD") : "",
         end_date: project?.end_date ? Dayjs(project.end_date).format("YYYY-MM-DD") : "",
+        security_level: (project?.security_level ?? "Internal") as SecurityLevel,
     };
 };
 

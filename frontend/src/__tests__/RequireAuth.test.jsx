@@ -1,9 +1,18 @@
-// src/__tests__/RequireAuth.test.jsx
-
-import { describe, test, expect, beforeEach } from 'vitest';
+import { describe, test, expect, beforeEach, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter, Routes, Route, useLocation } from 'react-router-dom';
-import RequireAuth from '../components/RequireAuth';
+import RequireAuth from '../features/auth/RequireAuth';
+import { tokenStore } from '../auth/tokens';
+
+vi.mock('../auth/tokens', () => ({
+    tokenStore: {
+        getAccess: vi.fn(),
+        getRefresh: vi.fn(),
+        setAccess: vi.fn(),
+        setRefresh: vi.fn(),
+        clear: vi.fn(),
+    },
+}));
 
 function LocationSpy() {
     const loc = useLocation();
@@ -23,9 +32,13 @@ function makeJwt({ expSecondsFromNow = 3600 } = {}) {
 }
 
 describe('RequireAuth', () => {
-    beforeEach(() => localStorage.clear());
+    beforeEach(() => {
+        vi.clearAllMocks();
+    });
 
     test('redirects to /login when no access token', () => {
+        tokenStore.getAccess.mockReturnValue(null);
+
         render(
             <MemoryRouter initialEntries={['/']}>
                 <Routes>
@@ -56,10 +69,11 @@ describe('RequireAuth', () => {
         expect(screen.queryByText('Home Page')).not.toBeInTheDocument();
         expect(screen.getByText('Login Page')).toBeInTheDocument();
         expect(screen.getByTestId('location').textContent).toBe('/login');
+        expect(tokenStore.clear).toHaveBeenCalledTimes(1);
     });
 
     test('renders children when access token exists and is not expired', () => {
-        localStorage.setItem('access', makeJwt({ expSecondsFromNow: 3600 }));
+        tokenStore.getAccess.mockReturnValue(makeJwt({ expSecondsFromNow: 3600 }));
 
         render(
             <MemoryRouter initialEntries={['/']}>
@@ -91,10 +105,11 @@ describe('RequireAuth', () => {
         expect(screen.getByText('Home Page')).toBeInTheDocument();
         expect(screen.queryByText('Login Page')).not.toBeInTheDocument();
         expect(screen.getByTestId('location').textContent).toBe('/');
+        expect(tokenStore.clear).not.toHaveBeenCalled();
     });
 
     test('redirects to /login when token is expired', () => {
-        localStorage.setItem('access', makeJwt({ expSecondsFromNow: -10 }));
+        tokenStore.getAccess.mockReturnValue(makeJwt({ expSecondsFromNow: -10 }));
 
         render(
             <MemoryRouter initialEntries={['/']}>
@@ -125,5 +140,6 @@ describe('RequireAuth', () => {
 
         expect(screen.getByText('Login Page')).toBeInTheDocument();
         expect(screen.getByTestId('location').textContent).toBe('/login');
+        expect(tokenStore.clear).toHaveBeenCalledTimes(1);
     });
 });

@@ -27,6 +27,7 @@ vi.mock("../features/projects/shared/projectFormConfig", () => ({
         employees: [],
         start_date: "",
         end_date: "",
+        security_level: "Internal",
     },
     PROJECT_SCHEMA: yup.object({
         name: yup.string().required(),
@@ -36,6 +37,7 @@ vi.mock("../features/projects/shared/projectFormConfig", () => ({
         employees: yup.array().default([]),
         start_date: yup.string().default(""),
         end_date: yup.string().default(""),
+        security_level: yup.string().required(),
     }),
     formToPayload: vi.fn((data) => ({
         ...data,
@@ -49,6 +51,7 @@ vi.mock("../features/projects/shared/projectFormConfig", () => ({
         employees: ["10", "11"],
         start_date: "2026-03-01",
         end_date: "2026-03-31",
+        security_level: "Confidential",
     })),
 }));
 
@@ -90,6 +93,7 @@ describe("useEditController", () => {
         expect(result.current.getValues("status")).toBe("Open");
         expect(result.current.getValues("projectmanager")).toBe("1");
         expect(result.current.getValues("employees")).toEqual(["10", "11"]);
+        expect(result.current.getValues("security_level")).toBe("Confidential");
         expect(result.current.apiError).toBe("");
     });
 
@@ -146,6 +150,7 @@ describe("useEditController", () => {
                 employees: ["10"],
                 start_date: "2026-03-01",
                 end_date: "2026-03-20",
+                security_level: "Restricted",
             });
         });
 
@@ -155,6 +160,7 @@ describe("useEditController", () => {
             expect.objectContaining({
                 name: "Updated Project",
                 transformed: true,
+                security_level: "Restricted",
             })
         );
         expect(mockNavigate).toHaveBeenCalledWith("/");
@@ -197,6 +203,7 @@ describe("useEditController", () => {
                     employees: [],
                     start_date: "",
                     end_date: "",
+                    security_level: "Internal",
                 });
             });
 

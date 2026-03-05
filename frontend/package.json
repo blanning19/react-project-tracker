@@ -9,7 +9,12 @@
         "lint": "eslint . --ext js,jsx,ts,tsx --report-unused-disable-directives --max-warnings 0",
         "format": "prettier . --write",
         "format:check": "prettier . --check",
-        "preview": "vite preview"
+        "preview": "vite preview",
+
+        "test": "vitest",
+        "test:run": "vitest run",
+        "test:ui": "vitest --ui",
+        "test:watch": "vitest"
     },
     "dependencies": {
         "@emotion/react": "^11.11.1",

@@ -1,3 +1,5 @@
+export type SecurityLevel = "Public" | "Internal" | "Confidential" | "Restricted";
+
 export interface PersonOption {
     id: number;
     name?: string;
@@ -32,4 +34,5 @@ export interface ProjectFormValues {
     employees: string[];
     start_date: string;
     end_date: string;
+    security_level: SecurityLevel;
 }

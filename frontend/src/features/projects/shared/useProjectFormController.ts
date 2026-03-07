@@ -7,7 +7,7 @@ import {
     createProject,
     getEmployees,
     getProject,
-    getProjectManagers,
+    getManagers,
     lookupKeys,
     updateProject,
 } from "../models/project.api";
@@ -66,7 +66,7 @@ export function useProjectFormController({ mode, projectId = "" }: UseProjectFor
         isError: managersError,
     } = useQuery({
         queryKey: lookupKeys.managers(),
-        queryFn: getProjectManagers,
+        queryFn: getManagers,
         staleTime: 5 * 60 * 1000,
     });
 

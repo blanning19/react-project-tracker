@@ -80,7 +80,7 @@ class TestProjectListQueryCount:
         N+1 for 5 projects would produce 11+ queries.
         """
         with CaptureQueriesContext(connection) as ctx:
-            response = auth_client.get("/api/project/")
+            response = auth_client.get("/api/projects/")
 
         assert response.status_code == 200
 
@@ -119,7 +119,7 @@ class TestProjectListQueryCount:
             p.employees.set(employees[:2])
 
         with CaptureQueriesContext(connection) as ctx:
-            response = auth_client.get("/api/project/?page_size=10")
+            response = auth_client.get("/api/projects/?page_size=10")
 
         assert response.status_code == 200
         assert len(ctx.captured_queries) <= 5, (
@@ -129,7 +129,7 @@ class TestProjectListQueryCount:
 
     def test_list_returns_all_projects(self, auth_client, projects_with_relations):
         """Sanity check: the queryset optimisation must not drop any rows."""
-        response = auth_client.get("/api/project/")
+        response = auth_client.get("/api/projects/")
         assert response.status_code == 200
 
         rows = (
@@ -141,7 +141,7 @@ class TestProjectListQueryCount:
 
     def test_retrieve_uses_fixed_query_count(self, auth_client, projects_with_relations):
         """
-        GET /api/project/:id/ (single record) should also avoid N+1.
+        GET /api/projects/:id/ (single record) should also avoid N+1.
 
         The retrieve action uses the same queryset as list, so select_related
         and prefetch_related apply. Expected cost: 1–3 queries maximum.
@@ -149,7 +149,7 @@ class TestProjectListQueryCount:
         project_id = projects_with_relations[0].id
 
         with CaptureQueriesContext(connection) as ctx:
-            response = auth_client.get(f"/api/project/{project_id}/")
+            response = auth_client.get(f"/api/projects/{project_id}/")
 
         assert response.status_code == 200
         assert len(ctx.captured_queries) <= 3, (

@@ -83,8 +83,8 @@ export const deleteProject = async (id: string | number) =>
 // Manager and Employee viewsets have pagination_class = NoPagination on the
 // backend, so these always return a flat array (never a paginated envelope).
 
-export const getProjectManagers = async (): Promise<PersonOption[]> => {
-    const res = await FetchInstance.get<PersonOption[]>(API.projectManagers);
+export const getManagers = async (): Promise<PersonOption[]> => {
+    const res = await FetchInstance.get<PersonOption[]>(API.managers);
     return res.data;
 };
 

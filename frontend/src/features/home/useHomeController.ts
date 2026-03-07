@@ -47,7 +47,7 @@ export function useHomeController() {
 
     // ── Query params ─────────────────────────────────────────────────────────
     //
-    // Build the params object that gets sent to GET /api/project/.
+    // Build the params object that gets sent to GET /api/projects/.
     // React Query re-fetches automatically whenever this object changes
     // because it is part of the query key.
     //

@@ -48,19 +48,19 @@ def test_project_crud(auth_client, project_payload):
     immediately visible. Individual operations have dedicated tests below.
     """
     # Create
-    create = auth_client.post("/api/project/", project_payload, format="json")
+    create = auth_client.post("/api/projects/", project_payload, format="json")
     assert create.status_code in (200, 201), getattr(create, "data", None)
     project_id = create.data["id"]
 
     # List — paginated envelope always present after Phase 2
-    lst = auth_client.get("/api/project/")
+    lst = auth_client.get("/api/projects/")
     assert lst.status_code == 200
     assert "results" in lst.data, "List endpoint must return a paginated envelope."
     assert any(p["id"] == project_id for p in lst.data["results"])
 
     # PUT — full update
     update = auth_client.put(
-        f"/api/project/{project_id}/",
+        f"/api/projects/{project_id}/",
         {**project_payload, "status": "Completed"},
         format="json",
     )
@@ -68,11 +68,11 @@ def test_project_crud(auth_client, project_payload):
     assert update.data["status"] == "Completed"
 
     # Delete
-    delete = auth_client.delete(f"/api/project/{project_id}/")
+    delete = auth_client.delete(f"/api/projects/{project_id}/")
     assert delete.status_code in (200, 202, 204)
 
     # Confirm gone
-    get_deleted = auth_client.get(f"/api/project/{project_id}/")
+    get_deleted = auth_client.get(f"/api/projects/{project_id}/")
     assert get_deleted.status_code == 404
 
 
@@ -82,7 +82,7 @@ def test_project_crud(auth_client, project_payload):
 
 @pytest.mark.django_db
 def test_create_returns_201_and_id(auth_client, project_payload):
-    r = auth_client.post("/api/project/", project_payload, format="json")
+    r = auth_client.post("/api/projects/", project_payload, format="json")
     assert r.status_code in (200, 201)
     assert "id" in r.data
 
@@ -90,13 +90,13 @@ def test_create_returns_201_and_id(auth_client, project_payload):
 @pytest.mark.django_db
 def test_retrieve_returns_nested_objects(auth_client, project_payload):
     """
-    GET /api/project/:id/ uses ProjectReadSerializer which returns nested
+    GET /api/projects/:id/ uses ProjectReadSerializer which returns nested
     objects for projectmanager and employees, not bare IDs.
     """
-    create = auth_client.post("/api/project/", project_payload, format="json")
+    create = auth_client.post("/api/projects/", project_payload, format="json")
     project_id = create.data["id"]
 
-    r = auth_client.get(f"/api/project/{project_id}/")
+    r = auth_client.get(f"/api/projects/{project_id}/")
     assert r.status_code == 200
 
     # projectmanager should be a dict (nested), not a bare integer
@@ -121,8 +121,8 @@ def test_list_response_has_paginated_envelope(auth_client, project_payload):
     Phase 2: list endpoint must always return a paginated envelope with
     count, next, previous, and results keys.
     """
-    auth_client.post("/api/project/", project_payload, format="json")
-    r = auth_client.get("/api/project/")
+    auth_client.post("/api/projects/", project_payload, format="json")
+    r = auth_client.get("/api/projects/")
     assert r.status_code == 200
     for key in ("count", "next", "previous", "results"):
         assert key in r.data, f"Expected '{key}' in list response, got: {list(r.data.keys())}"
@@ -131,16 +131,16 @@ def test_list_response_has_paginated_envelope(auth_client, project_payload):
 @pytest.mark.django_db
 def test_put_updates_all_fields(auth_client, project_payload):
     """PUT should replace all mutable fields."""
-    create = auth_client.post("/api/project/", project_payload, format="json")
+    create = auth_client.post("/api/projects/", project_payload, format="json")
     project_id = create.data["id"]
 
     updated_payload = {**project_payload, "name": "Updated Name", "status": "On Hold"}
-    r = auth_client.put(f"/api/project/{project_id}/", updated_payload, format="json")
+    r = auth_client.put(f"/api/projects/{project_id}/", updated_payload, format="json")
     assert r.status_code in (200, 202)
     assert r.data["status"] == "On Hold"
 
     # Confirm persisted via retrieve
-    get = auth_client.get(f"/api/project/{project_id}/")
+    get = auth_client.get(f"/api/projects/{project_id}/")
     assert get.data["status"] == "On Hold"
 
 
@@ -152,11 +152,11 @@ def test_patch_updates_single_field(auth_client, project_payload):
 
     Previously untested — this is a new test added in Phase 3.
     """
-    create = auth_client.post("/api/project/", project_payload, format="json")
+    create = auth_client.post("/api/projects/", project_payload, format="json")
     project_id = create.data["id"]
 
     r = auth_client.patch(
-        f"/api/project/{project_id}/",
+        f"/api/projects/{project_id}/",
         {"status": "Completed"},
         format="json",
     )
@@ -164,7 +164,7 @@ def test_patch_updates_single_field(auth_client, project_payload):
     assert r.data["status"] == "Completed"
 
     # All other fields must be unchanged
-    get = auth_client.get(f"/api/project/{project_id}/")
+    get = auth_client.get(f"/api/projects/{project_id}/")
     assert get.data["name"] == project_payload["name"]
     assert get.data["security_level"] == project_payload["security_level"]
 
@@ -172,11 +172,11 @@ def test_patch_updates_single_field(auth_client, project_payload):
 @pytest.mark.django_db
 def test_patch_invalid_status_rejected(auth_client, project_payload):
     """PATCH with an invalid status value should return 400."""
-    create = auth_client.post("/api/project/", project_payload, format="json")
+    create = auth_client.post("/api/projects/", project_payload, format="json")
     project_id = create.data["id"]
 
     r = auth_client.patch(
-        f"/api/project/{project_id}/",
+        f"/api/projects/{project_id}/",
         {"status": "NotAStatus"},
         format="json",
     )
@@ -186,17 +186,17 @@ def test_patch_invalid_status_rejected(auth_client, project_payload):
 
 @pytest.mark.django_db
 def test_delete_removes_project(auth_client, project_payload):
-    create = auth_client.post("/api/project/", project_payload, format="json")
+    create = auth_client.post("/api/projects/", project_payload, format="json")
     project_id = create.data["id"]
 
-    delete = auth_client.delete(f"/api/project/{project_id}/")
+    delete = auth_client.delete(f"/api/projects/{project_id}/")
     assert delete.status_code in (200, 202, 204)
 
-    get = auth_client.get(f"/api/project/{project_id}/")
+    get = auth_client.get(f"/api/projects/{project_id}/")
     assert get.status_code == 404
 
 
 @pytest.mark.django_db
 def test_retrieve_nonexistent_project_returns_404(auth_client):
-    r = auth_client.get("/api/project/99999/")
+    r = auth_client.get("/api/projects/99999/")
     assert r.status_code == 404

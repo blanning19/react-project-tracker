@@ -4,8 +4,8 @@ from .views import EmployeeViewset, ManagerViewset, ProjectViewset, me
 
 router = DefaultRouter()
 router.register("projects", ProjectViewset, basename="project")
-router.register("projectmanager", ManagerViewset, basename="projectmanager")
-router.register("employees", EmployeeViewset, basename="employees")
+router.register("managers", ManagerViewset, basename="manager")
+router.register("employees", EmployeeViewset, basename="employee")
 
 urlpatterns = [
     path("me/", me, name="me"),

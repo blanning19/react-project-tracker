@@ -2,8 +2,8 @@
 Authentication and authorisation tests for project-related endpoints.
 
 Covers:
-- /api/project/         — requires auth
-- /api/projectmanager/  — requires auth
+- /api/projects/         — requires auth
+- /api/managers/  — requires auth
 - /api/employees/       — requires auth
 - /api/me/              — requires auth, returns correct user data
 - /api/auth/logout/     — blacklists the refresh token
@@ -19,17 +19,17 @@ from rest_framework.test import APIClient
 
 @pytest.mark.django_db
 def test_projects_requires_auth():
-    """Unauthenticated GET /api/project/ must return 401."""
+    """Unauthenticated GET /api/projects/ must return 401."""
     client = APIClient()
-    r = client.get("/api/project/")
+    r = client.get("/api/projects/")
     assert r.status_code == 401
 
 
 @pytest.mark.django_db
 def test_managers_requires_auth():
-    """Unauthenticated GET /api/projectmanager/ must return 401."""
+    """Unauthenticated GET /api/managers/ must return 401."""
     client = APIClient()
-    r = client.get("/api/projectmanager/")
+    r = client.get("/api/managers/")
     assert r.status_code == 401
 
 
@@ -114,7 +114,7 @@ def test_invalid_token_is_rejected():
     """A request with a malformed Bearer token should return 401."""
     client = APIClient()
     client.credentials(HTTP_AUTHORIZATION="Bearer this.is.not.a.real.token")
-    r = client.get("/api/project/")
+    r = client.get("/api/projects/")
     assert r.status_code == 401
 
 
@@ -140,5 +140,5 @@ def test_expired_or_wrong_user_cannot_see_other_users_projects(creds):
     assert r.status_code == 200
     other_client.credentials(HTTP_AUTHORIZATION=f"Bearer {r.data['access']}")
 
-    r2 = other_client.get("/api/project/")
+    r2 = other_client.get("/api/projects/")
     assert r2.status_code == 200

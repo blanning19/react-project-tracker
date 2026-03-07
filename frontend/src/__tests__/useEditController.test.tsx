@@ -16,7 +16,7 @@ vi.mock("react-router-dom", () => ({
 vi.mock("../features/projects/models/project.api", () => ({
     getEmployees: vi.fn(),
     getProject: vi.fn(),
-    getProjectManagers: vi.fn(),
+    getManagers: vi.fn(),
     updateProject: vi.fn(),
     projectKeys: { all: () => ["projects"], detail: (id: unknown) => ["projects", "detail", String(id)] },
     lookupKeys: { managers: () => ["lookups", "managers"], employees: () => ["lookups", "employees"] },
@@ -73,7 +73,7 @@ describe("useEditController", () => {
     });
 
     test("loads lookup data and existing project data on mount", async () => {
-        const mockedGetProjectManagers = projectApi.getProjectManagers as ReturnType<typeof vi.fn>;
+        const mockedGetProjectManagers = projectApi.getManagers as ReturnType<typeof vi.fn>;
         const mockedGetEmployees = projectApi.getEmployees as ReturnType<typeof vi.fn>;
         const mockedGetProject = projectApi.getProject as ReturnType<typeof vi.fn>;
 
@@ -105,7 +105,7 @@ describe("useEditController", () => {
     });
 
     test("sets an api error when edit page data loading fails", async () => {
-        const mockedGetProjectManagers = projectApi.getProjectManagers as ReturnType<typeof vi.fn>;
+        const mockedGetProjectManagers = projectApi.getManagers as ReturnType<typeof vi.fn>;
         const mockedGetEmployees = projectApi.getEmployees as ReturnType<typeof vi.fn>;
         const mockedGetProject = projectApi.getProject as ReturnType<typeof vi.fn>;
 
@@ -129,7 +129,7 @@ describe("useEditController", () => {
     });
 
     test("submits updated project data and navigates home on success", async () => {
-        const mockedGetProjectManagers = projectApi.getProjectManagers as ReturnType<typeof vi.fn>;
+        const mockedGetProjectManagers = projectApi.getManagers as ReturnType<typeof vi.fn>;
         const mockedGetEmployees = projectApi.getEmployees as ReturnType<typeof vi.fn>;
         const mockedGetProject = projectApi.getProject as ReturnType<typeof vi.fn>;
         const mockedUpdateProject = projectApi.updateProject as ReturnType<typeof vi.fn>;
@@ -172,7 +172,7 @@ describe("useEditController", () => {
     });
 
     test("shows a status-based error when update fails without validation body", async () => {
-        const mockedGetProjectManagers = projectApi.getProjectManagers as ReturnType<typeof vi.fn>;
+        const mockedGetProjectManagers = projectApi.getManagers as ReturnType<typeof vi.fn>;
         const mockedGetEmployees = projectApi.getEmployees as ReturnType<typeof vi.fn>;
         const mockedGetProject = projectApi.getProject as ReturnType<typeof vi.fn>;
         const mockedUpdateProject = projectApi.updateProject as ReturnType<typeof vi.fn>;

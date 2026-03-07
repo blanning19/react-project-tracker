@@ -15,7 +15,7 @@ vi.mock("react-router-dom", () => ({
 vi.mock("../features/projects/models/project.api", () => ({
     createProject: vi.fn(),
     getEmployees: vi.fn(),
-    getProjectManagers: vi.fn(),
+    getManagers: vi.fn(),
     projectKeys: { all: () => ["projects"], list: (p: unknown) => ["projects", "list", p] },
     lookupKeys: { managers: () => ["lookups", "managers"], employees: () => ["lookups", "employees"] },
 }));
@@ -61,7 +61,7 @@ describe("useCreateController", () => {
     });
 
     test("loads lookup data on mount", async () => {
-        const mockedGetProjectManagers = projectApi.getProjectManagers as ReturnType<typeof vi.fn>;
+        const mockedGetProjectManagers = projectApi.getManagers as ReturnType<typeof vi.fn>;
         const mockedGetEmployees = projectApi.getEmployees as ReturnType<typeof vi.fn>;
 
         mockedGetProjectManagers.mockResolvedValue([
@@ -85,7 +85,7 @@ describe("useCreateController", () => {
     });
 
     test("sets an api error when lookup loading fails", async () => {
-        const mockedGetProjectManagers = projectApi.getProjectManagers as ReturnType<typeof vi.fn>;
+        const mockedGetProjectManagers = projectApi.getManagers as ReturnType<typeof vi.fn>;
         const mockedGetEmployees = projectApi.getEmployees as ReturnType<typeof vi.fn>;
         const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
@@ -106,7 +106,7 @@ describe("useCreateController", () => {
     });
 
     test("submits new project data and navigates home on success", async () => {
-        const mockedGetProjectManagers = projectApi.getProjectManagers as ReturnType<typeof vi.fn>;
+        const mockedGetProjectManagers = projectApi.getManagers as ReturnType<typeof vi.fn>;
         const mockedGetEmployees = projectApi.getEmployees as ReturnType<typeof vi.fn>;
         const mockedCreateProject = projectApi.createProject as ReturnType<typeof vi.fn>;
 
@@ -146,7 +146,7 @@ describe("useCreateController", () => {
     });
 
     test("shows a status-based error when create fails without validation body", async () => {
-        const mockedGetProjectManagers = projectApi.getProjectManagers as ReturnType<typeof vi.fn>;
+        const mockedGetProjectManagers = projectApi.getManagers as ReturnType<typeof vi.fn>;
         const mockedGetEmployees = projectApi.getEmployees as ReturnType<typeof vi.fn>;
         const mockedCreateProject = projectApi.createProject as ReturnType<typeof vi.fn>;
         const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});

@@ -2,7 +2,7 @@ export type SecurityLevel = "Public" | "Internal" | "Confidential" | "Restricted
 
 /**
  * Shape of a person record returned by the API for project manager
- * and employee lookups (/api/projectmanager/ and /api/employees/).
+ * and employee lookups (/api/managers/ and /api/employees/).
  */
 export interface PersonOption {
     id: number;
@@ -12,8 +12,8 @@ export interface PersonOption {
 }
 
 /**
- * Shape of a project record returned by GET /api/project/ and
- * GET /api/project/:id/ (ProjectReadSerializer).
+ * Shape of a project record returned by GET /api/projects/ and
+ * GET /api/projects/:id/ (ProjectReadSerializer).
  *
  * projectmanager and employees are always nested objects on reads.
  * The write endpoints (POST/PUT/PATCH) accept IDs — handled in
@@ -50,7 +50,7 @@ export interface ProjectFormValues {
 }
 
 /**
- * Query parameters accepted by GET /api/project/.
+ * Query parameters accepted by GET /api/projects/.
  *
  * Maps directly to the backend ProjectViewset filter/search/ordering params:
  * - search:        ?search=keyword     (searches name and comments)

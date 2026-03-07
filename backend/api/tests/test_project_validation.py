@@ -39,7 +39,7 @@ class TestProjectValidation:
         payload = {**base_payload}
         del payload["name"]
 
-        r = auth_client.post("/api/project/", payload, format="json")
+        r = auth_client.post("/api/projects/", payload, format="json")
         assert r.status_code == 400
         assert "name" in r.data
 
@@ -48,7 +48,7 @@ class TestProjectValidation:
         payload = {**base_payload}
         del payload["start_date"]
 
-        r = auth_client.post("/api/project/", payload, format="json")
+        r = auth_client.post("/api/projects/", payload, format="json")
         assert r.status_code == 400
         assert "start_date" in r.data
 
@@ -57,7 +57,7 @@ class TestProjectValidation:
         payload = {**base_payload}
         del payload["end_date"]
 
-        r = auth_client.post("/api/project/", payload, format="json")
+        r = auth_client.post("/api/projects/", payload, format="json")
         assert r.status_code == 400
         assert "end_date" in r.data
 
@@ -68,7 +68,7 @@ class TestProjectValidation:
         The API enforces the allowed set: Active | On Hold | Completed | Cancelled.
         """
         r = auth_client.post(
-            "/api/project/",
+            "/api/projects/",
             {**base_payload, "status": "In progress"},  # old invalid value
             format="json",
         )
@@ -81,7 +81,7 @@ class TestProjectValidation:
 
         for i, status in enumerate(valid_statuses):
             r = auth_client.post(
-                "/api/project/",
+                "/api/projects/",
                 {**base_payload, "name": f"Project {i}", "status": status},
                 format="json",
             )
@@ -91,16 +91,16 @@ class TestProjectValidation:
 
     def test_duplicate_name_rejected(self, auth_client, base_payload):
         """Project names are unique — a duplicate should return 400."""
-        auth_client.post("/api/project/", base_payload, format="json")
+        auth_client.post("/api/projects/", base_payload, format="json")
 
-        r = auth_client.post("/api/project/", base_payload, format="json")
+        r = auth_client.post("/api/projects/", base_payload, format="json")
         assert r.status_code == 400
         assert "name" in r.data
 
     def test_invalid_security_level_rejected(self, auth_client, base_payload):
         """Security level must be one of the defined TextChoices values."""
         r = auth_client.post(
-            "/api/project/",
+            "/api/projects/",
             {**base_payload, "security_level": "TopSecret"},
             format="json",
         )

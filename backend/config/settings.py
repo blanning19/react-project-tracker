@@ -1,3 +1,4 @@
+from datetime import timedelta
 from pathlib import Path
 import os
 
@@ -46,6 +47,7 @@ INSTALLED_APPS = [
 
     "rest_framework",
     "corsheaders",
+    "django_filters",
 
     # Required for refresh token blacklisting (used by HybridLogoutView)
     "rest_framework_simplejwt.token_blacklist",
@@ -114,6 +116,17 @@ USE_TZ = True
 
 
 STATIC_URL = "static/"
+
+# STATIC_ROOT is required by collectstatic in production.
+# `python manage.py collectstatic` will copy all static files here,
+# and your web server (nginx/gunicorn) should serve from this directory.
+STATIC_ROOT = BASE_DIR / "staticfiles"
+
+# MEDIA_ROOT stores user-uploaded files (not currently used, but set explicitly
+# so any future file upload feature has a correct base path from the start).
+MEDIA_URL = "media/"
+MEDIA_ROOT = BASE_DIR / "media"
+
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 
@@ -124,7 +137,12 @@ REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": (
         "rest_framework.permissions.IsAuthenticated",
     ),
-    "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
+    "DEFAULT_FILTER_BACKENDS": [
+        "django_filters.rest_framework.DjangoFilterBackend",
+        "rest_framework.filters.SearchFilter",
+        "rest_framework.filters.OrderingFilter",
+    ],
+    "DEFAULT_PAGINATION_CLASS": "api.pagination.ProjectPagination",
     "PAGE_SIZE": int(os.getenv("DRF_PAGE_SIZE", "50")),
     "DEFAULT_THROTTLE_CLASSES": [
         "rest_framework.throttling.AnonRateThrottle",
@@ -144,6 +162,24 @@ if not DEBUG and not _jwt_signing_key:
     )
 
 SIMPLE_JWT = {
+    # Token lifetimes are set explicitly here so they are visible and auditable.
+    # The defaults (5 min access, 1 day refresh) are reasonable but should not
+    # be left implicit — a future reader should not have to look up SimpleJWT
+    # docs to know how long tokens live in this application.
+    #
+    # Access token: short-lived. The frontend stores this in memory + sessionStorage.
+    # Keeping this ≤ 15 minutes limits exposure if a token is somehow leaked,
+    # since it will expire quickly without any server-side action needed.
+    #
+    # Refresh token: 1 day. Stored in localStorage (local mode) or HttpOnly
+    # cookie (cookie mode). Rotation + blacklisting are both enabled, so a
+    # stolen refresh token can only be used once before it is invalidated.
+    "ACCESS_TOKEN_LIFETIME": timedelta(
+        minutes=int(os.getenv("JWT_ACCESS_TTL_MINUTES", "15"))
+    ),
+    "REFRESH_TOKEN_LIFETIME": timedelta(
+        days=int(os.getenv("JWT_REFRESH_TTL_DAYS", "1"))
+    ),
     "ROTATE_REFRESH_TOKENS": True,
     "BLACKLIST_AFTER_ROTATION": True,
     "SIGNING_KEY": _jwt_signing_key or SECRET_KEY,

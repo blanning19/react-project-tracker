@@ -1,4 +1,3 @@
-import type { Dispatch, SetStateAction } from "react";
 import type { ProjectRecord } from "../projects/models/project.types";
 
 export type HomeSortKey = keyof Pick<
@@ -24,10 +23,6 @@ export type HomeStatusFilter =
 // ---------------------------------------------------------------------------
 // HomeViewProps — grouped to match useHomeController's return shape
 // ---------------------------------------------------------------------------
-//
-// sortIcon is intentionally NOT included here. It is a UI concern (which
-// character to render) and belongs in HomeView, not in the controller or
-// its prop contract. HomeView derives it from sort.key and sort.dir directly.
 
 export interface HomePaginationProps {
     page: number;
@@ -36,8 +31,16 @@ export interface HomePaginationProps {
     totalPages: number;
     displayStart: number;
     displayEnd: number;
-    setPage: Dispatch<SetStateAction<number>>;
-    setPageSize: Dispatch<SetStateAction<number>>;
+    /**
+     * Handler functions instead of raw setState dispatchers.
+     *
+     * Views should call onPageChange/onPageSizeChange rather than holding
+     * a direct reference to setState. This keeps the controller's internal
+     * state representation private and makes the prop contract stable if
+     * the controller ever moves from useState to useReducer.
+     */
+    onPageChange: (page: number) => void;
+    onPageSizeChange: (size: number) => void;
 }
 
 export interface HomeSortProps {

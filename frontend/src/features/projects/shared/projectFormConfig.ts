@@ -3,23 +3,12 @@ import * as yup from "yup";
 import type { ProjectFormValues, ProjectRecord, SecurityLevel } from "../models/project.types";
 
 /**
- * FIX: STATUS_OPTIONS now matches the backend Project.Status TextChoices exactly.
+ * STATUS_OPTIONS matches backend Project.Status TextChoices exactly.
  *
- * The previous options were:
- *   { id: "Open", name: "Open" }
- *   { id: "In progress", name: "In progress" }
- *   { id: "Completed", name: "Completed" }
- *
- * The backend models.py now enforces:
- *   Active | On Hold | Completed | Cancelled
- *
- * Mismatched values mean:
- * - The frontend status filter silently fails to match backend data.
- * - The API accepts values the backend rejects, or worse, stores invalid data.
- * - The HomeView status badge switch falls through to "secondary" for all rows.
- *
- * Keep this list in sync with api/models.py Project.Status whenever
- * new statuses are added on the backend.
+ * Keep in sync with:
+ * - backend:  api/models.py Project.Status
+ * - frontend: home.types.ts HomeStatusFilter
+ * - frontend: home.constants.ts HOME_STATUS_FILTER_OPTIONS
  */
 export const STATUS_OPTIONS = [
     { id: "Active", name: "Active" },
@@ -47,13 +36,10 @@ export const DEFAULT_VALUES: ProjectFormValues = {
 };
 
 /**
- * FIX: status validation now uses .oneOf() to match the backend TextChoices.
+ * Yup schema for the project form.
  *
- * Previously status was validated only as yup.string().required(), meaning
- * any non-empty string would pass frontend validation and be sent to the API.
- * The backend now rejects values outside the allowed set, so we enforce the
- * same constraint on the frontend to give users a clear error before the
- * request is even made.
+ * status and security_level use .oneOf() to match backend TextChoices,
+ * so invalid values are rejected on the frontend before the request is made.
  */
 export const PROJECT_SCHEMA: yup.ObjectSchema<ProjectFormValues> = yup.object({
     name: yup.string().required("Name is a required field"),
@@ -90,33 +76,48 @@ export const PROJECT_SCHEMA: yup.ObjectSchema<ProjectFormValues> = yup.object({
         .required("Security level is a required field"),
 }).required();
 
+/**
+ * Converts a ProjectRecord (API read shape) into ProjectFormValues (form shape).
+ *
+ * projectmanager and employees arrive as nested objects on reads; the form
+ * fields need their IDs as strings to populate select/checkbox fields.
+ */
 export const projectToFormValues = (project: ProjectRecord): ProjectFormValues => {
-    const pm = project?.projectmanager ?? "";
-    const emps = project?.employees ?? [];
+    const pm = project.projectmanager ?? "";
+    const emps = project.employees ?? [];
 
     return {
-        name: project?.name ?? "",
-        comments: project?.comments ?? "",
-        status: project?.status ?? "",
+        name: project.name,
+        comments: project.comments ?? "",
+        status: project.status ?? "",
         projectmanager: String(typeof pm === "object" && pm ? pm.id : pm),
         employees: emps
             .map((employee) =>
                 String(typeof employee === "object" && employee ? employee.id : employee)
             )
             .filter(Boolean),
-        start_date: project?.start_date ? Dayjs(project.start_date).format("YYYY-MM-DD") : "",
-        end_date: project?.end_date ? Dayjs(project.end_date).format("YYYY-MM-DD") : "",
-        security_level: (project?.security_level ?? "Internal") as SecurityLevel,
+        start_date: project.start_date ? Dayjs(project.start_date).format("YYYY-MM-DD") : "",
+        end_date: project.end_date ? Dayjs(project.end_date).format("YYYY-MM-DD") : "",
+        security_level: (project.security_level ?? "Internal") as SecurityLevel,
     };
 };
 
+/**
+ * Converts ProjectFormValues (form shape) into the API write payload.
+ *
+ * The form stores IDs as strings (from select elements); the API expects
+ * numbers. Dates are normalized to YYYY-MM-DD.
+ *
+ * Note: `data` is a validated ProjectFormValues object — it is never null
+ * or undefined at this point, so optional chaining is not needed here.
+ */
 export const formToPayload = (data: ProjectFormValues) => ({
-    name: data?.name ?? "",
-    projectmanager: Number(data?.projectmanager),
-    employees: (data?.employees ?? []).map(Number),
-    status: data?.status ?? "",
-    comments: data?.comments ?? "",
-    start_date: data?.start_date ? Dayjs(data.start_date).format("YYYY-MM-DD") : null,
-    end_date: data?.end_date ? Dayjs(data.end_date).format("YYYY-MM-DD") : null,
-    security_level: data.security_level ?? "",
+    name: data.name,
+    projectmanager: Number(data.projectmanager),
+    employees: data.employees.map(Number),
+    status: data.status,
+    comments: data.comments,
+    start_date: data.start_date ? Dayjs(data.start_date).format("YYYY-MM-DD") : null,
+    end_date: data.end_date ? Dayjs(data.end_date).format("YYYY-MM-DD") : null,
+    security_level: data.security_level,
 });

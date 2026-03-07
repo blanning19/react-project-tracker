@@ -10,8 +10,9 @@ import {
     Spinner,
     Table,
 } from "react-bootstrap";
-import { Pencil, RefreshCw, Trash2, TriangleAlert } from "lucide-react";
+import { Calendar, CalendarCheck, Lock, Pencil, RefreshCw, Trash2, TriangleAlert, User } from "lucide-react";
 import type { HomeViewProps, HomeSortKey } from "./home.types";
+import { HOME_PAGE_SIZE_OPTIONS } from "./home.constants";
 import type { ProjectRecord } from "../projects/models/project.types";
 import DeleteModal from "../projects/delete/DeleteModal";
 
@@ -87,7 +88,18 @@ export default function HomeView({
     const [deleteTarget, setDeleteTarget] = useState<DeleteTarget>(null);
 
     const { loading, refreshing, apiError } = state;
-    const { page, totalPages, total, start, end, pageSize, setPage, setPageSize } = pagination;
+
+    const {
+        page,
+        totalPages,
+        total,
+        displayStart,
+        displayEnd,
+        pageSize,
+        onPageChange,
+        onPageSizeChange,
+    } = pagination;
+
     const { key: sortKey, dir: sortDir, toggleSort } = sort;
     const { searchTerm, statusFilter, hasActiveFilters, onSearchChange, onStatusFilterChange } = filters;
     const { getData } = actions;
@@ -110,7 +122,7 @@ export default function HomeView({
                     <TriangleAlert size={32} className="text-danger mb-3" />
                     <div className="text-danger fw-semibold mb-2">Failed to load projects</div>
                     <div className="text-body-secondary small mb-4">{apiError}</div>
-                    <Button variant="outline-secondary" size="sm" onClick={() => getData()}>
+                    <Button variant="outline-secondary" size="sm" onClick={() => void getData()}>
                         Retry
                     </Button>
                 </Card.Body>
@@ -127,7 +139,7 @@ export default function HomeView({
                     projectName={deleteTarget.name}
                     show={Boolean(deleteTarget)}
                     onHide={() => setDeleteTarget(null)}
-                    onDeleted={() => getData({ isRefresh: true })}
+                    onDeleted={() => void getData({ isRefresh: true })}
                 />
             )}
 
@@ -138,10 +150,10 @@ export default function HomeView({
                         <Button
                             variant="outline-secondary"
                             size="sm"
-                            onClick={() => getData({ isRefresh: true })}
+                            onClick={() => void getData({ isRefresh: true })}
                             disabled={refreshing}
                             className="d-flex align-items-center gap-1"
-                            title="Refresh"
+                            aria-label="Refresh projects"
                         >
                             <RefreshCw size={14} className={refreshing ? "spin-icon" : ""} />
                             {refreshing ? "Refreshing…" : "Refresh"}
@@ -195,12 +207,12 @@ export default function HomeView({
                         <Table hover responsive className="mb-0" style={{ fontSize: "0.875rem" }}>
                             <thead>
                                 <tr>
-                                    <SortHeader label="Name"           colKey="name"           sortKey={sortKey} sortDir={sortDir} toggleSort={toggleSort} />
-                                    <SortHeader label="Status"         colKey="status"         sortKey={sortKey} sortDir={sortDir} toggleSort={toggleSort} />
-                                    <SortHeader label="Comments"       colKey="comments"       sortKey={sortKey} sortDir={sortDir} toggleSort={toggleSort} />
-                                    <SortHeader label="Security"       colKey="security_level" sortKey={sortKey} sortDir={sortDir} toggleSort={toggleSort} />
-                                    <SortHeader label="Start"          colKey="start_date"     sortKey={sortKey} sortDir={sortDir} toggleSort={toggleSort} />
-                                    <SortHeader label="End"            colKey="end_date"       sortKey={sortKey} sortDir={sortDir} toggleSort={toggleSort} />
+                                    <SortHeader label="Name"     colKey="name"           sortKey={sortKey} sortDir={sortDir} toggleSort={toggleSort} />
+                                    <SortHeader label="Status"   colKey="status"         sortKey={sortKey} sortDir={sortDir} toggleSort={toggleSort} />
+                                    <SortHeader label="Comments" colKey="comments"       sortKey={sortKey} sortDir={sortDir} toggleSort={toggleSort} />
+                                    <SortHeader label="Security" colKey="security_level" sortKey={sortKey} sortDir={sortDir} toggleSort={toggleSort} />
+                                    <SortHeader label="Start"    colKey="start_date"     sortKey={sortKey} sortDir={sortDir} toggleSort={toggleSort} />
+                                    <SortHeader label="End"      colKey="end_date"       sortKey={sortKey} sortDir={sortDir} toggleSort={toggleSort} />
                                     <th>Manager</th>
                                     <th style={{ width: 90 }}>Actions</th>
                                 </tr>
@@ -217,7 +229,7 @@ export default function HomeView({
                                         <tr key={project.id}>
                                             <td className="fw-medium">{project.name}</td>
                                             <td>
-                                                <Badge bg={statusVariant(project.status)} className="fw-normal">
+                                                <Badge bg={statusVariant(project.status ?? "")} className="fw-normal">
                                                     {project.status}
                                                 </Badge>
                                             </td>
@@ -236,7 +248,7 @@ export default function HomeView({
                                                         variant="outline-secondary"
                                                         size="sm"
                                                         className="p-1"
-                                                        title="Edit"
+                                                        aria-label={`Edit ${project.name}`}
                                                         onClick={() => navigate(`/edit/${project.id}`)}
                                                     >
                                                         <Pencil size={14} />
@@ -245,7 +257,7 @@ export default function HomeView({
                                                         variant="outline-danger"
                                                         size="sm"
                                                         className="p-1"
-                                                        title="Delete"
+                                                        aria-label={`Delete ${project.name}`}
                                                         onClick={() => setDeleteTarget({ id: project.id, name: project.name })}
                                                     >
                                                         <Trash2 size={14} />
@@ -272,7 +284,7 @@ export default function HomeView({
                                         <Card.Body className="p-3">
                                             <div className="d-flex justify-content-between align-items-start mb-2">
                                                 <div className="fw-semibold" style={{ fontSize: "0.9rem" }}>{project.name}</div>
-                                                <Badge bg={statusVariant(project.status)} className="fw-normal ms-2 flex-shrink-0">
+                                                <Badge bg={statusVariant(project.status ?? "")} className="fw-normal ms-2 flex-shrink-0">
                                                     {project.status}
                                                 </Badge>
                                             </div>
@@ -280,15 +292,34 @@ export default function HomeView({
                                                 <div className="text-body-secondary small mb-2">{project.comments}</div>
                                             )}
                                             <div className="d-flex flex-wrap gap-2 small text-body-secondary mb-2">
-                                                {project.projectmanager && <span>👤 {project.projectmanager.name}</span>}
-                                                {project.start_date && <span>📅 {project.start_date}</span>}
-                                                {project.end_date && <span>🏁 {project.end_date}</span>}
-                                                <span>🔒 Level {project.security_level}</span>
+                                                {project.projectmanager && (
+                                                    <span className="d-flex align-items-center gap-1">
+                                                        <User size={12} />
+                                                        {project.projectmanager.name}
+                                                    </span>
+                                                )}
+                                                {project.start_date && (
+                                                    <span className="d-flex align-items-center gap-1">
+                                                        <Calendar size={12} />
+                                                        {project.start_date}
+                                                    </span>
+                                                )}
+                                                {project.end_date && (
+                                                    <span className="d-flex align-items-center gap-1">
+                                                        <CalendarCheck size={12} />
+                                                        {project.end_date}
+                                                    </span>
+                                                )}
+                                                <span className="d-flex align-items-center gap-1">
+                                                    <Lock size={12} />
+                                                    {project.security_level}
+                                                </span>
                                             </div>
                                             <div className="d-flex gap-2 justify-content-end">
                                                 <Button
                                                     variant="outline-secondary"
                                                     size="sm"
+                                                    aria-label={`Edit ${project.name}`}
                                                     onClick={() => navigate(`/edit/${project.id}`)}
                                                 >
                                                     Edit
@@ -296,6 +327,7 @@ export default function HomeView({
                                                 <Button
                                                     variant="outline-danger"
                                                     size="sm"
+                                                    aria-label={`Delete ${project.name}`}
                                                     onClick={() => setDeleteTarget({ id: project.id, name: project.name })}
                                                 >
                                                     Delete
@@ -313,7 +345,7 @@ export default function HomeView({
                 {total > 0 && (
                     <Card.Footer className="d-flex align-items-center justify-content-between flex-wrap gap-2 py-2">
                         <div className="text-body-secondary" style={{ fontSize: "0.8rem" }}>
-                            Showing {start}–{end} of {total}
+                            Showing {displayStart}–{displayEnd} of {total}
                         </div>
 
                         <div className="d-flex align-items-center gap-2">
@@ -321,12 +353,9 @@ export default function HomeView({
                                 size="sm"
                                 style={{ width: "auto" }}
                                 value={pageSize}
-                                onChange={(e) => {
-                                    setPageSize(Number(e.target.value));
-                                    setPage(1);
-                                }}
+                                onChange={(e) => onPageSizeChange(Number(e.target.value))}
                             >
-                                {[10, 25, 50].map((n) => (
+                                {HOME_PAGE_SIZE_OPTIONS.map((n) => (
                                     <option key={n} value={n}>{n} / page</option>
                                 ))}
                             </Form.Select>
@@ -336,7 +365,8 @@ export default function HomeView({
                                     variant="outline-secondary"
                                     size="sm"
                                     disabled={page <= 1}
-                                    onClick={() => setPage((p) => p - 1)}
+                                    aria-label="Previous page"
+                                    onClick={() => onPageChange(page - 1)}
                                 >
                                     ‹
                                 </Button>
@@ -350,7 +380,8 @@ export default function HomeView({
                                     variant="outline-secondary"
                                     size="sm"
                                     disabled={page >= totalPages}
-                                    onClick={() => setPage((p) => p + 1)}
+                                    aria-label="Next page"
+                                    onClick={() => onPageChange(page + 1)}
                                 >
                                     ›
                                 </Button>

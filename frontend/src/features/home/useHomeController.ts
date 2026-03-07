@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { listProjects } from "../projects/models/project.api";
-import type { ProjectRecord } from "../projects/models/project.types";
+import { useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { listProjects, projectKeys } from "../projects/models/project.api";
 import {
     HOME_DEFAULT_PAGE_SIZE,
     HOME_DEFAULT_SORT_DIRECTION,
@@ -13,41 +13,26 @@ import type { HomeSortDirection, HomeSortKey, HomeStatusFilter } from "./home.ty
  * Controller hook for the Home page.
  *
  * Responsibilities:
- * - load project data from the backend
- * - manage loading, refreshing, and API error state
- * - manage pagination state
- * - manage sorting state
- * - manage search and status filter state
- * - derive the final visible rows used by the Home view
+ * - manage pagination, sort, and filter state
+ * - pass those params to the backend via React Query
+ * - expose the paginated result to HomeView
+ *
+ * All filtering, searching, sorting and pagination is now server-side.
+ * The previous approach fetched all records and computed these in the browser,
+ * which silently broke once record count exceeded PAGE_SIZE (50).
+ *
+ * React Query handles:
+ * - initial loading state
+ * - background refetch on window focus
+ * - cache — navigating away and back does not re-spinner if data is fresh
+ * - manual invalidation via getData({ isRefresh: true })
  *
  * Return shape is grouped into sub-objects so callers can destructure only
- * what they need without pulling in the entire flat surface:
+ * what they need:
  *
  *   const { rows, pagination, sort, filters, state, actions } = useHomeController();
  */
 export function useHomeController() {
-    // ── Raw data ────────────────────────────────────────────────────────────
-    const [data, setData] = useState<ProjectRecord[]>([]);
-
-    // ── UI state ────────────────────────────────────────────────────────────
-    /**
-     * True only during the very first page load when no data has been shown yet.
-     */
-    const [loading, setLoading] = useState(true);
-
-    /**
-     * True during subsequent reloads after the page already has data on screen.
-     *
-     * This allows the UI to keep the table visible while showing a smaller
-     * "Refreshing..." indicator instead of replacing the whole page with a spinner.
-     */
-    const [refreshing, setRefreshing] = useState(false);
-
-    /**
-     * Human-readable API error shown in the page UI.
-     */
-    const [apiError, setApiError] = useState("");
-
     // ── Pagination ───────────────────────────────────────────────────────────
     const [page, setPage] = useState(1);
     const [pageSize, setPageSize] = useState(HOME_DEFAULT_PAGE_SIZE);
@@ -60,58 +45,58 @@ export function useHomeController() {
     const [searchTerm, setSearchTerm] = useState("");
     const [statusFilter, setStatusFilter] = useState<HomeStatusFilter>(HOME_DEFAULT_STATUS_FILTER);
 
-    // ── Data fetching ────────────────────────────────────────────────────────
+    // ── Query params ─────────────────────────────────────────────────────────
+    //
+    // Build the params object that gets sent to GET /api/project/.
+    // React Query re-fetches automatically whenever this object changes
+    // because it is part of the query key.
+    //
+    // Ordering: DRF expects ?ordering=name for asc, ?ordering=-name for desc.
+    const ordering = sortDir === "asc" ? sortKey : `-${sortKey}`;
 
-    /**
-     * Loads the latest list of projects from the backend.
-     *
-     * Params:
-     * - isRefresh:
-     *   - false: treat as initial page load
-     *   - true: treat as background refresh / retry while data is already visible
-     */
-    const getData = useCallback(async ({ isRefresh = false }: { isRefresh?: boolean } = {}) => {
-        setApiError("");
+    const params = {
+        page,
+        page_size: pageSize,
+        ordering,
+        ...(searchTerm.trim() && { search: searchTerm.trim() }),
+        ...(statusFilter !== "All" && { status: statusFilter }),
+    };
 
-        if (isRefresh) {
-            setRefreshing(true);
-        } else {
-            setLoading(true);
-        }
+    // ── Data fetching via React Query ────────────────────────────────────────
+    const queryClient = useQueryClient();
 
-        try {
-            const projects = await listProjects();
-            setData(projects);
-        } catch (err) {
-            console.error("GET /project/ failed:", (err as { data?: unknown })?.data ?? err);
-            setApiError("Failed to load projects.");
+    const {
+        data,
+        isLoading,  // true only on the very first fetch (no cached data yet)
+        isFetching, // true on any fetch, including background refetches
+        isError,
+        error,
+    } = useQuery({
+        queryKey: projectKeys.list(params),
+        queryFn:  () => listProjects(params),
+        // Keep previous page data visible while the next page loads.
+        // Without this, switching pages flashes a loading spinner.
+        placeholderData: (prev) => prev,
+        // Re-fetch when the window regains focus so the table stays current
+        // after a user switches tabs or minimises the browser.
+        refetchOnWindowFocus: true,
+        staleTime: 30_000, // treat data as fresh for 30 seconds
+    });
 
-            /**
-             * Keep existing data during refresh failures so the page does not
-             * unnecessarily blank out after users already had usable results.
-             * Only clear data during the initial load failure.
-             */
-            if (!isRefresh) {
-                setData([]);
-            }
-        } finally {
-            if (isRefresh) {
-                setRefreshing(false);
-            } else {
-                setLoading(false);
-            }
-        }
-    }, []);
-
-    useEffect(() => {
-        void getData();
-    }, [getData]);
+    // ── Manual refresh ───────────────────────────────────────────────────────
+    //
+    // Called by the Refresh button and by DeleteModal's onDeleted callback.
+    // Invalidating the lists key triggers a background refetch for the current
+    // params without clearing the cached data first (so the table stays visible).
+    const getData = async ({ isRefresh: _ = false }: { isRefresh?: boolean } = {}) => {
+        await queryClient.invalidateQueries({ queryKey: projectKeys.lists() });
+    };
 
     // ── Action handlers ──────────────────────────────────────────────────────
 
     const onSearchChange = (value: string) => {
         setSearchTerm(value);
-        setPage(1);
+        setPage(1); // reset to page 1 whenever the search changes
     };
 
     const onStatusFilterChange = (value: HomeStatusFilter) => {
@@ -129,85 +114,49 @@ export function useHomeController() {
         setPage(1);
     };
 
-    // ── Derived data ─────────────────────────────────────────────────────────
+    const onPageChange = (newPage: number) => setPage(newPage);
 
-    const filteredData = useMemo(() => {
-        const normalizedSearch = searchTerm.trim().toLowerCase();
+    const onPageSizeChange = (newSize: number) => {
+        setPageSize(newSize);
+        setPage(1); // reset to page 1 when page size changes
+    };
 
-        return data.filter((row) => {
-            const matchesSearch =
-                normalizedSearch === "" ||
-                (row.name ?? "").toLowerCase().includes(normalizedSearch) ||
-                (row.comments ?? "").toLowerCase().includes(normalizedSearch);
+    // ── Derived values ───────────────────────────────────────────────────────
 
-            const matchesStatus =
-                statusFilter === "All" || (row.status ?? "") === statusFilter;
-
-            return matchesSearch && matchesStatus;
-        });
-    }, [data, searchTerm, statusFilter]);
-
-    const sortedData = useMemo(() => {
-        const getSortableValue = (row: ProjectRecord) => {
-            const value = row?.[sortKey as keyof ProjectRecord];
-            if (value == null) return "";
-            return typeof value === "string" ? value.toLowerCase() : value;
-        };
-
-        return [...filteredData].sort((a, b) => {
-            const aValue = getSortableValue(a);
-            const bValue = getSortableValue(b);
-            if (aValue < bValue) return sortDir === "asc" ? -1 : 1;
-            if (aValue > bValue) return sortDir === "asc" ? 1 : -1;
-            return 0;
-        });
-    }, [filteredData, sortKey, sortDir]);
-
-    const total = sortedData.length;
+    const rows = data?.results ?? [];
+    const total = data?.count ?? 0;
     const totalPages = Math.max(1, Math.ceil(total / pageSize));
-    const safePage = Math.min(page, totalPages);
-    const start = (safePage - 1) * pageSize;
-    const end = start + pageSize;
-    const pageRows = sortedData.slice(start, end);
+    const displayStart = total === 0 ? 0 : (page - 1) * pageSize + 1;
+    const displayEnd = Math.min(page * pageSize, total);
     const hasActiveFilters =
         searchTerm.trim() !== "" || statusFilter !== HOME_DEFAULT_STATUS_FILTER;
 
+    const apiError = isError
+        ? ((error as { message?: string })?.message ?? "Failed to load projects.")
+        : "";
+
     // ── Grouped return shape ─────────────────────────────────────────────────
-    //
-    // Grouped into sub-objects so HomeView can destructure only what it needs.
-    // Previously this hook returned 20+ flat values including internal
-    // derivations (start, end, safePage) that the view shouldn't care about,
-    // and a sortIcon function that was a UI concern leaking into the controller.
-    //
-    // sortIcon has been moved to HomeView where it belongs — the controller
-    // now exposes sortKey and sortDir and the view derives the icon itself.
 
     return {
-        /** The current page of rows to render. */
-        rows: pageRows,
+        rows,
 
-        /** Pagination state needed by the view. */
         pagination: {
-            page: safePage,
+            page,
             pageSize,
             total,
             totalPages,
-            /** 1-based start index for "Showing X–Y of Z" display. */
-            displayStart: total === 0 ? 0 : start + 1,
-            /** 1-based end index, clamped to total. */
-            displayEnd: Math.min(end, total),
-            setPage,
-            setPageSize,
+            displayStart,
+            displayEnd,
+            onPageChange,
+            onPageSizeChange,
         },
 
-        /** Sort state and toggle action. */
         sort: {
             key: sortKey,
             dir: sortDir,
             toggleSort,
         },
 
-        /** Filter state and change handlers. */
         filters: {
             searchTerm,
             statusFilter,
@@ -216,14 +165,14 @@ export function useHomeController() {
             onStatusFilterChange,
         },
 
-        /** Async load state. */
         state: {
-            loading,
-            refreshing,
+            // isLoading: first fetch only — shows the full-page spinner
+            // isFetching && !isLoading: background refresh — shows "Refreshing..." indicator
+            loading: isLoading,
+            refreshing: isFetching && !isLoading,
             apiError,
         },
 
-        /** Side-effect actions the view can trigger. */
         actions: {
             getData,
         },

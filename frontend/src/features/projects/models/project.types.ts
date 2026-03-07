@@ -15,11 +15,9 @@ export interface PersonOption {
  * Shape of a project record returned by GET /api/project/ and
  * GET /api/project/:id/ (ProjectReadSerializer).
  *
- * FIX: projectmanager and employees are now always nested objects on reads,
- * never raw IDs. The union types have been tightened to reflect this.
- *
- * The write endpoints (POST/PUT/PATCH) accept IDs — that is handled
- * separately in projectFormConfig.ts via formToPayload().
+ * projectmanager and employees are always nested objects on reads.
+ * The write endpoints (POST/PUT/PATCH) accept IDs — handled in
+ * projectFormConfig.ts via formToPayload().
  */
 export interface ProjectRecord {
     id: number;
@@ -49,4 +47,24 @@ export interface ProjectFormValues {
     start_date: string;
     end_date: string;
     security_level: SecurityLevel;
+}
+
+/**
+ * Query parameters accepted by GET /api/project/.
+ *
+ * Maps directly to the backend ProjectViewset filter/search/ordering params:
+ * - search:        ?search=keyword     (searches name and comments)
+ * - status:        ?status=Active      (exact match on status field)
+ * - ordering:      ?ordering=name      (prefix with - for descending)
+ * - page:          ?page=2
+ * - page_size:     ?page_size=25
+ *
+ * All fields are optional — omitting a param uses the backend default.
+ */
+export interface ProjectListParams {
+    search?: string;
+    status?: string;
+    ordering?: string;
+    page?: number;
+    page_size?: number;
 }

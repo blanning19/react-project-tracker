@@ -16,6 +16,7 @@ Backend API for the Project Tracker application.
 - [Environment Variables](#environment-variables)
 - [Database and Migrations](#database-and-migrations)
 - [Running the Server](#running-the-server)
+- [Seeding Data](#seeding-data)
 - [Admin](#admin)
 - [API Notes](#api-notes)
 - [Auth Modes](#auth-modes)
@@ -30,6 +31,7 @@ Backend API for the Project Tracker application.
 
 - Django
 - Django REST Framework
+- django-filter
 - PostgreSQL
 - Optional environment loading with `python-dotenv`
 
@@ -85,6 +87,9 @@ Cookie mode support (only if enabled in your settings):
 - `CORS_ALLOWED_ORIGINS=http://localhost:5173`
 - `CSRF_TRUSTED_ORIGINS=http://localhost:5173`
 
+Pagination:
+- `DRF_PAGE_SIZE=50` default page size for the project list (default: 50)
+
 Tips:
 - Treat `.env` as a secret. Track `.env.example`, not `.env`.
 - Restart the server after changing `.env`.
@@ -127,6 +132,45 @@ Default URL:
 
 ---
 
+## Seeding Data
+
+A management command is included to populate the database with sample projects for development and testing.
+
+Place the command file at:
+```
+backend/api/management/commands/seed_projects.py
+```
+
+You will need the directory structure with empty `__init__.py` files if they do not exist:
+```
+backend/api/management/__init__.py
+backend/api/management/commands/__init__.py
+```
+
+Usage:
+
+```powershell
+# Seed 50 projects using existing managers and employees
+python manage.py seed_projects
+
+# Seed a different number of projects
+python manage.py seed_projects --count 100
+
+# Delete all existing projects first, then seed
+python manage.py seed_projects --clear
+
+# Delete all projects, managers, and employees, then seed everything from scratch
+python manage.py seed_projects --clear-all
+```
+
+Notes:
+- If no managers or employees exist, the command creates a set of named seed records automatically.
+- `--clear` removes projects only. Managers and employees are kept.
+- `--clear-all` removes projects, managers, and employees, then rebuilds all from scratch.
+- Running without `--clear` is safe to repeat — projects with duplicate names are skipped.
+
+---
+
 ## Admin
 
 Create a superuser:
@@ -144,25 +188,51 @@ Admin site:
 
 Typical endpoints (router names may vary):
 
-- `GET /api/projects/` list projects
-- `POST /api/projects/` create project
-- `GET /api/projects/<id>/` project detail
-- `PUT /api/projects/<id>/` update project
-- `DELETE /api/projects/<id>/` delete project
+- `GET /api/project/` list projects (paginated)
+- `POST /api/project/` create project
+- `GET /api/project/<id>/` project detail
+- `PUT /api/project/<id>/` update project
+- `PATCH /api/project/<id>/` partial update
+- `DELETE /api/project/<id>/` delete project
 
-Related lists:
+Related lists (no pagination — always returns full list):
 - `GET /api/employees/`
-- `GET /api/projectmanagers/`
+- `GET /api/projectmanager/`
 
-Project fields typically include:
+### Project list query parameters
+
+The list endpoint supports filtering, searching, ordering, and pagination:
+
+| Parameter        | Example                   | Description                                      |
+|------------------|---------------------------|--------------------------------------------------|
+| `page`           | `?page=2`                 | Page number (default: 1)                         |
+| `page_size`      | `?page_size=25`           | Results per page (default: 50, max: 200)         |
+| `search`         | `?search=alpha`           | Search project name and comments (case-insensitive) |
+| `status`         | `?status=Active`          | Exact match on status                            |
+| `security_level` | `?security_level=Internal`| Exact match on security level                    |
+| `ordering`       | `?ordering=-start_date`   | Sort field, prefix with `-` for descending       |
+
+Valid `ordering` fields: `name`, `status`, `start_date`, `end_date`, `security_level`, `modified`
+
+List response envelope:
+```json
+{
+  "count": 50,
+  "next": "http://...",
+  "previous": null,
+  "results": [...]
+}
+```
+
+Project fields:
 - `id`
 - `name`
-- `status`
+- `status` — one of `Active`, `On Hold`, `Completed`, `Cancelled`
 - `comments`
-- `projectmanager` id
-- `employees` list of ids
+- `projectmanager` — nested object on reads, ID on writes
+- `employees` — list of nested objects on reads, list of IDs on writes
 - `start_date` and `end_date` in `YYYY-MM-DD`
-- `security_level` one of `Public`, `Internal`, `Confidential`, `Restricted`
+- `security_level` — one of `Public`, `Internal`, `Confidential`, `Restricted`
 
 ---
 
@@ -197,17 +267,27 @@ Common symptoms:
 
 ## Testing
 
-Django test runner:
-
-```powershell
-python manage.py test
-```
-
-Pytest if configured:
+Pytest:
 
 ```powershell
 pytest
 ```
+
+Run a specific test file:
+
+```powershell
+pytest api/tests/test_projects_crud.py
+```
+
+Test files:
+- `test_auth.py` — login and `/me` endpoint
+- `test_auth_throttle.py` — login rate limiting
+- `test_jwt_refresh.py` — token refresh and rejection
+- `test_project_auth.py` — endpoint authentication and logout blacklisting
+- `test_project_filtering.py` — pagination, filtering, search, ordering, lookup endpoints
+- `test_project_queries.py` — N+1 query prevention
+- `test_project_validation.py` — field validation and TextChoices enforcement
+- `test_projects_crud.py` — full CRUD including PATCH and nested serializer reads
 
 ---
 
@@ -236,14 +316,10 @@ Requirements install issues:
 ## Production Notes
 
 Minimum hardening:
-- `DJANGO_DEBUG=0`
-- Strong `DJANGO_SECRET_KEY`
-- `DJANGO_ALLOWED_HOSTS` set to real hosts
-- HTTPS in production
+- HTTPS / reverse proxy
 - Run behind a production server such as Gunicorn or Uvicorn and a reverse proxy
 
 Recommended improvements:
-- Rate limiting or throttling for auth endpoints
 - Structured logging
 - Error tracking such as Sentry
 - Security headers and content security policy

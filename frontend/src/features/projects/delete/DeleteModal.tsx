@@ -1,8 +1,7 @@
 import { useState } from "react";
 import { Button, Modal, Spinner } from "react-bootstrap";
 import { AlertTriangle } from "lucide-react";
-import FetchInstance from "../../../shared/http/fetchClient";
-import { API } from "../../../shared/api/routes";
+import { deleteProject } from "../../../features/projects/models/project.api";
 
 interface DeleteModalProps {
     projectId: number;
@@ -24,6 +23,12 @@ interface DeleteModalProps {
  *   show        — controls modal visibility
  *   onHide      — called when the user cancels or closes
  *   onDeleted   — called after a successful delete; caller should refresh data
+ *
+ * FIX: was calling FetchInstance.delete() directly with a manually constructed
+ * URL. Now uses deleteProject() from project.api.ts so the URL is derived from
+ * the same API.projects.detail() route helper used everywhere else. Direct
+ * FetchInstance calls in feature components bypass the typed API layer and make
+ * URL changes harder to track down.
  */
 export default function DeleteModal({
     projectId,
@@ -39,7 +44,7 @@ export default function DeleteModal({
         setLoading(true);
         setError(null);
         try {
-            await FetchInstance.delete(`${API.projects}${projectId}/`);
+            await deleteProject(projectId);
             onDeleted();
             onHide();
         } catch {

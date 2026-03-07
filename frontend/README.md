@@ -4,6 +4,7 @@ Frontend UI for the Project Tracker application.
 
 - Vite and React with TypeScript
 - React Bootstrap UI
+- React Query for server state and caching
 - React Hook Form with Yup validation
 - Vitest testing
 - ESLint and Prettier
@@ -21,6 +22,7 @@ Frontend UI for the Project Tracker application.
 - [Project structure](#project-structure)
 - [Feature based architecture rules](#feature-based-architecture-rules)
 - [API integration notes](#api-integration-notes)
+- [Server state and caching](#server-state-and-caching)
 - [Testing](#testing)
 - [Linting and formatting](#linting-and-formatting)
 - [Troubleshooting](#troubleshooting)
@@ -34,6 +36,7 @@ Frontend UI for the Project Tracker application.
 - TypeScript
 - React Router
 - React Bootstrap
+- React Query (`@tanstack/react-query`)
 - React Hook Form and Yup
 - Vitest and Testing Library
 - ESLint and Prettier
@@ -145,25 +148,59 @@ src/
 
 ## API integration notes
 
-The frontend expects endpoints similar to:
-- `GET /api/projects/`
-- `POST /api/projects/`
-- `GET /api/projects/:id/`
-- `PUT /api/projects/:id/`
-- `DELETE /api/projects/:id/`
+Endpoints:
+- `GET /api/project/` list projects (paginated — see query params below)
+- `POST /api/project/` create project
+- `GET /api/project/:id/` project detail
+- `PUT /api/project/:id/` update project
+- `PATCH /api/project/:id/` partial update
+- `DELETE /api/project/:id/` delete project
 
-Related lists:
+Related lists (always return full list, no pagination):
 - `GET /api/employees/`
-- `GET /api/projectmanagers/`
+- `GET /api/projectmanager/`
 
-Project payload includes:
+Project list query parameters:
+
+| Parameter        | Example                    | Description                                         |
+|------------------|----------------------------|-----------------------------------------------------|
+| `page`           | `?page=2`                  | Page number (default: 1)                            |
+| `page_size`      | `?page_size=25`            | Results per page (default: 50, max: 200)            |
+| `search`         | `?search=alpha`            | Search name and comments (case-insensitive)         |
+| `status`         | `?status=Active`           | Exact match on status                               |
+| `security_level` | `?security_level=Internal` | Exact match on security level                       |
+| `ordering`       | `?ordering=-start_date`    | Sort field, prefix with `-` for descending          |
+
+Project payload:
 - `name`
-- `status`
+- `status` — one of `Active`, `On Hold`, `Completed`, `Cancelled`
 - `comments`
-- `projectmanager` id
-- `employees` list of ids
+- `projectmanager` — ID on writes, nested object on reads
+- `employees` — list of IDs on writes, list of nested objects on reads
 - `start_date` and `end_date` in `YYYY-MM-DD`
-- `security_level` one of `Public`, `Internal`, `Confidential`, `Restricted`
+- `security_level` — one of `Public`, `Internal`, `Confidential`, `Restricted`
+
+---
+
+## Server state and caching
+
+The app uses React Query (`@tanstack/react-query`) for all server state.
+
+Key behaviours:
+- Project list data is treated as fresh for 30 seconds globally. Navigating away and back does not re-spinner if data is still fresh.
+- Manager and employee lookup data (used by form dropdowns) is cached for 5 minutes and shared across Create and Edit pages — opening one after the other does not fire duplicate requests.
+- The project list refetches automatically when the window regains focus.
+- Manual refresh (the Refresh button and post-delete) uses `queryClient.invalidateQueries` so the table stays visible while the background fetch runs.
+
+Query key structure (defined in `project.api.ts`):
+```ts
+projectKeys.list(params)   // project list with current filter/sort/page params
+projectKeys.detail(id)     // single project
+lookupKeys.managers()      // manager dropdown data
+lookupKeys.employees()     // employee dropdown data
+```
+
+React Query Devtools are included in development builds and appear in the bottom-left corner of the browser. They are tree-shaken out of production builds automatically.
 
 ---
 
@@ -222,6 +259,10 @@ API errors and CORS:
 ESLint TypeScript parsing errors:
 - Install TypeScript ESLint packages
 - Confirm `.eslintrc.cjs` uses the TypeScript parser
+
+React Query `No QueryClient set` error:
+- Confirm `QueryClientProvider` wraps the app in `main.tsx`
+- Confirm `@tanstack/react-query` is installed (`npm install @tanstack/react-query @tanstack/react-query-devtools`)
 
 ---
 

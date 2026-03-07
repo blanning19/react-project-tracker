@@ -1,61 +1,25 @@
 import { Badge, Card, Col, Container, ListGroup, Row } from "react-bootstrap";
 
-/**
- * Describes one feature shown in the About page feature grid.
- */
 type FeatureItem = {
     icon: string;
     title: string;
     body: string;
 };
 
-/**
- * Props for the reusable feature card component.
- */
-type FeatureCardProps = {
-    icon: string;
-    title: string;
-    body: string;
-};
-
-/**
- * Props for the reusable tech stack card component.
- */
-type TechStackCardProps = {
-    items: string[];
-};
-
-/**
- * Props for the reusable highlights card component.
- */
-type HighlightsCardProps = {
-    items: string[];
-};
-
-/**
- * Static technology list displayed in the right-side "Tech stack" card.
- *
- * Keeping this data outside the component prevents the array from being rebuilt
- * on every render and keeps the page component focused on layout.
- */
 const STACK_ITEMS: string[] = [
-    "React (Vite)",
-    "React Router",
+    "React 18 + Vite",
+    "React Router v6",
     "React Hook Form + Yup",
-    "React Bootstrap",
-    "Django + Django REST Framework",
+    "React Bootstrap 5",
+    "Django 6 + Django REST Framework",
     "PostgreSQL",
     "JWT authentication (SimpleJWT)",
+    "TypeScript",
 ];
 
-/**
- * Static feature definitions rendered as a responsive grid of cards.
- *
- * Each item represents one user-facing capability of the app.
- */
 const FEATURE_ITEMS: FeatureItem[] = [
     {
-        icon: "📁",
+        icon: "📋",
         title: "Project lifecycle tracking",
         body: "Create, update, and manage projects with names, comments, status, and target dates.",
     },
@@ -67,120 +31,99 @@ const FEATURE_ITEMS: FeatureItem[] = [
     {
         icon: "✅",
         title: "Reliable validation",
-        body: "Use client-side and server-side validation together to keep project data clean and consistent.",
+        body: "Client-side and server-side validation work together to keep project data clean and consistent.",
     },
     {
         icon: "🔒",
         title: "Secure API access",
-        body: "Protect routes and backend requests with JWT-based authentication.",
+        body: "All routes and backend requests are protected with JWT-based authentication and token rotation.",
     },
     {
         icon: "🔎",
         title: "Search, sorting, and filtering",
-        body: "Quickly find projects and organize the list view with search, status filtering, sorting, and pagination.",
+        body: "Find projects quickly with name search, status filtering, sortable columns, and pagination.",
     },
     {
         icon: "📱",
-        title: "Responsive user experience",
-        body: "Use a table layout on larger screens and a card-based layout on smaller screens for better readability.",
+        title: "Responsive layout",
+        body: "Table layout on larger screens, card-based layout on mobile for comfortable daily use.",
     },
 ];
 
-/**
- * Short summary bullets displayed in the right-side highlights card.
- *
- * These provide a quick business-level summary for users who do not need the
- * full technical breakdown.
- */
 const HIGHLIGHT_ITEMS: string[] = [
     "Track ownership, assignments, and project status in one place.",
     "Keep project data organized with clear validation and structured forms.",
-    "Support both desktop and mobile-friendly views for daily use.",
+    "Supports both desktop and mobile-friendly views for daily use.",
+    "Production-hardened with token blacklisting, rate limiting, and HTTPS security headers.",
 ];
 
-/**
- * Polished hero-style header for the About page.
- *
- * This creates a stronger visual entry point than a simple title row while
- * still staying lightweight and consistent with Bootstrap styling.
- */
+// ---------------------------------------------------------------------------
+// Sub-components
+// ---------------------------------------------------------------------------
+
 function AboutHero(): JSX.Element {
     return (
-        <Card className="shadow-sm border-0 mb-4 bg-body-tertiary">
-            <Card.Body className="p-4">
-                <Row className="g-4 align-items-center">
-                    <Col lg={8}>
-                        <div className="d-flex flex-wrap gap-2 mb-3">
-                            <Badge bg="dark">Project Tracker</Badge>
-                            <Badge bg="secondary">React</Badge>
-                            <Badge bg="secondary">Django REST</Badge>
-                            <Badge bg="secondary">PostgreSQL</Badge>
-                        </div>
+        <div className="rounded border bg-body-tertiary p-4 mb-4">
+            <Row className="g-4 align-items-center">
+                <Col lg={8}>
+                    <div className="d-flex flex-wrap gap-2 mb-3">
+                        <Badge bg="dark">Project Tracker</Badge>
+                        <Badge bg="secondary">React</Badge>
+                        <Badge bg="secondary">Django REST</Badge>
+                        <Badge bg="secondary">PostgreSQL</Badge>
+                        <Badge bg="secondary">JWT</Badge>
+                    </div>
 
-                        <h1 className="h3 mb-2">Organize projects with a cleaner, more practical workflow.</h1>
+                    <h1 className="h3 fw-bold mb-2">
+                        Organize projects with a cleaner, more practical workflow.
+                    </h1>
 
-                        <p className="text-body-secondary mb-0">
-                            Project Tracker helps teams manage project ownership, assignments, status, and scheduling
-                            in one structured interface backed by a modern full-stack architecture.
-                        </p>
-                    </Col>
+                    <p className="text-body-secondary mb-0">
+                        Project Tracker helps teams manage project ownership, assignments, status,
+                        and scheduling in one structured interface backed by a modern full-stack
+                        architecture.
+                    </p>
+                </Col>
 
-                    <Col lg={4}>
-                        <Card className="border-0 shadow-sm">
-                            <Card.Body>
-                                <div className="fw-semibold mb-3">Quick snapshot</div>
-
-                                <div className="d-flex flex-column gap-2">
-                                    <div className="d-flex justify-content-between">
-                                        <span className="text-body-secondary">Frontend</span>
-                                        <span className="fw-semibold">React + Vite</span>
-                                    </div>
-
-                                    <div className="d-flex justify-content-between">
-                                        <span className="text-body-secondary">Backend</span>
-                                        <span className="fw-semibold">Django REST</span>
-                                    </div>
-
-                                    <div className="d-flex justify-content-between">
-                                        <span className="text-body-secondary">Database</span>
-                                        <span className="fw-semibold">PostgreSQL</span>
-                                    </div>
-
-                                    <div className="d-flex justify-content-between">
-                                        <span className="text-body-secondary">Auth</span>
-                                        <span className="fw-semibold">JWT</span>
-                                    </div>
+                <Col lg={4}>
+                    <Card className="border shadow-sm">
+                        <Card.Body>
+                            <div className="fw-semibold mb-3">Quick snapshot</div>
+                            {[
+                                { label: "Frontend",  value: "React + Vite + TypeScript" },
+                                { label: "Backend",   value: "Django REST Framework" },
+                                { label: "Database",  value: "PostgreSQL" },
+                                { label: "Auth",      value: "JWT + token rotation" },
+                            ].map(({ label, value }) => (
+                                <div key={label} className="d-flex justify-content-between py-1 border-bottom last-border-0">
+                                    <span className="text-body-secondary small">{label}</span>
+                                    <span className="fw-semibold small text-end">{value}</span>
                                 </div>
-                            </Card.Body>
-                        </Card>
-                    </Col>
-                </Row>
-            </Card.Body>
-        </Card>
+                            ))}
+                        </Card.Body>
+                    </Card>
+                </Col>
+            </Row>
+        </div>
     );
 }
 
-/**
- * Reusable card used to display one feature in the feature grid.
- *
- * Typing the props makes the expected data shape explicit and helps catch
- * mistakes when the component is reused elsewhere.
- */
-function FeatureCard({ icon, title, body }: FeatureCardProps): JSX.Element {
+function FeatureCard({ icon, title, body }: FeatureItem): JSX.Element {
     return (
-        <Card className="h-100 shadow-sm border-0">
+        <Card className="h-100 border shadow-sm">
             <Card.Body>
                 <div className="d-flex align-items-start gap-3">
                     <div
                         className="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0 bg-body-tertiary"
                         style={{ width: 44, height: 44, fontSize: 20 }}
+                        aria-hidden="true"
                     >
-                        <span aria-hidden="true">{icon}</span>
+                        {icon}
                     </div>
 
                     <div>
-                        <div className="fw-semibold mb-2">{title}</div>
-                        <div className="text-body-secondary">{body}</div>
+                        <div className="fw-semibold mb-1">{title}</div>
+                        <div className="text-body-secondary small">{body}</div>
                     </div>
                 </div>
             </Card.Body>
@@ -188,105 +131,33 @@ function FeatureCard({ icon, title, body }: FeatureCardProps): JSX.Element {
     );
 }
 
-/**
- * Card that summarizes the application's technology stack.
- *
- * Accepting the list as props keeps the component reusable and easy to test.
- */
-function TechStackCard({ items }: TechStackCardProps): JSX.Element {
+function DataModelCard(): JSX.Element {
     return (
-        <Card className="shadow-sm border-0 mb-4">
-            <Card.Body>
-                <Card.Title className="mb-3">Tech stack</Card.Title>
-
-                <ListGroup variant="flush">
-                    {items.map((item) => (
-                        <ListGroup.Item key={item} className="px-0">
-                            {item}
-                        </ListGroup.Item>
-                    ))}
-                </ListGroup>
-            </Card.Body>
-        </Card>
-    );
-}
-
-/**
- * Card that surfaces a few quick application highlights.
- *
- * This gives the right column a more balanced layout and helps summarize value
- * without requiring users to read the full feature list first.
- */
-function HighlightsCard({ items }: HighlightsCardProps): JSX.Element {
-    return (
-        <Card className="shadow-sm border-0">
-            <Card.Body>
-                <Card.Title className="mb-3">Why it is useful</Card.Title>
-
-                <ListGroup variant="flush">
-                    {items.map((item) => (
-                        <ListGroup.Item key={item} className="px-0">
-                            {item}
-                        </ListGroup.Item>
-                    ))}
-                </ListGroup>
-            </Card.Body>
-        </Card>
-    );
-}
-
-/**
- * Section introducing the feature grid.
- *
- * Keeping this as a small reusable block improves readability in the main page
- * component and makes the layout easier to scan.
- */
-function SectionIntro({
-    eyebrow,
-    title,
-    body,
-}: {
-    eyebrow: string;
-    title: string;
-    body: string;
-}): JSX.Element {
-    return (
-        <div className="mb-3">
-            <div className="text-uppercase small fw-semibold text-body-secondary mb-1">{eyebrow}</div>
-            <div className="h5 mb-2">{title}</div>
-            <div className="text-body-secondary">{body}</div>
-        </div>
-    );
-}
-
-/**
- * Bottom summary card that explains the core project relationship model.
- *
- * This gives the user a quick mental model of how project managers and
- * employees relate to projects without requiring backend knowledge.
- */
-function DataModelSummaryCard(): JSX.Element {
-    return (
-        <Card className="shadow-sm border-0 mt-4">
+        <Card className="border shadow-sm mt-4">
             <Card.Body className="p-4">
                 <Row className="g-4 align-items-start">
                     <Col lg={8}>
-                        <div className="text-uppercase small fw-semibold text-body-secondary mb-1">Data model</div>
+                        <div className="text-uppercase small fw-semibold text-body-secondary mb-1">
+                            Data model
+                        </div>
                         <div className="h5 mb-2">How project data is organized</div>
                         <div className="text-body-secondary">
-                            Each project stores a name, comments, status, start date, end date, one assigned project
-                            manager, and any number of employee assignments.
+                            Each project stores a name, comments, status, security level, start
+                            date, end date, one assigned project manager, and any number of
+                            employee assignments. Project managers and employees are managed
+                            independently and assigned to projects via dropdown selectors.
                         </div>
                     </Col>
 
                     <Col lg={4}>
                         <Card className="border-0 bg-body-tertiary">
                             <Card.Body className="p-3">
-                                <div className="fw-semibold mb-2">Helpful tip</div>
-                                <div className="small text-body-secondary">
-                                    Keep your employee and project manager lookup data populated so project forms stay
-                                    fast and easy to use.
-                                </div>
+                                <div className="fw-semibold mb-2 small">Relationships</div>
+                                <ul className="mb-0 ps-3 small text-body-secondary">
+                                    <li className="mb-1">Project → ProjectManager (many-to-one)</li>
+                                    <li className="mb-1">Project → Employees (many-to-many)</li>
+                                    <li>Deleting a manager sets the field to blank, not delete the project</li>
+                                </ul>
                             </Card.Body>
                         </Card>
                     </Col>
@@ -296,34 +167,33 @@ function DataModelSummaryCard(): JSX.Element {
     );
 }
 
-/**
- * About page for the Project Tracker application.
- *
- * Responsibilities:
- * - explain what the application does
- * - highlight major user-facing features
- * - summarize the technology stack
- * - provide a simple data model overview
- */
+// ---------------------------------------------------------------------------
+// Page
+// ---------------------------------------------------------------------------
+
 function About(): JSX.Element {
     return (
         <Container className="py-4">
             <AboutHero />
 
             <Row className="g-4">
+                {/* Left: feature grid */}
                 <Col lg={8}>
-                    <Card className="shadow-sm border-0">
+                    <Card className="border shadow-sm h-100">
                         <Card.Body className="p-4">
-                            <SectionIntro
-                                eyebrow="Overview"
-                                title="What this app does"
-                                body="Project Tracker is a lightweight application for organizing projects, tracking ownership, assigning team members, and monitoring status over time."
-                            />
+                            <div className="text-uppercase small fw-semibold text-body-secondary mb-1">
+                                Features
+                            </div>
+                            <div className="h5 mb-1">What this app does</div>
+                            <div className="text-body-secondary mb-4">
+                                A lightweight tool for organizing projects, tracking ownership,
+                                assigning team members, and monitoring status over time.
+                            </div>
 
                             <Row className="g-3">
                                 {FEATURE_ITEMS.map((feature) => (
                                     <Col md={6} key={feature.title}>
-                                        <FeatureCard icon={feature.icon} title={feature.title} body={feature.body} />
+                                        <FeatureCard {...feature} />
                                     </Col>
                                 ))}
                             </Row>
@@ -331,13 +201,37 @@ function About(): JSX.Element {
                     </Card>
                 </Col>
 
+                {/* Right: tech stack + highlights */}
                 <Col lg={4}>
-                    <TechStackCard items={STACK_ITEMS} />
-                    <HighlightsCard items={HIGHLIGHT_ITEMS} />
+                    <Card className="border shadow-sm mb-4">
+                        <Card.Body>
+                            <div className="fw-semibold mb-3">Tech stack</div>
+                            <ListGroup variant="flush">
+                                {STACK_ITEMS.map((item) => (
+                                    <ListGroup.Item key={item} className="px-0 py-2 small">
+                                        {item}
+                                    </ListGroup.Item>
+                                ))}
+                            </ListGroup>
+                        </Card.Body>
+                    </Card>
+
+                    <Card className="border shadow-sm">
+                        <Card.Body>
+                            <div className="fw-semibold mb-3">Why it is useful</div>
+                            <ListGroup variant="flush">
+                                {HIGHLIGHT_ITEMS.map((item) => (
+                                    <ListGroup.Item key={item} className="px-0 py-2 small text-body-secondary">
+                                        {item}
+                                    </ListGroup.Item>
+                                ))}
+                            </ListGroup>
+                        </Card.Body>
+                    </Card>
                 </Col>
             </Row>
 
-            <DataModelSummaryCard />
+            <DataModelCard />
         </Container>
     );
 }

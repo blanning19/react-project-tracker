@@ -1,7 +1,12 @@
 import os
 
 from django.conf import settings
+from rest_framework import status
+from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
+from rest_framework.views import APIView
+from rest_framework_simplejwt.exceptions import TokenError
+from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
 
@@ -62,10 +67,55 @@ class HybridTokenRefreshView(TokenRefreshView):
         return response
 
 
-class HybridLogoutView(TokenRefreshView):
-    """Optional logout helper: clears refresh cookie."""
+class HybridLogoutView(APIView):
+    """Logout endpoint.
+
+    Blacklists the refresh token so it cannot be reused after logout,
+    then clears the refresh cookie (cookie mode) and returns a success response.
+
+    FIX: The previous implementation extended TokenRefreshView and only cleared
+    the cookie without blacklisting the token. This meant a stolen refresh token
+    remained valid until it naturally expired, even after the user logged out.
+
+    Now:
+    - Accepts the refresh token from the cookie (cookie mode) or request body (local mode).
+    - Blacklists the token via SimpleJWT's token_blacklist app.
+    - Clears the refresh cookie regardless of mode.
+    - Returns 200 on success, 400 if no token was provided, 401 if the token
+      is already invalid or expired.
+
+    Requirements:
+    - rest_framework_simplejwt.token_blacklist must be in INSTALLED_APPS.
+    - ROTATE_REFRESH_TOKENS and BLACKLIST_AFTER_ROTATION should be True in SIMPLE_JWT.
+      Both are already set in settings.py.
+    """
+
+    permission_classes = [AllowAny]
 
     def post(self, request, *args, **kwargs):
-        res = Response({"ok": True})
+        # Resolve the refresh token from cookie (cookie mode) or request body (local mode).
+        refresh_token = (
+            request.COOKIES.get("refresh_token")
+            or request.data.get("refresh")
+        )
+
+        if not refresh_token:
+            return Response(
+                {"detail": "No refresh token provided."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            # Blacklist the token so it cannot be reused.
+            # This works because token_blacklist is in INSTALLED_APPS and
+            # BLACKLIST_AFTER_ROTATION=True is set in SIMPLE_JWT.
+            token = RefreshToken(refresh_token)
+            token.blacklist()
+        except TokenError:
+            # Token is already expired or invalid — still clear the cookie
+            # so the client ends up in a clean logged-out state.
+            pass
+
+        res = Response({"ok": True}, status=status.HTTP_200_OK)
         res.delete_cookie("refresh_token", path="/api/auth/")
         return res

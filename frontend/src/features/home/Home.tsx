@@ -1,24 +1,17 @@
-import HomeView from "./HomeView";
 import { useHomeController } from "./useHomeController";
+import HomeView from "./HomeView";
 
 /**
- * Container component for the Home feature.
+ * Home page — wires the controller hook to the view.
  *
- * Responsibilities:
- * - call the Home controller hook to gather page state and behaviors
- * - pass the prepared controller output into the presentational HomeView
- *
- * This keeps page logic out of the rendering layer and makes the view easier
- * to maintain, test, and evolve independently.
+ * useHomeController returns a grouped shape (rows, pagination, sort,
+ * filters, state, actions) which is spread directly into HomeView.
+ * This file intentionally stays thin — all logic lives in the controller
+ * and all rendering lives in the view.
  */
 function Home(): JSX.Element {
-    /**
-     * The controller owns Home page state, derived values, event handlers,
-     * and side effects such as loading project data.
-     */
-    const controller = useHomeController();
-
-    return <HomeView {...controller} />;
+    const props = useHomeController();
+    return <HomeView {...props} />;
 }
 
 export default Home;

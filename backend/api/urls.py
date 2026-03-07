@@ -1,11 +1,11 @@
 from django.urls import path
 from rest_framework.routers import DefaultRouter
-from .views import ProjectViewset, ProjectManagerViewset, EmployeesViewset, me
+from .views import EmployeeViewset, ManagerViewset, ProjectViewset, me
 
 router = DefaultRouter()
 router.register("project", ProjectViewset, basename="project")
-router.register("projectmanager", ProjectManagerViewset, basename="projectmanager")
-router.register("employees", EmployeesViewset, basename="employees")
+router.register("projectmanager", ManagerViewset, basename="projectmanager")
+router.register("employees", EmployeeViewset, basename="employees")
 
 urlpatterns = [
     path("me/", me, name="me"),

@@ -1,7 +1,13 @@
 from django.db import models
 
 
-class ProjectManager(models.Model):
+class Manager(models.Model):
+    """
+    Renamed from ProjectManager to avoid collision with Django's Model Manager
+    convention (e.g. MyModel.objects is a Manager instance). Having a *model*
+    named ProjectManager confused Django tooling and every developer reading
+    the code expecting a custom queryset manager, not a data model.
+    """
     name = models.CharField(unique=True, max_length=100)
     created = models.DateTimeField(auto_now_add=True)
     modified = models.DateTimeField(auto_now=True)
@@ -10,7 +16,13 @@ class ProjectManager(models.Model):
         return self.name
 
 
-class Employees(models.Model):
+class Employee(models.Model):
+    """
+    Renamed from Employees to follow Django's singular model name convention.
+    Django derives table names, reverse relations, and verbose names from the
+    model class name — plural model names produce awkward results like
+    'Employeess' in some contexts and confusing reverse relation names.
+    """
     # Names are not unique in the real world.
     first_name = models.CharField(max_length=100)
     last_name = models.CharField(max_length=100)
@@ -32,19 +44,44 @@ class Project(models.Model):
         CONFIDENTIAL = "Confidential", "Confidential"
         RESTRICTED = "Restricted", "Restricted"
 
-    # New field: required, with safe default for existing rows.
+    class Status(models.TextChoices):
+        """
+        Enforced status choices prevent free-text values from breaking
+        frontend filters and keeps the data consistent across the app.
+
+        To add a new status: add it here and create a migration.
+        Do not store raw strings in the database directly.
+        """
+        ACTIVE = "Active", "Active"
+        ON_HOLD = "On Hold", "On Hold"
+        COMPLETED = "Completed", "Completed"
+        CANCELLED = "Cancelled", "Cancelled"
+
     security_level = models.CharField(
         max_length=20,
         choices=SecurityLevel.choices,
         default=SecurityLevel.INTERNAL,
     )
     name = models.CharField(unique=True, max_length=100)
-    employees = models.ManyToManyField(Employees)
-    projectmanager = models.ForeignKey(ProjectManager, on_delete=models.CASCADE, blank=True, null=True)
+    employees = models.ManyToManyField(
+        Employee,
+        blank=True,
+        related_name="projects",
+    )
+    projectmanager = models.ForeignKey(
+        Manager,
+        on_delete=models.SET_NULL,
+        blank=True,
+        null=True,
+    )
     start_date = models.DateField()
     end_date = models.DateField()
     comments = models.CharField(max_length=500, blank=True, null=True)
-    status = models.CharField(max_length=100)
+    status = models.CharField(
+        max_length=20,
+        choices=Status.choices,
+        default=Status.ACTIVE,
+    )
     created = models.DateTimeField(auto_now_add=True)
     modified = models.DateTimeField(auto_now=True)
 

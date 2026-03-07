@@ -14,6 +14,32 @@ import type { ApiError, FetchResponse } from "../types/http";
 const baseUrl = `${import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000"}/api/`;
 
 /**
+ * Global session-expired handler.
+ *
+ * When a 401 occurs and token refresh fails, the user's session is dead.
+ * Rather than leaving them on a broken page showing a generic error, we
+ * redirect them to /login automatically.
+ *
+ * Why a callback instead of importing navigate directly:
+ * - React Router's useNavigate() only works inside React components/hooks.
+ * - fetchClient is a plain module, not a hook, so it cannot call useNavigate().
+ * - Registering a callback at app startup (see main.tsx wiring below) lets the
+ *   module trigger navigation without being coupled to React internals.
+ *
+ * Wiring (add to main.tsx or App.tsx — see instructions at bottom of this file):
+ *
+ *   import { registerSessionExpiredHandler } from "./shared/http/fetchClient";
+ *   registerSessionExpiredHandler(() => {
+ *       window.location.replace("/login");
+ *   });
+ */
+let onSessionExpired: (() => void) | null = null;
+
+export function registerSessionExpiredHandler(handler: () => void): void {
+    onSessionExpired = handler;
+}
+
+/**
  * Creates an AbortController tied to a timeout.
  */
 const withTimeout = (ms: number) => {
@@ -135,10 +161,8 @@ async function request<T = unknown>(
     /**
      * Executes the actual fetch call using the current access token.
      *
-     * This is defined as an inner helper because the request may need to be
-     * performed twice:
-     * - first attempt
-     * - second attempt after a successful token refresh
+     * Defined as an inner helper because the request may need to be
+     * retried once after a successful token refresh.
      */
     const doFetch = async () => {
         const access = tokenStore.getAccess();
@@ -165,9 +189,12 @@ async function request<T = unknown>(
         /**
          * Refresh behavior:
          * - Any 401 on non-auth endpoints triggers a single refresh attempt.
-         * - If refresh succeeds, retry the original request once.
+         * - If refresh succeeds, the original request is retried once.
+         * - If refresh fails, all local token state is cleared and the global
+         *   session-expired handler fires to redirect the user to /login.
          *
-         * This avoids brittle coupling to a specific backend error payload shape.
+         * This prevents users from being stuck on a broken page after their
+         * session expires — they are redirected to login automatically.
          */
         const isAuthEndpoint = path.startsWith("auth/");
         const shouldAttemptRefresh = res.status === 401 && !isAuthEndpoint;
@@ -176,8 +203,22 @@ async function request<T = unknown>(
             const refreshed = await refreshAccessToken();
 
             if (refreshed) {
+                // Refresh succeeded — retry the original request with the new token.
                 res = await doFetch();
                 data = await parseBody(res);
+            } else {
+                // FIX: Refresh failed — session is unrecoverable.
+                // Clear all local auth state and redirect to /login so the user
+                // is not left on a broken page with a confusing error message.
+                tokenStore.clear();
+                onSessionExpired?.();
+
+                // Throw immediately so the calling code does not attempt to
+                // process a response from a dead session.
+                const sessionErr = new Error("Session expired. Please log in again.") as ApiError;
+                sessionErr.status = 401;
+                sessionErr.code = "SESSION_EXPIRED";
+                throw sessionErr;
             }
         }
 
@@ -229,3 +270,24 @@ const FetchInstance = {
 };
 
 export default FetchInstance;
+
+/**
+ * ---------------------------------------------------------------------------
+ * WIRING INSTRUCTIONS — add this to frontend/src/main.tsx
+ * ---------------------------------------------------------------------------
+ *
+ * Import and register the session-expired handler once at app startup so that
+ * any expired session anywhere in the app redirects cleanly to /login.
+ *
+ * import { registerSessionExpiredHandler } from "./shared/http/fetchClient";
+ *
+ * registerSessionExpiredHandler(() => {
+ *     // window.location.replace does a hard redirect and clears browser history
+ *     // so the user cannot press Back and return to the broken page.
+ *     window.location.replace("/login");
+ * });
+ *
+ * Place this call BEFORE ReactDOM.createRoot(...).render(...) so the handler
+ * is registered before any API calls can be made.
+ * ---------------------------------------------------------------------------
+ */

@@ -4,6 +4,7 @@ from django.urls import include, path
 
 from api.auth_views import HybridLogoutView, HybridTokenObtainPairView, HybridTokenRefreshView
 
+
 def root(request):
     return JsonResponse({"status": "ok"})
 

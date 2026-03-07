@@ -14,9 +14,9 @@ type ThemeMode = "light" | "dark";
  * Returns the initial theme to use when the component mounts.
  *
  * Priority:
- * 1. saved theme from localStorage
- * 2. system/browser preference
- * 3. light mode fallback
+ * 1. Saved theme from localStorage
+ * 2. System/browser preference via prefers-color-scheme media query
+ * 3. Light mode as the final fallback
  */
 function getInitialTheme(): ThemeMode {
     const savedTheme = localStorage.getItem(THEME_STORAGE_KEY);
@@ -28,6 +28,10 @@ function getInitialTheme(): ThemeMode {
 
 /**
  * Toggles the application's Bootstrap light/dark theme.
+ *
+ * Writes the selected theme to localStorage so it persists across sessions,
+ * and sets the data-bs-theme attribute on the root element so Bootstrap
+ * applies the correct color scheme globally.
  */
 export default function ThemeToggle(): JSX.Element {
     const [theme, setTheme] = useState<ThemeMode>(getInitialTheme);
@@ -52,7 +56,10 @@ export default function ThemeToggle(): JSX.Element {
             aria-label={buttonLabel}
             title={buttonLabel}
         >
-            {theme === "dark" ? "☀️ Light" : "🌙 Dark"}
+            {/* FIX: Replaced mojibake-encoded emoji characters with HTML entities.
+                Previous code rendered as: â˜€ï¸ Light / ðŸŒ™ Dark
+                Caused by curly-quote/emoji corruption from a non-UTF-8 source. */}
+            {theme === "dark" ? "\u2600\uFE0F Light" : "\uD83C\uDF19 Dark"}
         </button>
     );
 }

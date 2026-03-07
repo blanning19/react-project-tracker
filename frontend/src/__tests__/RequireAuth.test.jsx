@@ -31,6 +31,28 @@ function makeJwt({ expSecondsFromNow = 3600 } = {}) {
     return `${header}.${payload}.testsig`;
 }
 
+/**
+ * Helper: builds a MemoryRouter + Routes tree using RequireAuth as a layout route.
+ *
+ * RequireAuth is now a layout route that renders <Outlet /> rather than
+ * accepting children directly.  Tests must nest the protected page as a child
+ * <Route> of the <RequireAuth> route — matching the pattern used in App.tsx.
+ */
+function renderWithRouter({ initialPath = '/' } = {}) {
+    return render(
+        <MemoryRouter initialEntries={[initialPath]}>
+            <LocationSpy />
+            <Routes>
+                <Route path="/login" element={<div>Login Page</div>} />
+                {/* Layout route — RequireAuth renders <Outlet /> for protected children */}
+                <Route element={<RequireAuth />}>
+                    <Route path="/" element={<div>Home Page</div>} />
+                </Route>
+            </Routes>
+        </MemoryRouter>
+    );
+}
+
 describe('RequireAuth', () => {
     beforeEach(() => {
         vi.clearAllMocks();
@@ -39,32 +61,7 @@ describe('RequireAuth', () => {
     test('redirects to /login when no access token', () => {
         tokenStore.getAccess.mockReturnValue(null);
 
-        render(
-            <MemoryRouter initialEntries={['/']}>
-                <Routes>
-                    <Route
-                        path="/login"
-                        element={
-                            <>
-                                <div>Login Page</div>
-                                <LocationSpy />
-                            </>
-                        }
-                    />
-                    <Route
-                        path="/"
-                        element={
-                            <>
-                                <RequireAuth>
-                                    <div>Home Page</div>
-                                </RequireAuth>
-                                <LocationSpy />
-                            </>
-                        }
-                    />
-                </Routes>
-            </MemoryRouter>
-        );
+        renderWithRouter();
 
         expect(screen.queryByText('Home Page')).not.toBeInTheDocument();
         expect(screen.getByText('Login Page')).toBeInTheDocument();
@@ -75,32 +72,7 @@ describe('RequireAuth', () => {
     test('renders children when access token exists and is not expired', () => {
         tokenStore.getAccess.mockReturnValue(makeJwt({ expSecondsFromNow: 3600 }));
 
-        render(
-            <MemoryRouter initialEntries={['/']}>
-                <Routes>
-                    <Route
-                        path="/login"
-                        element={
-                            <>
-                                <div>Login Page</div>
-                                <LocationSpy />
-                            </>
-                        }
-                    />
-                    <Route
-                        path="/"
-                        element={
-                            <>
-                                <RequireAuth>
-                                    <div>Home Page</div>
-                                </RequireAuth>
-                                <LocationSpy />
-                            </>
-                        }
-                    />
-                </Routes>
-            </MemoryRouter>
-        );
+        renderWithRouter();
 
         expect(screen.getByText('Home Page')).toBeInTheDocument();
         expect(screen.queryByText('Login Page')).not.toBeInTheDocument();
@@ -111,32 +83,7 @@ describe('RequireAuth', () => {
     test('redirects to /login when token is expired', () => {
         tokenStore.getAccess.mockReturnValue(makeJwt({ expSecondsFromNow: -10 }));
 
-        render(
-            <MemoryRouter initialEntries={['/']}>
-                <Routes>
-                    <Route
-                        path="/login"
-                        element={
-                            <>
-                                <div>Login Page</div>
-                                <LocationSpy />
-                            </>
-                        }
-                    />
-                    <Route
-                        path="/"
-                        element={
-                            <>
-                                <RequireAuth>
-                                    <div>Home Page</div>
-                                </RequireAuth>
-                                <LocationSpy />
-                            </>
-                        }
-                    />
-                </Routes>
-            </MemoryRouter>
-        );
+        renderWithRouter();
 
         expect(screen.getByText('Login Page')).toBeInTheDocument();
         expect(screen.getByTestId('location').textContent).toBe('/login');

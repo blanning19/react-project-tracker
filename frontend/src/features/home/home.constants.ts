@@ -22,8 +22,22 @@ export const HOME_DEFAULT_SORT_DIRECTION: HomeSortDirection = "asc";
 
 /**
  * Available status filter values shown in the Home filter dropdown.
+ *
+ * FIX: Updated to match backend Project.Status TextChoices.
+ * Previous values ("Open", "In progress") no longer exist in the backend.
+ *
+ * Keep in sync with:
+ * - backend:  api/models.py Project.Status
+ * - frontend: home.types.ts HomeStatusFilter
+ * - frontend: projectFormConfig.ts STATUS_OPTIONS
  */
-export const HOME_STATUS_FILTER_OPTIONS: HomeStatusFilter[] = ["All", "Open", "In progress", "Completed"];
+export const HOME_STATUS_FILTER_OPTIONS: HomeStatusFilter[] = [
+    "All",
+    "Active",
+    "On Hold",
+    "Completed",
+    "Cancelled",
+];
 
 /**
  * Default status filter used when the page first loads.

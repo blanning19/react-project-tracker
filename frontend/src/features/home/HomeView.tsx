@@ -1,511 +1,364 @@
-import type { ReactNode } from "react";
-import Dayjs from "dayjs";
-import { Link } from "react-router-dom";
-import { Alert, Badge, Button, Container, Form, Pagination, Spinner, Table } from "react-bootstrap";
-import { HOME_PAGE_SIZE_OPTIONS, HOME_STATUS_FILTER_OPTIONS } from "./home.constants";
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import {
+    Badge,
+    Button,
+    Card,
+    Col,
+    Form,
+    Row,
+    Spinner,
+    Table,
+} from "react-bootstrap";
+import { Pencil, RefreshCw, Trash2, TriangleAlert } from "lucide-react";
+import type { HomeViewProps, HomeSortKey } from "./home.types";
 import type { ProjectRecord } from "../projects/models/project.types";
-import type { HomeSortDirection, HomeSortKey, HomeStatusFilter, HomeViewProps } from "./home.types";
+import DeleteModal from "../projects/delete/DeleteModal";
 
-type AriaSortValue = "ascending" | "descending" | "none";
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
 
-/**
- * Returns the correct aria-sort value for a sortable table column.
- * Screen readers use this to announce the active sort direction.
- */
-function getAriaSortValue(
-    activeSortKey: HomeSortKey,
-    activeSortDir: HomeSortDirection,
-    columnSortKey: HomeSortKey
-): AriaSortValue {
-    if (activeSortKey !== columnSortKey) {
-        return "none";
-    }
-
-    return activeSortDir === "asc" ? "ascending" : "descending";
+function getSortIcon(key: HomeSortKey, sortKey: HomeSortKey, sortDir: "asc" | "desc"): string {
+    if (key !== sortKey) return " ⇅";
+    return sortDir === "asc" ? " ▲" : " ▼";
 }
 
-/**
- * Builds a clear screen-reader label for a sortable column button.
- * The label explains both the current state and what activating the button will do next.
- */
-function getSortButtonAriaLabel(
-    label: string,
-    activeSortKey: HomeSortKey,
-    activeSortDir: HomeSortDirection,
-    columnSortKey: HomeSortKey
-): string {
-    if (activeSortKey !== columnSortKey) {
-        return `Sort by ${label} ascending`;
+function statusVariant(status: string): string {
+    switch (status) {
+        case "Active":     return "success";
+        case "On Hold":    return "warning";
+        case "Completed":  return "primary";
+        case "Cancelled":  return "danger";
+        default:           return "secondary";
     }
-
-    return activeSortDir === "asc"
-        ? `${label} sorted ascending. Activate to sort descending`
-        : `${label} sorted descending. Activate to sort ascending`;
 }
 
-/**
- * Renders a compact sortable table header button.
- * This keeps the header clickable without making it look like a full action button.
- */
+// ---------------------------------------------------------------------------
+// Sub-components
+// ---------------------------------------------------------------------------
+
 function SortHeader({
     label,
-    sortKey,
-    activeSortKey,
-    activeSortDir,
-    onSort,
-    icon,
-}: {
-    label: string;
-    sortKey: HomeSortKey;
-    activeSortKey: HomeSortKey;
-    activeSortDir: HomeSortDirection;
-    onSort: (key: HomeSortKey) => void;
-    icon: string;
-}): JSX.Element {
-    const isActive = activeSortKey === sortKey;
-    const srStatus = !isActive ? "Not currently sorted" : activeSortDir === "asc" ? "Sorted ascending" : "Sorted descending";
-
-    return (
-        <button
-            type="button"
-            className="btn btn-link p-0 text-decoration-none text-reset fw-semibold"
-            aria-label={getSortButtonAriaLabel(label, activeSortKey, activeSortDir, sortKey)}
-            onClick={() => onSort(sortKey)}
-        >
-            <span>{label}</span>
-            <span aria-hidden="true">{icon}</span>
-            <span className="visually-hidden">. {srStatus}.</span>
-        </button>
-    );
-}
-
-/**
- * Maps each project status to a Bootstrap badge variant.
- * This gives the Status column more visual scanning value than plain text alone.
- */
-function getStatusBadgeVariant(status: string | null | undefined): string {
-    switch (status) {
-        case "Completed":
-            return "success";
-        case "In progress":
-            return "warning";
-        case "Open":
-            return "primary";
-        default:
-            return "secondary";
-    }
-}
-
-/**
- * Builds a compact page list for the pagination control.
- * The result always favors a small, readable page window with ellipses when needed.
- */
-function getVisiblePages(currentPage: number, totalPages: number): Array<number | "ellipsis-left" | "ellipsis-right"> {
-    if (totalPages <= 7) {
-        return Array.from({ length: totalPages }, (_, index) => index + 1);
-    }
-
-    // Near the beginning, show the first few pages and the last page.
-    if (currentPage <= 4) {
-        return [1, 2, 3, 4, 5, "ellipsis-right", totalPages];
-    }
-
-    // Near the end, show the first page and the last few pages.
-    if (currentPage >= totalPages - 3) {
-        return [1, "ellipsis-left", totalPages - 4, totalPages - 3, totalPages - 2, totalPages - 1, totalPages];
-    }
-
-    // In the middle, show the current page with one neighbor on each side.
-    return [1, "ellipsis-left", currentPage - 1, currentPage, currentPage + 1, "ellipsis-right", totalPages];
-}
-
-/**
- * Small reusable row for the mobile project card layout.
- * Keeps labels consistent and visually compact on narrow screens.
- */
-function MobileField({
-    label,
-    value,
-}: {
-    label: string;
-    value: ReactNode;
-}): JSX.Element {
-    return (
-        <div className="mb-2">
-            <div className="small text-body-secondary">{label}</div>
-            <div>{value}</div>
-        </div>
-    );
-}
-
-/**
- * Mobile-friendly project card used on smaller screens where a table becomes cramped.
- */
-function ProjectMobileCard({ row }: { row: ProjectRecord }): JSX.Element {
-    return (
-        <div className="border rounded p-3 mb-3 bg-body">
-            <div className="d-flex align-items-start justify-content-between gap-2 mb-3">
-                <div className="fw-semibold fs-6">{row.name ?? ""}</div>
-                <Badge bg={getStatusBadgeVariant(row.status)}>{row.status ?? ""}</Badge>
-            </div>
-
-            <MobileField label="Comments" value={row.comments ?? ""} />
-            <MobileField label="Start date" value={row.start_date ? Dayjs(row.start_date).format("MM-DD-YYYY") : ""} />
-            <MobileField label="End date" value={row.end_date ? Dayjs(row.end_date).format("MM-DD-YYYY") : ""} />
-
-            <div className="d-flex align-items-center gap-2 pt-2">
-                <Button
-                    as={Link}
-                    to={`/edit/${row.id}`}
-                    variant="outline-primary"
-                    size="sm"
-                    title={`Edit ${row.name ?? "project"}`}
-                >
-                    Edit
-                </Button>
-
-                <Button
-                    as={Link}
-                    to={`/delete/${row.id}`}
-                    variant="outline-danger"
-                    size="sm"
-                    title={`Delete ${row.name ?? "project"}`}
-                >
-                    Delete
-                </Button>
-            </div>
-        </div>
-    );
-}
-
-function HomeView({
-    loading,
-    refreshing,
-    apiError,
-    total,
-    totalPages,
-    safePage,
-    start,
-    end,
-    pageSize,
-    pageRows,
-    searchTerm,
-    statusFilter,
-    hasActiveFilters,
+    colKey,
     sortKey,
     sortDir,
-    sortIcon,
-    getData,
-    setPage,
-    setPageSize,
-    onSearchChange,
-    onStatusFilterChange,
     toggleSort,
-}: HomeViewProps): JSX.Element {
-    // Prevent the visible range from exceeding the total record count.
-    const visibleEnd = Math.min(end, total);
-
-    /**
-     * Updates the selected page size and resets the user back to page 1.
-     * Resetting avoids invalid page positions after the page size changes.
-     */
-    const onPageSizeChange = (value: number) => {
-        setPageSize(value);
-        setPage(1);
-    };
-
+}: {
+    label: string;
+    colKey: HomeSortKey;
+    sortKey: HomeSortKey;
+    sortDir: "asc" | "desc";
+    toggleSort: (key: HomeSortKey) => void;
+}) {
     return (
-        <Container className="py-4">
-            {/* Top page header with title and primary create action. */}
-            <div className="px-3 py-2 mb-3 bg-body-tertiary border rounded">
-                <div className="d-flex align-items-center justify-content-between">
-                    <strong>Projects</strong>
-                    <Button as={Link} to="/create" variant="primary" size="sm">+ Create</Button>
-                </div>
-            </div>
+        <th
+            role="button"
+            onClick={() => toggleSort(colKey)}
+            style={{ cursor: "pointer", whiteSpace: "nowrap", userSelect: "none" }}
+        >
+            {label}
+            <span className="text-body-secondary" style={{ fontSize: "0.75em" }}>
+                {getSortIcon(colKey, sortKey, sortDir)}
+            </span>
+        </th>
+    );
+}
 
-            {/* Error banner with a retry action for failed data loads. */}
-            {apiError && (
-                <Alert variant="danger" className="fw-bold">
-                    {apiError}
-                    <Button
-                        variant="outline-light"
-                        size="sm"
-                        className="ms-2"
-                        onClick={() => {
-                            void getData({ isRefresh: true });
-                        }}
-                    >
+// ---------------------------------------------------------------------------
+// Delete target state
+// ---------------------------------------------------------------------------
+
+type DeleteTarget = { id: number; name: string } | null;
+
+// ---------------------------------------------------------------------------
+// Main view
+// ---------------------------------------------------------------------------
+
+export default function HomeView({
+    rows,
+    pagination,
+    sort,
+    filters,
+    state,
+    actions,
+}: HomeViewProps) {
+    const navigate = useNavigate();
+    const [deleteTarget, setDeleteTarget] = useState<DeleteTarget>(null);
+
+    const { loading, refreshing, apiError } = state;
+    const { page, totalPages, total, start, end, pageSize, setPage, setPageSize } = pagination;
+    const { key: sortKey, dir: sortDir, toggleSort } = sort;
+    const { searchTerm, statusFilter, hasActiveFilters, onSearchChange, onStatusFilterChange } = filters;
+    const { getData } = actions;
+
+    // ── Loading skeleton ──
+    if (loading) {
+        return (
+            <div className="d-flex justify-content-center align-items-center" style={{ minHeight: 300 }}>
+                <Spinner animation="border" variant="secondary" />
+            </div>
+        );
+    }
+
+    // ── Error state ──
+    if (apiError) {
+        return (
+            <Card className="border shadow-sm">
+                <Card.Header className="pt-section-header">Projects</Card.Header>
+                <Card.Body className="text-center py-5">
+                    <TriangleAlert size={32} className="text-danger mb-3" />
+                    <div className="text-danger fw-semibold mb-2">Failed to load projects</div>
+                    <div className="text-body-secondary small mb-4">{apiError}</div>
+                    <Button variant="outline-secondary" size="sm" onClick={() => getData()}>
                         Retry
                     </Button>
-                </Alert>
+                </Card.Body>
+            </Card>
+        );
+    }
+
+    return (
+        <>
+            {/* ── Delete confirmation modal ── */}
+            {deleteTarget && (
+                <DeleteModal
+                    projectId={deleteTarget.id}
+                    projectName={deleteTarget.name}
+                    show={Boolean(deleteTarget)}
+                    onHide={() => setDeleteTarget(null)}
+                    onDeleted={() => getData({ isRefresh: true })}
+                />
             )}
 
-            {loading ? (
-                <div className="d-flex align-items-center gap-2">
-                    <Spinner animation="border" size="sm" />
-                    <span>Loading projects...</span>
-                </div>
-            ) : (
-                <>
-                    {/* Search, filter, and page-size controls for the table. */}
-                    <div className="d-flex flex-column flex-md-row gap-3 align-items-md-end justify-content-between mb-3">
-                        <div className="d-flex flex-column flex-md-row gap-3">
-                            <Form.Group>
-                                <Form.Label className="small text-body-secondary mb-1">Search</Form.Label>
+            <Card className="border shadow-sm">
+                <Card.Header className="pt-section-header">
+                    <div className="d-flex align-items-center justify-content-between flex-wrap gap-2">
+                        <span>Projects</span>
+                        <Button
+                            variant="outline-secondary"
+                            size="sm"
+                            onClick={() => getData({ isRefresh: true })}
+                            disabled={refreshing}
+                            className="d-flex align-items-center gap-1"
+                            title="Refresh"
+                        >
+                            <RefreshCw size={14} className={refreshing ? "spin-icon" : ""} />
+                            {refreshing ? "Refreshing…" : "Refresh"}
+                        </Button>
+                    </div>
+                </Card.Header>
 
-                                <Form.Control
-                                    type="text"
-                                    placeholder="Search name or comments"
-                                    value={searchTerm}
-                                    onChange={(e) => {
-                                        onSearchChange(e.target.value);
-                                    }}
-                                />
-                            </Form.Group>
-
-                            <Form.Group>
-                                <Form.Label className="small text-body-secondary mb-1">Status</Form.Label>
-
-                                <Form.Select
-                                    value={statusFilter}
-                                    onChange={(e) => {
-                                        onStatusFilterChange(e.target.value as HomeStatusFilter);
+                <Card.Body className="pb-0">
+                    {/* ── Filters ── */}
+                    <Row className="g-2 mb-3">
+                        <Col xs={12} sm={6} md={5} lg={4}>
+                            <Form.Control
+                                type="search"
+                                size="sm"
+                                placeholder="Search by name…"
+                                value={searchTerm}
+                                onChange={(e) => onSearchChange(e.target.value)}
+                            />
+                        </Col>
+                        <Col xs={12} sm={6} md={4} lg={3}>
+                            <Form.Select
+                                size="sm"
+                                value={statusFilter}
+                                onChange={(e) => onStatusFilterChange(e.target.value as typeof statusFilter)}
+                            >
+                                <option value="All">All statuses</option>
+                                <option value="Active">Active</option>
+                                <option value="On Hold">On Hold</option>
+                                <option value="Completed">Completed</option>
+                                <option value="Cancelled">Cancelled</option>
+                            </Form.Select>
+                        </Col>
+                        {hasActiveFilters && (
+                            <Col xs="auto">
+                                <Button
+                                    variant="outline-secondary"
+                                    size="sm"
+                                    onClick={() => {
+                                        onSearchChange("");
+                                        onStatusFilterChange("All");
                                     }}
                                 >
-                                    {HOME_STATUS_FILTER_OPTIONS.map((option) => (
-                                        <option key={option} value={option}>
-                                            {option}
-                                        </option>
-                                    ))}
-                                </Form.Select>
-                            </Form.Group>
+                                    Clear filters
+                                </Button>
+                            </Col>
+                        )}
+                    </Row>
+
+                    {/* ── Desktop table ── */}
+                    <div className="d-none d-md-block">
+                        <Table hover responsive className="mb-0" style={{ fontSize: "0.875rem" }}>
+                            <thead>
+                                <tr>
+                                    <SortHeader label="Name"           colKey="name"           sortKey={sortKey} sortDir={sortDir} toggleSort={toggleSort} />
+                                    <SortHeader label="Status"         colKey="status"         sortKey={sortKey} sortDir={sortDir} toggleSort={toggleSort} />
+                                    <SortHeader label="Comments"       colKey="comments"       sortKey={sortKey} sortDir={sortDir} toggleSort={toggleSort} />
+                                    <SortHeader label="Security"       colKey="security_level" sortKey={sortKey} sortDir={sortDir} toggleSort={toggleSort} />
+                                    <SortHeader label="Start"          colKey="start_date"     sortKey={sortKey} sortDir={sortDir} toggleSort={toggleSort} />
+                                    <SortHeader label="End"            colKey="end_date"       sortKey={sortKey} sortDir={sortDir} toggleSort={toggleSort} />
+                                    <th>Manager</th>
+                                    <th style={{ width: 90 }}>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {rows.length === 0 ? (
+                                    <tr>
+                                        <td colSpan={8} className="text-center text-body-secondary py-4">
+                                            {hasActiveFilters ? "No projects match your filters." : "No projects yet."}
+                                        </td>
+                                    </tr>
+                                ) : (
+                                    rows.map((project: ProjectRecord) => (
+                                        <tr key={project.id}>
+                                            <td className="fw-medium">{project.name}</td>
+                                            <td>
+                                                <Badge bg={statusVariant(project.status)} className="fw-normal">
+                                                    {project.status}
+                                                </Badge>
+                                            </td>
+                                            <td className="text-truncate" style={{ maxWidth: 180 }}>{project.comments}</td>
+                                            <td>{project.security_level}</td>
+                                            <td>{project.start_date ?? "—"}</td>
+                                            <td>{project.end_date ?? "—"}</td>
+                                            <td>
+                                                {project.projectmanager
+                                                    ? project.projectmanager.name
+                                                    : <span className="text-body-secondary">—</span>}
+                                            </td>
+                                            <td>
+                                                <div className="d-flex gap-1">
+                                                    <Button
+                                                        variant="outline-secondary"
+                                                        size="sm"
+                                                        className="p-1"
+                                                        title="Edit"
+                                                        onClick={() => navigate(`/edit/${project.id}`)}
+                                                    >
+                                                        <Pencil size={14} />
+                                                    </Button>
+                                                    <Button
+                                                        variant="outline-danger"
+                                                        size="sm"
+                                                        className="p-1"
+                                                        title="Delete"
+                                                        onClick={() => setDeleteTarget({ id: project.id, name: project.name })}
+                                                    >
+                                                        <Trash2 size={14} />
+                                                    </Button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))
+                                )}
+                            </tbody>
+                        </Table>
+                    </div>
+
+                    {/* ── Mobile cards ── */}
+                    <div className="d-md-none">
+                        {rows.length === 0 ? (
+                            <div className="text-center text-body-secondary py-4">
+                                {hasActiveFilters ? "No projects match your filters." : "No projects yet."}
+                            </div>
+                        ) : (
+                            <div className="d-flex flex-column gap-3">
+                                {rows.map((project: ProjectRecord) => (
+                                    <Card key={project.id} className="border">
+                                        <Card.Body className="p-3">
+                                            <div className="d-flex justify-content-between align-items-start mb-2">
+                                                <div className="fw-semibold" style={{ fontSize: "0.9rem" }}>{project.name}</div>
+                                                <Badge bg={statusVariant(project.status)} className="fw-normal ms-2 flex-shrink-0">
+                                                    {project.status}
+                                                </Badge>
+                                            </div>
+                                            {project.comments && (
+                                                <div className="text-body-secondary small mb-2">{project.comments}</div>
+                                            )}
+                                            <div className="d-flex flex-wrap gap-2 small text-body-secondary mb-2">
+                                                {project.projectmanager && <span>👤 {project.projectmanager.name}</span>}
+                                                {project.start_date && <span>📅 {project.start_date}</span>}
+                                                {project.end_date && <span>🏁 {project.end_date}</span>}
+                                                <span>🔒 Level {project.security_level}</span>
+                                            </div>
+                                            <div className="d-flex gap-2 justify-content-end">
+                                                <Button
+                                                    variant="outline-secondary"
+                                                    size="sm"
+                                                    onClick={() => navigate(`/edit/${project.id}`)}
+                                                >
+                                                    Edit
+                                                </Button>
+                                                <Button
+                                                    variant="outline-danger"
+                                                    size="sm"
+                                                    onClick={() => setDeleteTarget({ id: project.id, name: project.name })}
+                                                >
+                                                    Delete
+                                                </Button>
+                                            </div>
+                                        </Card.Body>
+                                    </Card>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                </Card.Body>
+
+                {/* ── Pagination ── */}
+                {total > 0 && (
+                    <Card.Footer className="d-flex align-items-center justify-content-between flex-wrap gap-2 py-2">
+                        <div className="text-body-secondary" style={{ fontSize: "0.8rem" }}>
+                            Showing {start}–{end} of {total}
                         </div>
 
                         <div className="d-flex align-items-center gap-2">
-                            <div className="small text-body-secondary">Rows:</div>
-
-                            <select
-                                className="form-select form-select-sm"
-                                style={{ width: 90 }}
+                            <Form.Select
+                                size="sm"
+                                style={{ width: "auto" }}
                                 value={pageSize}
                                 onChange={(e) => {
-                                    onPageSizeChange(Number(e.target.value));
+                                    setPageSize(Number(e.target.value));
+                                    setPage(1);
                                 }}
                             >
-                                {HOME_PAGE_SIZE_OPTIONS.map((count) => (
-                                    <option key={count} value={count}>
-                                        {count}
-                                    </option>
+                                {[10, 25, 50].map((n) => (
+                                    <option key={n} value={n}>{n} / page</option>
                                 ))}
-                            </select>
-                        </div>
-                    </div>
+                            </Form.Select>
 
-                    {/* Desktop/tablet table layout. */}
-                    <div className="d-none d-md-block">
-                        <div className="table-responsive border rounded">
-                            {refreshing && (
-                                <div className="d-flex align-items-center gap-2 small text-body-secondary p-2 border-bottom">
-                                    <Spinner animation="border" size="sm" />
-                                    <span>Refreshing projects...</span>
-                                </div>
-                            )}
-
-                            <Table striped hover responsive className="mb-0 align-middle">
-                                <thead className="pt-table-header">
-                                    <tr>
-                                        <th scope="col" className="text-nowrap" aria-sort={getAriaSortValue(sortKey, sortDir, "name")}>
-                                            <SortHeader
-                                                label="Name"
-                                                sortKey="name"
-                                                activeSortKey={sortKey}
-                                                activeSortDir={sortDir}
-                                                onSort={toggleSort}
-                                                icon={sortIcon("name")}
-                                            />
-                                        </th>
-
-                                        <th scope="col" className="text-nowrap" aria-sort={getAriaSortValue(sortKey, sortDir, "status")}>
-                                            <SortHeader
-                                                label="Status"
-                                                sortKey="status"
-                                                activeSortKey={sortKey}
-                                                activeSortDir={sortDir}
-                                                onSort={toggleSort}
-                                                icon={sortIcon("status")}
-                                            />
-                                        </th>
-
-                                        <th scope="col" className="text-nowrap" aria-sort={getAriaSortValue(sortKey, sortDir, "security")}>
-                                            <SortHeader
-                                                label="Security"
-                                                sortKey="security_level"
-                                                activeSortKey={sortKey}
-                                                activeSortDir={sortDir}
-                                                onSort={toggleSort}
-                                                icon={sortIcon("security")}
-                                            />
-                                        </th>
-
-                                        <th scope="col" className="text-nowrap" aria-sort={getAriaSortValue(sortKey, sortDir, "comments")}>
-                                            <SortHeader
-                                                label="Comments"
-                                                sortKey="comments"
-                                                activeSortKey={sortKey}
-                                                activeSortDir={sortDir}
-                                                onSort={toggleSort}
-                                                icon={sortIcon("comments")}
-                                            />
-                                        </th>
-
-                                        <th scope="col" className="text-nowrap" aria-sort={getAriaSortValue(sortKey, sortDir, "start_date")}>
-                                            <SortHeader
-                                                label="Start date"
-                                                sortKey="start_date"
-                                                activeSortKey={sortKey}
-                                                activeSortDir={sortDir}
-                                                onSort={toggleSort}
-                                                icon={sortIcon("start_date")}
-                                            />
-                                        </th>
-
-                                        <th scope="col" className="text-nowrap" aria-sort={getAriaSortValue(sortKey, sortDir, "end_date")}>
-                                            <SortHeader
-                                                label="End date"
-                                                sortKey="end_date"
-                                                activeSortKey={sortKey}
-                                                activeSortDir={sortDir}
-                                                onSort={toggleSort}
-                                                icon={sortIcon("end_date")}
-                                            />
-                                        </th>
-
-                                        <th scope="col" className="text-nowrap" style={{ width: 170 }}>
-                                            Actions
-                                        </th>
-                                    </tr>
-                                </thead>
-
-                                <tbody>
-                                    {pageRows.length === 0 ? (
-                                        <tr>
-                                            <td colSpan={7} className="text-center text-body-secondary py-4">
-                                                {hasActiveFilters
-                                                    ? "No projects match your current search or filters."
-                                                    : "No projects yet. Create your first project."}
-                                            </td>
-                                        </tr>
-                                    ) : (
-                                        pageRows.map((row) => (
-                                            <tr key={row.id}>
-                                                <td className="fw-semibold">{row.name ?? ""}</td>
-
-                                                <td>
-                                                    <Badge bg={getStatusBadgeVariant(row.status)}>{row.status ?? ""}</Badge>
-                                                </td>
-                                                <td className="text-nowrap">{row.security_level ?? ""}</td>
-
-                                                <td style={{ maxWidth: 520, whiteSpace: "normal" }}>{row.comments ?? ""}</td>
-
-                                                <td className="text-nowrap">
-                                                    {row.start_date ? Dayjs(row.start_date).format("MM-DD-YYYY") : ""}
-                                                </td>
-
-                                                <td className="text-nowrap">
-                                                    {row.end_date ? Dayjs(row.end_date).format("MM-DD-YYYY") : ""}
-                                                </td>
-
-                                                {/* Keep row actions compact while still exposing edit and delete directly. */}
-                                                <td className="text-nowrap">
-                                                    <div className="d-flex align-items-center gap-2">
-                                                        <Button
-                                                            as={Link}
-                                                            to={`/edit/${row.id}`}
-                                                            variant="outline-primary"
-                                                            size="sm"
-                                                            title={`Edit ${row.name ?? "project"}`}
-                                                        >
-                                                            Edit
-                                                        </Button>
-
-                                                        <Button
-                                                            as={Link}
-                                                            to={`/delete/${row.id}`}
-                                                            variant="outline-danger"
-                                                            size="sm"
-                                                            title={`Delete ${row.name ?? "project"}`}
-                                                        >
-                                                            Delete
-                                                        </Button>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        ))
-                                    )}
-                                </tbody>
-                            </Table>
-                        </div>
-                    </div>
-
-                    {/* Mobile card layout. */}
-                    <div className="d-md-none">
-                        {refreshing && (
-                            <div className="d-flex align-items-center gap-2 small text-body-secondary p-2 border rounded mb-3">
-                                <Spinner animation="border" size="sm" />
-                                <span>Refreshing projects...</span>
+                            <div className="d-flex gap-1">
+                                <Button
+                                    variant="outline-secondary"
+                                    size="sm"
+                                    disabled={page <= 1}
+                                    onClick={() => setPage((p) => p - 1)}
+                                >
+                                    ‹
+                                </Button>
+                                <span
+                                    className="d-flex align-items-center px-2"
+                                    style={{ fontSize: "0.8rem", whiteSpace: "nowrap" }}
+                                >
+                                    {page} / {totalPages}
+                                </span>
+                                <Button
+                                    variant="outline-secondary"
+                                    size="sm"
+                                    disabled={page >= totalPages}
+                                    onClick={() => setPage((p) => p + 1)}
+                                >
+                                    ›
+                                </Button>
                             </div>
-                        )}
-
-                        {pageRows.length === 0 ? (
-                            <div className="border rounded p-4 text-center text-body-secondary">
-                                {hasActiveFilters
-                                    ? "No projects match your current search or filters."
-                                    : "No projects yet. Create your first project."}
-                            </div>
-                        ) : (
-                            pageRows.map((row) => <ProjectMobileCard key={row.id} row={row} />)
-                        )}
-                    </div>
-
-                    {/* Footer area with record range text and a more modern numbered pagination control. */}
-                    <div className="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3 mt-3">
-                        <div className="small text-body-secondary">
-                            Showing {total === 0 ? 0 : start + 1}-{visibleEnd} of {total}
                         </div>
-
-                        <Pagination className="mb-0">
-                            <Pagination.First disabled={safePage <= 1} onClick={() => setPage(1)} />
-
-                            <Pagination.Prev
-                                disabled={safePage <= 1}
-                                onClick={() => setPage((currentPage) => Math.max(1, currentPage - 1))}
-                            />
-
-                            {getVisiblePages(safePage, totalPages).map((item, index) => {
-                                if (item === "ellipsis-left" || item === "ellipsis-right") {
-                                    return <Pagination.Ellipsis key={`${item}-${index}`} disabled />;
-                                }
-
-                                return (
-                                    <Pagination.Item key={item} active={item === safePage} onClick={() => setPage(item)}>
-                                        {item}
-                                    </Pagination.Item>
-                                );
-                            })}
-
-                            <Pagination.Next
-                                disabled={safePage >= totalPages}
-                                onClick={() => setPage((currentPage) => Math.min(totalPages, currentPage + 1))}
-                            />
-
-                            <Pagination.Last disabled={safePage >= totalPages} onClick={() => setPage(totalPages)} />
-                        </Pagination>
-                    </div>
-                </>
-            )}
-        </Container>
+                    </Card.Footer>
+                )}
+            </Card>
+        </>
     );
 }
-
-export default HomeView;

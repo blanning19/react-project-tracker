@@ -3,10 +3,6 @@ import { beforeEach, describe, expect, test, vi } from "vitest";
 import { useHomeController } from "../features/home/useHomeController";
 import * as projectApi from "../features/projects/models/project.api";
 
-/**
- * Mock the Home page API module so controller tests can fully control
- * the returned project data and error behavior.
- */
 vi.mock("../features/projects/models/project.api", () => ({
     listProjects: vi.fn(),
 }));
@@ -17,17 +13,13 @@ describe("useHomeController", () => {
     });
 
     test("loads projects on mount", async () => {
-        /**
-         * Typed reference to the mocked listProjects function.
-         * Using the module namespace keeps the mock stable and easy to configure.
-         */
         const mockedListProjects = projectApi.listProjects as ReturnType<typeof vi.fn>;
 
         mockedListProjects.mockResolvedValue([
             {
                 id: 1,
                 name: "Alpha Project",
-                status: "Open",
+                status: "Active",
                 comments: "Initial planning work",
                 start_date: "2026-03-01",
                 end_date: "2026-03-10",
@@ -36,25 +28,17 @@ describe("useHomeController", () => {
 
         const { result } = renderHook(() => useHomeController());
 
-        /**
-         * Wait for the initial async load to finish before asserting on results.
-         */
         await waitFor(() => {
-            expect(result.current.loading).toBe(false);
+            expect(result.current.state.loading).toBe(false);
         });
 
         expect(mockedListProjects).toHaveBeenCalledTimes(1);
-        expect(result.current.data).toHaveLength(1);
-        expect(result.current.apiError).toBe("");
+        expect(result.current.rows).toHaveLength(1);
+        expect(result.current.state.apiError).toBe("");
     });
 
     test("sets an api error when project loading fails", async () => {
         const mockedListProjects = projectApi.listProjects as ReturnType<typeof vi.fn>;
-
-        /**
-         * Silence the expected console.error output for this error-path test so the
-         * Vitest output stays focused on assertion results instead of known logs.
-         */
         const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
         mockedListProjects.mockRejectedValue(new Error("load failed"));
@@ -62,11 +46,12 @@ describe("useHomeController", () => {
         const { result } = renderHook(() => useHomeController());
 
         await waitFor(() => {
-            expect(result.current.loading).toBe(false);
+            expect(result.current.state.loading).toBe(false);
         });
 
-        expect(result.current.apiError).toBe("Failed to load projects.");
-        expect(result.current.data).toEqual([]);
+        expect(result.current.state.apiError).toBe("Failed to load projects.");
+        // rows is the paged slice; check total is 0
+        expect(result.current.pagination.total).toBe(0);
 
         consoleErrorSpy.mockRestore();
     });
@@ -78,7 +63,7 @@ describe("useHomeController", () => {
             {
                 id: 1,
                 name: "Alpha Project",
-                status: "Open",
+                status: "Active",
                 comments: "Initial planning work",
                 start_date: "2026-03-01",
                 end_date: "2026-03-10",
@@ -96,18 +81,15 @@ describe("useHomeController", () => {
         const { result } = renderHook(() => useHomeController());
 
         await waitFor(() => {
-            expect(result.current.loading).toBe(false);
+            expect(result.current.state.loading).toBe(false);
         });
 
-        /**
-         * Search should match both project names and project comments.
-         */
         act(() => {
-            result.current.onSearchChange("search enhancement");
+            result.current.filters.onSearchChange("search enhancement");
         });
 
-        expect(result.current.pageRows).toHaveLength(1);
-        expect(result.current.pageRows[0].name).toBe("Beta Project");
+        expect(result.current.rows).toHaveLength(1);
+        expect(result.current.rows[0].name).toBe("Beta Project");
     });
 
     test("filters projects by status", async () => {
@@ -117,7 +99,7 @@ describe("useHomeController", () => {
             {
                 id: 1,
                 name: "Alpha Project",
-                status: "Open",
+                status: "Active",
                 comments: "Initial planning work",
                 start_date: "2026-03-01",
                 end_date: "2026-03-10",
@@ -135,16 +117,16 @@ describe("useHomeController", () => {
         const { result } = renderHook(() => useHomeController());
 
         await waitFor(() => {
-            expect(result.current.loading).toBe(false);
+            expect(result.current.state.loading).toBe(false);
         });
 
         act(() => {
-            result.current.onStatusFilterChange("Completed");
+            result.current.filters.onStatusFilterChange("Completed");
         });
 
-        expect(result.current.pageRows).toHaveLength(1);
-        expect(result.current.pageRows[0].name).toBe("Beta Project");
-        expect(result.current.statusFilter).toBe("Completed");
+        expect(result.current.rows).toHaveLength(1);
+        expect(result.current.rows[0].name).toBe("Beta Project");
+        expect(result.current.filters.statusFilter).toBe("Completed");
     });
 
     test("resets the current page back to 1 when search changes", async () => {
@@ -154,7 +136,7 @@ describe("useHomeController", () => {
             Array.from({ length: 25 }, (_, index) => ({
                 id: index + 1,
                 name: index === 0 ? "Alpha Project" : `Project ${index + 1}`,
-                status: index % 2 === 0 ? "Open" : "Completed",
+                status: index % 2 === 0 ? "Active" : "Completed",
                 comments: index === 0 ? "Alpha comments" : `Comments ${index + 1}`,
                 start_date: "2026-03-01",
                 end_date: "2026-03-10",
@@ -164,23 +146,20 @@ describe("useHomeController", () => {
         const { result } = renderHook(() => useHomeController());
 
         await waitFor(() => {
-            expect(result.current.loading).toBe(false);
+            expect(result.current.state.loading).toBe(false);
         });
 
         act(() => {
-            result.current.setPage(2);
+            result.current.pagination.setPage(2);
         });
 
-        expect(result.current.safePage).toBe(2);
+        expect(result.current.pagination.page).toBe(2);
 
-        /**
-         * Search changes should always move the user back to the first page.
-         */
         act(() => {
-            result.current.onSearchChange("alpha");
+            result.current.filters.onSearchChange("alpha");
         });
 
-        expect(result.current.safePage).toBe(1);
+        expect(result.current.pagination.page).toBe(1);
     });
 
     test("resets the current page back to 1 when status filter changes", async () => {
@@ -190,7 +169,7 @@ describe("useHomeController", () => {
             Array.from({ length: 25 }, (_, index) => ({
                 id: index + 1,
                 name: `Project ${index + 1}`,
-                status: index % 2 === 0 ? "Open" : "Completed",
+                status: index % 2 === 0 ? "Active" : "Completed",
                 comments: `Comments ${index + 1}`,
                 start_date: "2026-03-01",
                 end_date: "2026-03-10",
@@ -200,20 +179,20 @@ describe("useHomeController", () => {
         const { result } = renderHook(() => useHomeController());
 
         await waitFor(() => {
-            expect(result.current.loading).toBe(false);
+            expect(result.current.state.loading).toBe(false);
         });
 
         act(() => {
-            result.current.setPage(2);
+            result.current.pagination.setPage(2);
         });
 
-        expect(result.current.safePage).toBe(2);
+        expect(result.current.pagination.page).toBe(2);
 
         act(() => {
-            result.current.onStatusFilterChange("Completed");
+            result.current.filters.onStatusFilterChange("Completed");
         });
 
-        expect(result.current.safePage).toBe(1);
+        expect(result.current.pagination.page).toBe(1);
     });
 
     test("reports active filters when search or status filter is applied", async () => {
@@ -223,7 +202,7 @@ describe("useHomeController", () => {
             {
                 id: 1,
                 name: "Alpha Project",
-                status: "Open",
+                status: "Active",
                 comments: "Initial planning work",
                 start_date: "2026-03-01",
                 end_date: "2026-03-10",
@@ -233,16 +212,16 @@ describe("useHomeController", () => {
         const { result } = renderHook(() => useHomeController());
 
         await waitFor(() => {
-            expect(result.current.loading).toBe(false);
+            expect(result.current.state.loading).toBe(false);
         });
 
-        expect(result.current.hasActiveFilters).toBe(false);
+        expect(result.current.filters.hasActiveFilters).toBe(false);
 
         act(() => {
-            result.current.onSearchChange("alpha");
+            result.current.filters.onSearchChange("alpha");
         });
 
-        expect(result.current.hasActiveFilters).toBe(true);
+        expect(result.current.filters.hasActiveFilters).toBe(true);
     });
 
     test("toggles sort direction when the same sort key is clicked twice", async () => {
@@ -252,7 +231,7 @@ describe("useHomeController", () => {
             {
                 id: 1,
                 name: "Bravo Project",
-                status: "Open",
+                status: "Active",
                 comments: "",
                 start_date: "2026-03-01",
                 end_date: "2026-03-10",
@@ -270,22 +249,18 @@ describe("useHomeController", () => {
         const { result } = renderHook(() => useHomeController());
 
         await waitFor(() => {
-            expect(result.current.loading).toBe(false);
+            expect(result.current.state.loading).toBe(false);
         });
 
-        /**
-         * Default name sort is ascending, so Alpha should appear first initially.
-         */
-        expect(result.current.pageRows[0].name).toBe("Alpha Project");
+        // Default sort is ascending by name — Alpha should be first
+        expect(result.current.rows[0].name).toBe("Alpha Project");
 
-        /**
-         * Clicking the same sort key again should toggle to descending order.
-         */
+        // Clicking the same key toggles to descending
         act(() => {
-            result.current.toggleSort("name");
+            result.current.sort.toggleSort("name");
         });
 
-        expect(result.current.pageRows[0].name).toBe("Bravo Project");
+        expect(result.current.rows[0].name).toBe("Bravo Project");
     });
 
     test("uses refreshing state during a refresh load", async () => {
@@ -296,7 +271,7 @@ describe("useHomeController", () => {
                 {
                     id: 1,
                     name: "Alpha Project",
-                    status: "Open",
+                    status: "Active",
                     comments: "Initial planning work",
                     start_date: "2026-03-01",
                     end_date: "2026-03-10",
@@ -310,7 +285,7 @@ describe("useHomeController", () => {
                                 {
                                     id: 1,
                                     name: "Alpha Project",
-                                    status: "Open",
+                                    status: "Active",
                                     comments: "Initial planning work",
                                     start_date: "2026-03-01",
                                     end_date: "2026-03-10",
@@ -323,19 +298,19 @@ describe("useHomeController", () => {
         const { result } = renderHook(() => useHomeController());
 
         await waitFor(() => {
-            expect(result.current.loading).toBe(false);
+            expect(result.current.state.loading).toBe(false);
         });
 
-        expect(result.current.refreshing).toBe(false);
+        expect(result.current.state.refreshing).toBe(false);
 
         act(() => {
-            void result.current.getData({ isRefresh: true });
+            void result.current.actions.getData({ isRefresh: true });
         });
 
-        expect(result.current.refreshing).toBe(true);
+        expect(result.current.state.refreshing).toBe(true);
 
         await waitFor(() => {
-            expect(result.current.refreshing).toBe(false);
+            expect(result.current.state.refreshing).toBe(false);
         });
     });
 
@@ -348,7 +323,7 @@ describe("useHomeController", () => {
                 {
                     id: 1,
                     name: "Alpha Project",
-                    status: "Open",
+                    status: "Active",
                     comments: "Initial planning work",
                     start_date: "2026-03-01",
                     end_date: "2026-03-10",
@@ -359,23 +334,22 @@ describe("useHomeController", () => {
         const { result } = renderHook(() => useHomeController());
 
         await waitFor(() => {
-            expect(result.current.loading).toBe(false);
+            expect(result.current.state.loading).toBe(false);
         });
 
-        expect(result.current.data).toHaveLength(1);
+        expect(result.current.pagination.total).toBe(1);
 
         act(() => {
-            void result.current.getData({ isRefresh: true });
+            void result.current.actions.getData({ isRefresh: true });
         });
 
         await waitFor(() => {
-            expect(result.current.refreshing).toBe(false);
+            expect(result.current.state.refreshing).toBe(false);
         });
 
-        expect(result.current.apiError).toBe("Failed to load projects.");
-        expect(result.current.data).toHaveLength(1);
+        expect(result.current.state.apiError).toBe("Failed to load projects.");
+        expect(result.current.pagination.total).toBe(1);
 
         consoleErrorSpy.mockRestore();
     });
-
 });

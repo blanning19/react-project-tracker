@@ -1,3 +1,4 @@
+/* ── Page header bar (top of list pages) ───────────────────────────────── */
 .page-header {
     background: #00003f;
     color: #fff;
@@ -8,40 +9,28 @@
     border-color: var(--bs-border-color);
 }
 
-/* Section card header: fixed deep green that looks good in light and dark mode. */
-.pt-section-header {
-    background-color: #0f3d2e; /* deep green */
-    border-bottom: 1px solid rgba(255, 255, 255, 0.14);
-}
-
-/* Force readable text inside the header regardless of Bootstrap utility classes. */
-.pt-section-header,
-.pt-section-header * {
-    color: #ffffff !important;
-}
-
-/* Slightly muted secondary text while staying readable. */
-.pt-section-header .text-body-secondary,
-.pt-section-header .small {
-    color: rgba(255, 255, 255, 0.78) !important;
-}
-
-/* Home table header: fixed deep green that works in light and dark mode. */
+/* ── Home table header ───────────────────────────────────────────────────── */
+/*
+ * FIX: Added !important to background-color.
+ *
+ * Bootstrap's "Table striped" variant applies its own background-color to
+ * thead th cells via --bs-table-striped-bg, which overrides the custom
+ * deep green in light mode. The !important ensures the fixed green always
+ * wins regardless of Bootstrap's striping, theming, or hover utilities.
+ */
 .pt-table-header th {
-    background-color: #0f3d2e; /* deep green */
+    background-color: #0f3d2e !important;
     color: #ffffff !important;
     border-color: rgba(255, 255, 255, 0.14) !important;
 }
-
-/* Make any header buttons/links/icons readable. */
+/* Keep sort buttons, links, and icons readable against the dark header. */
 .pt-table-header th a,
 .pt-table-header th button,
 .pt-table-header th svg,
 .pt-table-header th .text-body-secondary {
     color: #ffffff !important;
 }
-
-/* Optional: subtle hover for sortable headers (keeps same palette). */
+/* Subtle hover opacity for sortable column headers. */
 .pt-table-header th button:hover,
 .pt-table-header th a:hover {
     opacity: 0.9;

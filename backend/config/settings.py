@@ -11,15 +11,28 @@ except Exception:
     pass
 
 
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "dev-only-change-me")
-
-# SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv("DJANGO_DEBUG", "0") == "1"
 
-ALLOWED_HOSTS = [h.strip() for h in os.getenv("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1").split(",") if h.strip()]
+# SECURITY: In production, SECRET_KEY must be explicitly set via environment variable.
+# Failing loudly on startup is far safer than running with a weak default key.
+# In development (DEBUG=True), fall back to a placeholder so local setup stays easy.
+if DEBUG:
+    SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "dev-only-insecure-key-change-me")
+else:
+    _secret = os.getenv("DJANGO_SECRET_KEY")
+    if not _secret:
+        raise RuntimeError(
+            "DJANGO_SECRET_KEY environment variable is not set. "
+            "This is required in production. Set it to a long random string."
+        )
+    SECRET_KEY = _secret
 
-# When using cookie-based refresh (best-practice option), CORS credentials + CSRF become relevant.
+ALLOWED_HOSTS = [
+    h.strip()
+    for h in os.getenv("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
+    if h.strip()
+]
+
 AUTH_REFRESH_COOKIE_ENABLED = os.getenv("DJANGO_AUTH_REFRESH_COOKIE", "0") == "1"
 
 
@@ -34,7 +47,7 @@ INSTALLED_APPS = [
     "rest_framework",
     "corsheaders",
 
-    # Enable if you use refresh-token rotation/blacklisting (recommended when JWT is used)
+    # Required for refresh token blacklisting (used by HybridLogoutView)
     "rest_framework_simplejwt.token_blacklist",
 
     "api",
@@ -51,7 +64,7 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
-ROOT_URLCONF = "crud.urls"
+ROOT_URLCONF = "config.urls"
 
 TEMPLATES = [
     {
@@ -69,7 +82,7 @@ TEMPLATES = [
     },
 ]
 
-WSGI_APPLICATION = "crud.wsgi.application"
+WSGI_APPLICATION = "config.wsgi.application"
 
 
 # Database (PostgreSQL only)
@@ -104,7 +117,6 @@ STATIC_URL = "static/"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 
-# DRF defaults (pagination + JWT)
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
         "rest_framework_simplejwt.authentication.JWTAuthentication",
@@ -114,35 +126,43 @@ REST_FRAMEWORK = {
     ),
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
     "PAGE_SIZE": int(os.getenv("DRF_PAGE_SIZE", "50")),
+    "DEFAULT_THROTTLE_CLASSES": [
+        "rest_framework.throttling.AnonRateThrottle",
+        "rest_framework.throttling.UserRateThrottle",
+    ],
+    "DEFAULT_THROTTLE_RATES": {
+        "anon": os.getenv("THROTTLE_ANON_RATE", "20/min"),
+        "user": os.getenv("THROTTLE_USER_RATE", "200/min"),
+    },
 }
 
-# SimpleJWT hardening defaults (rotation + blacklist)
+_jwt_signing_key = os.environ.get("DJANGO_JWT_SIGNING_KEY")
+if not DEBUG and not _jwt_signing_key:
+    raise RuntimeError(
+        "DJANGO_JWT_SIGNING_KEY environment variable is not set. "
+        "Set it to a separate secret from DJANGO_SECRET_KEY for production use."
+    )
+
 SIMPLE_JWT = {
     "ROTATE_REFRESH_TOKENS": True,
     "BLACKLIST_AFTER_ROTATION": True,
-    # Tune these to your needs
-    "ACCESS_TOKEN_LIFETIME": int(os.getenv("JWT_ACCESS_MINUTES", "10")),  # minutes
-    "REFRESH_TOKEN_LIFETIME": int(os.getenv("JWT_REFRESH_DAYS", "7")),    # days
-    "SIGNING_KEY": os.environ.get("DJANGO_JWT_SIGNING_KEY", SECRET_KEY),
+    "SIGNING_KEY": _jwt_signing_key or SECRET_KEY,
 }
 
-# NOTE: Django expects timedelta objects for lifetimes; we convert below.
-from datetime import timedelta  # noqa: E402
-SIMPLE_JWT["ACCESS_TOKEN_LIFETIME"] = timedelta(minutes=SIMPLE_JWT["ACCESS_TOKEN_LIFETIME"])
-SIMPLE_JWT["REFRESH_TOKEN_LIFETIME"] = timedelta(days=SIMPLE_JWT["REFRESH_TOKEN_LIFETIME"])
+CORS_ALLOWED_ORIGINS = [
+    o.strip()
+    for o in os.getenv("CORS_ALLOWED_ORIGINS", "http://localhost:5173").split(",")
+    if o.strip()
+]
+
+CSRF_TRUSTED_ORIGINS = [
+    o.strip()
+    for o in os.getenv("CSRF_TRUSTED_ORIGINS", "").split(",")
+    if o.strip()
+]
 
 
-# CORS
-# Comma-separated list. Examples:
-#   http://localhost:5173,http://localhost:3000
-CORS_ALLOWED_ORIGINS = [o.strip() for o in os.getenv("CORS_ALLOWED_ORIGINS", "http://localhost:5173").split(",") if o.strip()]
-CORS_ALLOW_CREDENTIALS = AUTH_REFRESH_COOKIE_ENABLED
-
-# When using cookie auth, you must configure CSRF trusted origins (scheme + host + optional port)
-CSRF_TRUSTED_ORIGINS = [o.strip() for o in os.getenv("CSRF_TRUSTED_ORIGINS", "").split(",") if o.strip()]
-
-
-# Production security (only when DEBUG is off)
+# Production security settings — only applied when DEBUG is off.
 if not DEBUG:
     SECURE_SSL_REDIRECT = os.getenv("DJANGO_SECURE_SSL_REDIRECT", "1") == "1"
     SESSION_COOKIE_SECURE = True

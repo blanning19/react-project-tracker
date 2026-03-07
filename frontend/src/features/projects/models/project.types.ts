@@ -1,5 +1,9 @@
 export type SecurityLevel = "Public" | "Internal" | "Confidential" | "Restricted";
 
+/**
+ * Shape of a person record returned by the API for project manager
+ * and employee lookups (/api/projectmanager/ and /api/employees/).
+ */
 export interface PersonOption {
     id: number;
     name?: string;
@@ -7,6 +11,16 @@ export interface PersonOption {
     last_name?: string;
 }
 
+/**
+ * Shape of a project record returned by GET /api/project/ and
+ * GET /api/project/:id/ (ProjectReadSerializer).
+ *
+ * FIX: projectmanager and employees are now always nested objects on reads,
+ * never raw IDs. The union types have been tightened to reflect this.
+ *
+ * The write endpoints (POST/PUT/PATCH) accept IDs — that is handled
+ * separately in projectFormConfig.ts via formToPayload().
+ */
 export interface ProjectRecord {
     id: number;
     name: string;
@@ -14,8 +28,8 @@ export interface ProjectRecord {
     status?: string;
     start_date?: string | null;
     end_date?: string | null;
-    projectmanager?: number | PersonOption | null;
-    employees?: Array<number | PersonOption>;
+    projectmanager?: PersonOption | null;
+    employees?: PersonOption[];
     security_level: SecurityLevel;
 }
 

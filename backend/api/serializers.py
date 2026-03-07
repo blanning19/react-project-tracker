@@ -1,18 +1,86 @@
 from rest_framework import serializers
-from .models import Employees, Project, ProjectManager
+from .models import Employee, Manager, Project
 
 
-class ProjectSerializer(serializers.ModelSerializer):
-    employees = serializers.PrimaryKeyRelatedField(many=True, queryset=Employees.objects.all())
+class ManagerSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Manager
+        fields = ("id", "name")
+
+
+class EmployeeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Employee
+        fields = ("id", "first_name", "last_name", "email")
+
+
+# ---------------------------------------------------------------------------
+# Split read / write serializers for Project
+# ---------------------------------------------------------------------------
+#
+# Why split:
+# - Read (GET):  the frontend needs human-readable names for display in the
+#   Home table and Edit form pre-population. Returning raw IDs forces the
+#   frontend to do a second lookup or maintain its own ID→name map.
+# - Write (POST/PUT/PATCH): the frontend submits IDs from select dropdowns,
+#   so PrimaryKeyRelatedField is still the correct write representation.
+#
+# The viewset uses get_serializer_class() to select the right one per action.
+# ---------------------------------------------------------------------------
+
+class ProjectReadSerializer(serializers.ModelSerializer):
+    """
+    Used for GET (list + detail).
+    Returns nested objects for projectmanager and employees so the frontend
+    gets names directly without additional lookups.
+    """
+    employees = EmployeeSerializer(many=True, read_only=True)
+    projectmanager = ManagerSerializer(read_only=True)
+
+    class Meta:
+        model = Project
+        fields = (
+            "id",
+            "name",
+            "projectmanager",
+            "start_date",
+            "employees",
+            "end_date",
+            "comments",
+            "status",
+            "security_level",
+        )
+
+
+class ProjectWriteSerializer(serializers.ModelSerializer):
+    """
+    Used for POST, PUT, PATCH.
+    Accepts IDs for projectmanager and employees, matching what the frontend
+    dropdowns submit.
+    """
+    employees = serializers.PrimaryKeyRelatedField(
+        many=True,
+        queryset=Employee.objects.all(),
+    )
     projectmanager = serializers.PrimaryKeyRelatedField(
-        queryset=ProjectManager.objects.all(),
+        queryset=Manager.objects.all(),
         required=False,
         allow_null=True,
     )
 
     class Meta:
         model = Project
-        fields = ("id", "name", "projectmanager", "start_date", "employees", "end_date", "comments", "status", "security_level",)
+        fields = (
+            "id",
+            "name",
+            "projectmanager",
+            "start_date",
+            "employees",
+            "end_date",
+            "comments",
+            "status",
+            "security_level",
+        )
 
     def create(self, validated_data):
         employees = validated_data.pop("employees", [])
@@ -26,15 +94,3 @@ class ProjectSerializer(serializers.ModelSerializer):
         if employees is not None:
             instance.employees.set(employees)
         return instance
-
-
-class ProjectManagerSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = ProjectManager
-        fields = ("name", "id")
-
-
-class EmployeesSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Employees
-        fields = ("first_name", "last_name", "email", "id")

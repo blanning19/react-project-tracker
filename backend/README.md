@@ -4,6 +4,7 @@ Backend API for the Project Tracker application.
 
 - Django and Django REST Framework
 - PostgreSQL
+- Structured JSON logging (production) / human-readable logging (development)
 - Optional cookie based refresh auth mode
 
 ---
@@ -21,6 +22,7 @@ Backend API for the Project Tracker application.
 - [API Notes](#api-notes)
 - [Auth Modes](#auth-modes)
 - [CORS and CSRF](#cors-and-csrf)
+- [Logging](#logging)
 - [Testing](#testing)
 - [Troubleshooting](#troubleshooting)
 - [Production Notes](#production-notes)
@@ -32,6 +34,7 @@ Backend API for the Project Tracker application.
 - Django
 - Django REST Framework
 - django-filter
+- python-json-logger
 - PostgreSQL
 - Optional environment loading with `python-dotenv`
 
@@ -68,7 +71,7 @@ Copy-Item .env.example .env
 
 2) Update `backend/.env` as needed.
 
-Common variables (names may vary depending on `backend/crud/settings.py`):
+Common variables:
 
 Django:
 - `DJANGO_DEBUG=1`
@@ -76,11 +79,11 @@ Django:
 - `DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1`
 
 PostgreSQL:
-- `DB_NAME=myappdb`
-- `DB_USER=postgres`
-- `DB_PASSWORD=admin`
-- `DB_HOST=127.0.0.1`
-- `DB_PORT=5432`
+- `POSTGRES_DB=myappdb`
+- `POSTGRES_USER=postgres`
+- `POSTGRES_PASSWORD=admin`
+- `POSTGRES_HOST=127.0.0.1`
+- `POSTGRES_PORT=5432`
 
 Cookie mode support (only if enabled in your settings):
 - `DJANGO_AUTH_REFRESH_COOKIE=0|1`
@@ -186,14 +189,14 @@ Admin site:
 
 ## API Notes
 
-Typical endpoints (router names may vary):
+Endpoints:
 
-- `GET /api/project/` list projects (paginated)
-- `POST /api/project/` create project
-- `GET /api/project/<id>/` project detail
-- `PUT /api/project/<id>/` update project
-- `PATCH /api/project/<id>/` partial update
-- `DELETE /api/project/<id>/` delete project
+- `GET /api/projects/` list projects (paginated)
+- `POST /api/projects/` create project
+- `GET /api/projects/<id>/` project detail
+- `PUT /api/projects/<id>/` update project
+- `PATCH /api/projects/<id>/` partial update
+- `DELETE /api/projects/<id>/` delete project
 
 Related lists (no pagination — always returns full list):
 - `GET /api/employees/`
@@ -203,14 +206,14 @@ Related lists (no pagination — always returns full list):
 
 The list endpoint supports filtering, searching, ordering, and pagination:
 
-| Parameter        | Example                   | Description                                      |
-|------------------|---------------------------|--------------------------------------------------|
-| `page`           | `?page=2`                 | Page number (default: 1)                         |
-| `page_size`      | `?page_size=25`           | Results per page (default: 50, max: 200)         |
+| Parameter        | Example                   | Description                                         |
+|------------------|---------------------------|-----------------------------------------------------|
+| `page`           | `?page=2`                 | Page number (default: 1)                            |
+| `page_size`      | `?page_size=25`           | Results per page (default: 50, max: 200)            |
 | `search`         | `?search=alpha`           | Search project name and comments (case-insensitive) |
-| `status`         | `?status=Active`          | Exact match on status                            |
-| `security_level` | `?security_level=Internal`| Exact match on security level                    |
-| `ordering`       | `?ordering=-start_date`   | Sort field, prefix with `-` for descending       |
+| `status`         | `?status=Active`          | Exact match on status                               |
+| `security_level` | `?security_level=Internal`| Exact match on security level                       |
+| `ordering`       | `?ordering=-start_date`   | Sort field, prefix with `-` for descending          |
 
 Valid `ordering` fields: `name`, `status`, `start_date`, `end_date`, `security_level`, `modified`
 
@@ -262,6 +265,28 @@ Backend `.env` example:
 Common symptoms:
 - Refresh works in Postman but fails in browser: credentials or CORS mismatch
 - 403 errors: CSRF trusted origins missing or misconfigured
+
+---
+
+## Logging
+
+Logging behaviour is controlled by `DJANGO_DEBUG`:
+
+- `DEBUG=1` (development): human-readable output to the console
+- `DEBUG=0` (production): structured JSON output for log aggregators (Datadog, CloudWatch, etc.)
+
+The `api` logger is available for application-level log statements:
+
+```python
+import logging
+logger = logging.getLogger("api")
+logger.info("project created", extra={"project_id": instance.id})
+```
+
+Log levels by logger:
+- `django` — INFO and above
+- `django.request` — WARNING and above (captures 4xx/5xx)
+- `api` — DEBUG in development, INFO in production
 
 ---
 
@@ -319,8 +344,7 @@ Minimum hardening:
 - HTTPS / reverse proxy
 - Run behind a production server such as Gunicorn or Uvicorn and a reverse proxy
 
-Recommended improvements:
-- Structured logging
-- Error tracking such as Sentry
-- Security headers and content security policy
-- Dependency updates and vulnerability scanning
+Recommended next steps:
+- Sentry error tracking (`sentry-sdk`)
+- Security headers and content security policy (`django-csp`)
+- Dependency vulnerability scanning (`pip-audit`)

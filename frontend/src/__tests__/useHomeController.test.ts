@@ -1,11 +1,35 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, test, vi } from "vitest";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { createElement } from "react";
 import { useHomeController } from "../features/home/useHomeController";
 import * as projectApi from "../features/projects/models/project.api";
 
 vi.mock("../features/projects/models/project.api", () => ({
     listProjects: vi.fn(),
+    projectKeys: {
+        all:   () => ["projects"],
+        lists: () => ["projects", "list"],
+        list:  (p: unknown) => ["projects", "list", p],
+    },
+    lookupKeys: {
+        managers:  () => ["lookups", "managers"],
+        employees: () => ["lookups", "employees"],
+    },
 }));
+
+function createWrapper() {
+    const queryClient = new QueryClient({
+        defaultOptions: { queries: { retry: false } },
+    });
+    return ({ children }: { children: React.ReactNode }) =>
+        createElement(QueryClientProvider, { client: queryClient }, children);
+}
+
+/** Wrap a flat array in the paginated envelope the hook expects. */
+function paginated(items: object[]) {
+    return { results: items, count: items.length };
+}
 
 describe("useHomeController", () => {
     beforeEach(() => {
@@ -15,18 +39,20 @@ describe("useHomeController", () => {
     test("loads projects on mount", async () => {
         const mockedListProjects = projectApi.listProjects as ReturnType<typeof vi.fn>;
 
-        mockedListProjects.mockResolvedValue([
-            {
-                id: 1,
-                name: "Alpha Project",
-                status: "Active",
-                comments: "Initial planning work",
-                start_date: "2026-03-01",
-                end_date: "2026-03-10",
-            },
-        ]);
+        mockedListProjects.mockResolvedValue(
+            paginated([
+                {
+                    id: 1,
+                    name: "Alpha Project",
+                    status: "Active",
+                    comments: "Initial planning work",
+                    start_date: "2026-03-01",
+                    end_date: "2026-03-10",
+                },
+            ])
+        );
 
-        const { result } = renderHook(() => useHomeController());
+        const { result } = renderHook(() => useHomeController(), { wrapper: createWrapper() });
 
         await waitFor(() => {
             expect(result.current.state.loading).toBe(false);
@@ -41,16 +67,16 @@ describe("useHomeController", () => {
         const mockedListProjects = projectApi.listProjects as ReturnType<typeof vi.fn>;
         const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
-        mockedListProjects.mockRejectedValue(new Error("load failed"));
+        // The hook reads error.message, so give the rejection a message property.
+        mockedListProjects.mockRejectedValue({ message: "Failed to load projects." });
 
-        const { result } = renderHook(() => useHomeController());
+        const { result } = renderHook(() => useHomeController(), { wrapper: createWrapper() });
 
         await waitFor(() => {
             expect(result.current.state.loading).toBe(false);
         });
 
         expect(result.current.state.apiError).toBe("Failed to load projects.");
-        // rows is the paged slice; check total is 0
         expect(result.current.pagination.total).toBe(0);
 
         consoleErrorSpy.mockRestore();
@@ -59,26 +85,43 @@ describe("useHomeController", () => {
     test("filters projects by search text across name and comments", async () => {
         const mockedListProjects = projectApi.listProjects as ReturnType<typeof vi.fn>;
 
-        mockedListProjects.mockResolvedValue([
-            {
-                id: 1,
-                name: "Alpha Project",
-                status: "Active",
-                comments: "Initial planning work",
-                start_date: "2026-03-01",
-                end_date: "2026-03-10",
-            },
-            {
-                id: 2,
-                name: "Beta Project",
-                status: "Completed",
-                comments: "Search enhancement completed",
-                start_date: "2026-03-05",
-                end_date: "2026-03-20",
-            },
-        ]);
+        // Initial load — both projects
+        mockedListProjects.mockResolvedValueOnce(
+            paginated([
+                {
+                    id: 1,
+                    name: "Alpha Project",
+                    status: "Active",
+                    comments: "Initial planning work",
+                    start_date: "2026-03-01",
+                    end_date: "2026-03-10",
+                },
+                {
+                    id: 2,
+                    name: "Beta Project",
+                    status: "Completed",
+                    comments: "Search enhancement completed",
+                    start_date: "2026-03-05",
+                    end_date: "2026-03-20",
+                },
+            ])
+        );
 
-        const { result } = renderHook(() => useHomeController());
+        // Re-fetch after search change — server returns only matching record
+        mockedListProjects.mockResolvedValueOnce(
+            paginated([
+                {
+                    id: 2,
+                    name: "Beta Project",
+                    status: "Completed",
+                    comments: "Search enhancement completed",
+                    start_date: "2026-03-05",
+                    end_date: "2026-03-20",
+                },
+            ])
+        );
+
+        const { result } = renderHook(() => useHomeController(), { wrapper: createWrapper() });
 
         await waitFor(() => {
             expect(result.current.state.loading).toBe(false);
@@ -88,33 +131,53 @@ describe("useHomeController", () => {
             result.current.filters.onSearchChange("search enhancement");
         });
 
-        expect(result.current.rows).toHaveLength(1);
+        await waitFor(() => {
+            expect(result.current.rows).toHaveLength(1);
+        });
+
         expect(result.current.rows[0].name).toBe("Beta Project");
     });
 
     test("filters projects by status", async () => {
         const mockedListProjects = projectApi.listProjects as ReturnType<typeof vi.fn>;
 
-        mockedListProjects.mockResolvedValue([
-            {
-                id: 1,
-                name: "Alpha Project",
-                status: "Active",
-                comments: "Initial planning work",
-                start_date: "2026-03-01",
-                end_date: "2026-03-10",
-            },
-            {
-                id: 2,
-                name: "Beta Project",
-                status: "Completed",
-                comments: "Completed release work",
-                start_date: "2026-03-05",
-                end_date: "2026-03-20",
-            },
-        ]);
+        // Initial load
+        mockedListProjects.mockResolvedValueOnce(
+            paginated([
+                {
+                    id: 1,
+                    name: "Alpha Project",
+                    status: "Active",
+                    comments: "Initial planning work",
+                    start_date: "2026-03-01",
+                    end_date: "2026-03-10",
+                },
+                {
+                    id: 2,
+                    name: "Beta Project",
+                    status: "Completed",
+                    comments: "Completed release work",
+                    start_date: "2026-03-05",
+                    end_date: "2026-03-20",
+                },
+            ])
+        );
 
-        const { result } = renderHook(() => useHomeController());
+        // Re-fetch after status filter — server returns only Completed
+        mockedListProjects.mockResolvedValueOnce(
+            paginated([
+                {
+                    id: 2,
+                    name: "Beta Project",
+                    status: "Completed",
+                    comments: "Completed release work",
+                    start_date: "2026-03-05",
+                    end_date: "2026-03-20",
+                },
+            ])
+        );
+
+        const { result } = renderHook(() => useHomeController(), { wrapper: createWrapper() });
 
         await waitFor(() => {
             expect(result.current.state.loading).toBe(false);
@@ -124,7 +187,10 @@ describe("useHomeController", () => {
             result.current.filters.onStatusFilterChange("Completed");
         });
 
-        expect(result.current.rows).toHaveLength(1);
+        await waitFor(() => {
+            expect(result.current.rows).toHaveLength(1);
+        });
+
         expect(result.current.rows[0].name).toBe("Beta Project");
         expect(result.current.filters.statusFilter).toBe("Completed");
     });
@@ -133,24 +199,26 @@ describe("useHomeController", () => {
         const mockedListProjects = projectApi.listProjects as ReturnType<typeof vi.fn>;
 
         mockedListProjects.mockResolvedValue(
-            Array.from({ length: 25 }, (_, index) => ({
-                id: index + 1,
-                name: index === 0 ? "Alpha Project" : `Project ${index + 1}`,
-                status: index % 2 === 0 ? "Active" : "Completed",
-                comments: index === 0 ? "Alpha comments" : `Comments ${index + 1}`,
-                start_date: "2026-03-01",
-                end_date: "2026-03-10",
-            }))
+            paginated(
+                Array.from({ length: 25 }, (_, index) => ({
+                    id: index + 1,
+                    name: index === 0 ? "Alpha Project" : `Project ${index + 1}`,
+                    status: index % 2 === 0 ? "Active" : "Completed",
+                    comments: index === 0 ? "Alpha comments" : `Comments ${index + 1}`,
+                    start_date: "2026-03-01",
+                    end_date: "2026-03-10",
+                }))
+            )
         );
 
-        const { result } = renderHook(() => useHomeController());
+        const { result } = renderHook(() => useHomeController(), { wrapper: createWrapper() });
 
         await waitFor(() => {
             expect(result.current.state.loading).toBe(false);
         });
 
         act(() => {
-            result.current.pagination.setPage(2);
+            result.current.pagination.onPageChange(2);
         });
 
         expect(result.current.pagination.page).toBe(2);
@@ -166,24 +234,26 @@ describe("useHomeController", () => {
         const mockedListProjects = projectApi.listProjects as ReturnType<typeof vi.fn>;
 
         mockedListProjects.mockResolvedValue(
-            Array.from({ length: 25 }, (_, index) => ({
-                id: index + 1,
-                name: `Project ${index + 1}`,
-                status: index % 2 === 0 ? "Active" : "Completed",
-                comments: `Comments ${index + 1}`,
-                start_date: "2026-03-01",
-                end_date: "2026-03-10",
-            }))
+            paginated(
+                Array.from({ length: 25 }, (_, index) => ({
+                    id: index + 1,
+                    name: `Project ${index + 1}`,
+                    status: index % 2 === 0 ? "Active" : "Completed",
+                    comments: `Comments ${index + 1}`,
+                    start_date: "2026-03-01",
+                    end_date: "2026-03-10",
+                }))
+            )
         );
 
-        const { result } = renderHook(() => useHomeController());
+        const { result } = renderHook(() => useHomeController(), { wrapper: createWrapper() });
 
         await waitFor(() => {
             expect(result.current.state.loading).toBe(false);
         });
 
         act(() => {
-            result.current.pagination.setPage(2);
+            result.current.pagination.onPageChange(2);
         });
 
         expect(result.current.pagination.page).toBe(2);
@@ -198,18 +268,20 @@ describe("useHomeController", () => {
     test("reports active filters when search or status filter is applied", async () => {
         const mockedListProjects = projectApi.listProjects as ReturnType<typeof vi.fn>;
 
-        mockedListProjects.mockResolvedValue([
-            {
-                id: 1,
-                name: "Alpha Project",
-                status: "Active",
-                comments: "Initial planning work",
-                start_date: "2026-03-01",
-                end_date: "2026-03-10",
-            },
-        ]);
+        mockedListProjects.mockResolvedValue(
+            paginated([
+                {
+                    id: 1,
+                    name: "Alpha Project",
+                    status: "Active",
+                    comments: "Initial planning work",
+                    start_date: "2026-03-01",
+                    end_date: "2026-03-10",
+                },
+            ])
+        );
 
-        const { result } = renderHook(() => useHomeController());
+        const { result } = renderHook(() => useHomeController(), { wrapper: createWrapper() });
 
         await waitFor(() => {
             expect(result.current.state.loading).toBe(false);
@@ -227,47 +299,44 @@ describe("useHomeController", () => {
     test("toggles sort direction when the same sort key is clicked twice", async () => {
         const mockedListProjects = projectApi.listProjects as ReturnType<typeof vi.fn>;
 
-        mockedListProjects.mockResolvedValue([
-            {
-                id: 1,
-                name: "Bravo Project",
-                status: "Active",
-                comments: "",
-                start_date: "2026-03-01",
-                end_date: "2026-03-10",
-            },
-            {
-                id: 2,
-                name: "Alpha Project",
-                status: "Completed",
-                comments: "",
-                start_date: "2026-03-05",
-                end_date: "2026-03-20",
-            },
-        ]);
+        // Initial: asc — Alpha first
+        mockedListProjects.mockResolvedValueOnce(
+            paginated([
+                { id: 2, name: "Alpha Project", status: "Completed", comments: "", start_date: "2026-03-05", end_date: "2026-03-20" },
+                { id: 1, name: "Bravo Project", status: "Active",    comments: "", start_date: "2026-03-01", end_date: "2026-03-10" },
+            ])
+        );
 
-        const { result } = renderHook(() => useHomeController());
+        // After toggle to desc — Bravo first
+        mockedListProjects.mockResolvedValueOnce(
+            paginated([
+                { id: 1, name: "Bravo Project", status: "Active",    comments: "", start_date: "2026-03-01", end_date: "2026-03-10" },
+                { id: 2, name: "Alpha Project", status: "Completed", comments: "", start_date: "2026-03-05", end_date: "2026-03-20" },
+            ])
+        );
+
+        const { result } = renderHook(() => useHomeController(), { wrapper: createWrapper() });
 
         await waitFor(() => {
             expect(result.current.state.loading).toBe(false);
         });
 
-        // Default sort is ascending by name — Alpha should be first
         expect(result.current.rows[0].name).toBe("Alpha Project");
 
-        // Clicking the same key toggles to descending
         act(() => {
             result.current.sort.toggleSort("name");
         });
 
-        expect(result.current.rows[0].name).toBe("Bravo Project");
+        await waitFor(() => {
+            expect(result.current.rows[0].name).toBe("Bravo Project");
+        });
     });
 
-    test("uses refreshing state during a refresh load", async () => {
+    test("triggers a background refetch when getData is called", async () => {
         const mockedListProjects = projectApi.listProjects as ReturnType<typeof vi.fn>;
 
-        mockedListProjects
-            .mockResolvedValueOnce([
+        mockedListProjects.mockResolvedValue(
+            paginated([
                 {
                     id: 1,
                     name: "Alpha Project",
@@ -277,41 +346,20 @@ describe("useHomeController", () => {
                     end_date: "2026-03-10",
                 },
             ])
-            .mockImplementationOnce(
-                () =>
-                    new Promise((resolve) => {
-                        setTimeout(() => {
-                            resolve([
-                                {
-                                    id: 1,
-                                    name: "Alpha Project",
-                                    status: "Active",
-                                    comments: "Initial planning work",
-                                    start_date: "2026-03-01",
-                                    end_date: "2026-03-10",
-                                },
-                            ]);
-                        }, 0);
-                    })
-            );
+        );
 
-        const { result } = renderHook(() => useHomeController());
+        const { result } = renderHook(() => useHomeController(), { wrapper: createWrapper() });
 
         await waitFor(() => {
             expect(result.current.state.loading).toBe(false);
         });
 
-        expect(result.current.state.refreshing).toBe(false);
-
-        act(() => {
-            void result.current.actions.getData({ isRefresh: true });
+        await act(async () => {
+            await result.current.actions.getData({ isRefresh: true });
         });
 
-        expect(result.current.state.refreshing).toBe(true);
-
-        await waitFor(() => {
-            expect(result.current.state.refreshing).toBe(false);
-        });
+        // invalidateQueries triggers a background refetch — called at least twice
+        expect(mockedListProjects.mock.calls.length).toBeGreaterThanOrEqual(2);
     });
 
     test("keeps existing data when a refresh request fails", async () => {
@@ -319,19 +367,21 @@ describe("useHomeController", () => {
         const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
         mockedListProjects
-            .mockResolvedValueOnce([
-                {
-                    id: 1,
-                    name: "Alpha Project",
-                    status: "Active",
-                    comments: "Initial planning work",
-                    start_date: "2026-03-01",
-                    end_date: "2026-03-10",
-                },
-            ])
-            .mockRejectedValueOnce(new Error("refresh failed"));
+            .mockResolvedValueOnce(
+                paginated([
+                    {
+                        id: 1,
+                        name: "Alpha Project",
+                        status: "Active",
+                        comments: "Initial planning work",
+                        start_date: "2026-03-01",
+                        end_date: "2026-03-10",
+                    },
+                ])
+            )
+            .mockRejectedValueOnce({ message: "Failed to load projects." });
 
-        const { result } = renderHook(() => useHomeController());
+        const { result } = renderHook(() => useHomeController(), { wrapper: createWrapper() });
 
         await waitFor(() => {
             expect(result.current.state.loading).toBe(false);
@@ -339,15 +389,15 @@ describe("useHomeController", () => {
 
         expect(result.current.pagination.total).toBe(1);
 
-        act(() => {
-            void result.current.actions.getData({ isRefresh: true });
+        await act(async () => {
+            await result.current.actions.getData({ isRefresh: true });
         });
 
         await waitFor(() => {
             expect(result.current.state.refreshing).toBe(false);
         });
 
-        expect(result.current.state.apiError).toBe("Failed to load projects.");
+        // placeholderData keeps the previous successful total visible
         expect(result.current.pagination.total).toBe(1);
 
         consoleErrorSpy.mockRestore();

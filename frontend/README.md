@@ -7,6 +7,7 @@ Frontend UI for the Project Tracker application.
 - React Query for server state and caching
 - React Hook Form with Yup validation
 - Vitest testing
+- Playwright E2E testing
 - ESLint and Prettier
 - Feature based architecture
 
@@ -39,6 +40,7 @@ Frontend UI for the Project Tracker application.
 - React Query (`@tanstack/react-query`)
 - React Hook Form and Yup
 - Vitest and Testing Library
+- Playwright (E2E)
 - ESLint and Prettier
 
 ---
@@ -101,9 +103,10 @@ Run these from `frontend/`:
 - `npm run dev` start dev server
 - `npm run build` build production bundle
 - `npm run preview` preview production build
-- `npm run test:run` run tests once
-- `npm test` run tests in watch mode
+- `npm run test:run` run unit tests once
+- `npm test` run unit tests in watch mode
 - `npm run test:ui` run tests with UI
+- `npm run test:e2e` run Playwright E2E tests (backend must be running)
 - `npm run lint` lint the codebase
 - `npm run format` format with Prettier
 - `npm run format:check` verify formatting
@@ -131,6 +134,8 @@ src/
     theme/
     types/
   __tests__/
+e2e/
+  smoke.spec.ts
 ```
 
 ---
@@ -149,12 +154,12 @@ src/
 ## API integration notes
 
 Endpoints:
-- `GET /api/project/` list projects (paginated — see query params below)
-- `POST /api/project/` create project
-- `GET /api/project/:id/` project detail
-- `PUT /api/project/:id/` update project
-- `PATCH /api/project/:id/` partial update
-- `DELETE /api/project/:id/` delete project
+- `GET /api/projects/` list projects (paginated — see query params below)
+- `POST /api/projects/` create project
+- `GET /api/projects/:id/` project detail
+- `PUT /api/projects/:id/` update project
+- `PATCH /api/projects/:id/` partial update
+- `DELETE /api/projects/:id/` delete project
 
 Related lists (always return full list, no pagination):
 - `GET /api/employees/`
@@ -206,7 +211,9 @@ React Query Devtools are included in development builds and appear in the bottom
 
 ## Testing
 
-Run tests once:
+### Unit tests
+
+Run once:
 
 ```powershell
 npm run test:run
@@ -217,6 +224,16 @@ Watch mode:
 ```powershell
 npm test
 ```
+
+### E2E tests (Playwright)
+
+Requires the backend to be running at `http://127.0.0.1:8000`.
+
+```powershell
+npm run test:e2e
+```
+
+E2E tests use env vars `E2E_USERNAME` / `E2E_PASSWORD` (defaults: `User1` / `password1`).
 
 General guidance:
 - Prefer user visible behavior tests
@@ -263,6 +280,11 @@ ESLint TypeScript parsing errors:
 React Query `No QueryClient set` error:
 - Confirm `QueryClientProvider` wraps the app in `main.tsx`
 - Confirm `@tanstack/react-query` is installed (`npm install @tanstack/react-query @tanstack/react-query-devtools`)
+
+E2E tests stuck on `/login`:
+- Confirm the backend is running before starting Playwright
+- Confirm `E2E_USERNAME` / `E2E_PASSWORD` match a real user in the database
+- Re-seed if needed: `python manage.py seed_projects --clear-all`
 
 ---
 

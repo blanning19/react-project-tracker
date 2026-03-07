@@ -208,3 +208,63 @@ if not DEBUG:
     SECURE_HSTS_PRELOAD = True
     SECURE_CONTENT_TYPE_NOSNIFF = True
     X_FRAME_OPTIONS = "DENY"
+
+# ---------------------------------------------------------------------------
+# Logging
+# ---------------------------------------------------------------------------
+#
+# In development (DEBUG=True): human-readable output to the console.
+# In production (DEBUG=False): structured JSON output so log aggregators
+# (Datadog, CloudWatch, etc.) can parse fields without regex.
+#
+# Loggers:
+#   django        — framework-level messages (startup, requests, errors)
+#   django.request — 4xx/5xx responses; outputs WARNING+ so 404s are visible
+#   api           — application logger; use logging.getLogger("api") in views
+#
+# Usage in application code:
+#   import logging
+#   logger = logging.getLogger("api")
+#   logger.info("project created", extra={"project_id": instance.id})
+
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "human": {
+            "format": "[{asctime}] {levelname} {name}: {message}",
+            "style": "{",
+        },
+        "json": {
+            "()": "pythonjsonlogger.jsonlogger.JsonFormatter",
+            "fmt": "%(asctime)s %(levelname)s %(name)s %(message)s",
+        },
+    },
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "formatter": "human" if DEBUG else "json",
+        },
+    },
+    "root": {
+        "handlers": ["console"],
+        "level": "WARNING",
+    },
+    "loggers": {
+        "django": {
+            "handlers": ["console"],
+            "level": "INFO",
+            "propagate": False,
+        },
+        "django.request": {
+            "handlers": ["console"],
+            "level": "WARNING",
+            "propagate": False,
+        },
+        "api": {
+            "handlers": ["console"],
+            "level": "DEBUG" if DEBUG else "INFO",
+            "propagate": False,
+        },
+    },
+}

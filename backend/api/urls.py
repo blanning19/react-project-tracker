@@ -3,7 +3,7 @@ from rest_framework.routers import DefaultRouter
 from .views import EmployeeViewset, ManagerViewset, ProjectViewset, me
 
 router = DefaultRouter()
-router.register("project", ProjectViewset, basename="project")
+router.register("projects", ProjectViewset, basename="project")
 router.register("projectmanager", ManagerViewset, basename="projectmanager")
 router.register("employees", EmployeeViewset, basename="employees")
 

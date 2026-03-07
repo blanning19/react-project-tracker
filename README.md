@@ -69,8 +69,8 @@ python manage.py runserver
 # Apply migrations
 python manage.py migrate
 
-# Run tests (if configured)
-python manage.py test
+# Run tests
+pytest
 ```
 
 ### Frontend (`frontend/`)
@@ -81,6 +81,9 @@ npm run dev
 
 # Run tests
 npm run test:run
+
+# E2E tests (backend must be running)
+npm run test:e2e
 
 # Lint
 npm run lint
@@ -105,8 +108,3 @@ For full details and required backend variables, see `backend/README.md` and `fr
 - Set a strong `DJANGO_SECRET_KEY`
 - Configure `DJANGO_ALLOWED_HOSTS` to real hostnames
 - Run behind HTTPS and keep the `DEBUG=False` security settings enabled
-- Consider:
-  - rate limiting/throttling on auth endpoints
-  - structured logging
-  - Sentry/observability
-  - CSP headers for the frontend

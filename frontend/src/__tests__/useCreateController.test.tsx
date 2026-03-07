@@ -1,5 +1,7 @@
 import { renderHook, waitFor, act } from "@testing-library/react";
 import { describe, test, expect, beforeEach, vi } from "vitest";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { createElement } from "react";
 import * as yup from "yup";
 import { useCreateController } from "../features/projects/create/useCreateController";
 import * as projectApi from "../features/projects/models/project.api";
@@ -14,6 +16,8 @@ vi.mock("../features/projects/models/project.api", () => ({
     createProject: vi.fn(),
     getEmployees: vi.fn(),
     getProjectManagers: vi.fn(),
+    projectKeys: { all: () => ["projects"], list: (p: unknown) => ["projects", "list", p] },
+    lookupKeys: { managers: () => ["lookups", "managers"], employees: () => ["lookups", "employees"] },
 }));
 
 vi.mock("../features/projects/shared/projectFormConfig", () => ({
@@ -43,6 +47,14 @@ vi.mock("../features/projects/shared/projectFormConfig", () => ({
     })),
 }));
 
+function createWrapper() {
+    const queryClient = new QueryClient({
+        defaultOptions: { queries: { retry: false } },
+    });
+    return ({ children }: { children: React.ReactNode }) =>
+        createElement(QueryClientProvider, { client: queryClient }, children);
+}
+
 describe("useCreateController", () => {
     beforeEach(() => {
         vi.clearAllMocks();
@@ -59,7 +71,7 @@ describe("useCreateController", () => {
             { id: 10, first_name: "Bob", last_name: "Employee" },
         ]);
 
-        const { result } = renderHook(() => useCreateController());
+        const { result } = renderHook(() => useCreateController(), { wrapper: createWrapper() });
 
         await waitFor(() => {
             expect(result.current.loading).toBe(false);
@@ -81,13 +93,13 @@ describe("useCreateController", () => {
             mockedGetProjectManagers.mockRejectedValue(new Error("lookup load failed"));
             mockedGetEmployees.mockResolvedValue([]);
 
-            const { result } = renderHook(() => useCreateController());
+            const { result } = renderHook(() => useCreateController(), { wrapper: createWrapper() });
 
             await waitFor(() => {
                 expect(result.current.loading).toBe(false);
             });
 
-            expect(result.current.apiError).toBe("Failed to load dropdown data.");
+            expect(result.current.apiError).toBe("Failed to load dropdown data. Please retry.");
         } finally {
             consoleErrorSpy.mockRestore();
         }
@@ -102,7 +114,7 @@ describe("useCreateController", () => {
         mockedGetEmployees.mockResolvedValue([]);
         mockedCreateProject.mockResolvedValue({ id: 42 });
 
-        const { result } = renderHook(() => useCreateController());
+        const { result } = renderHook(() => useCreateController(), { wrapper: createWrapper() });
 
         await waitFor(() => {
             expect(result.current.loading).toBe(false);
@@ -142,13 +154,9 @@ describe("useCreateController", () => {
         try {
             mockedGetProjectManagers.mockResolvedValue([]);
             mockedGetEmployees.mockResolvedValue([]);
-            mockedCreateProject.mockRejectedValue({
-                response: {
-                    status: 500,
-                },
-            });
+            mockedCreateProject.mockRejectedValue({ response: { status: 500 } });
 
-            const { result } = renderHook(() => useCreateController());
+            const { result } = renderHook(() => useCreateController(), { wrapper: createWrapper() });
 
             await waitFor(() => {
                 expect(result.current.loading).toBe(false);

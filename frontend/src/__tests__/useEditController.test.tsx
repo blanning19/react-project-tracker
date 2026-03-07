@@ -1,5 +1,7 @@
 import { renderHook, waitFor, act } from "@testing-library/react";
 import { describe, test, expect, beforeEach, vi } from "vitest";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { createElement } from "react";
 import * as yup from "yup";
 import { useEditController } from "../features/projects/edit/useEditController";
 import * as projectApi from "../features/projects/models/project.api";
@@ -16,6 +18,8 @@ vi.mock("../features/projects/models/project.api", () => ({
     getProject: vi.fn(),
     getProjectManagers: vi.fn(),
     updateProject: vi.fn(),
+    projectKeys: { all: () => ["projects"], detail: (id: unknown) => ["projects", "detail", String(id)] },
+    lookupKeys: { managers: () => ["lookups", "managers"], employees: () => ["lookups", "employees"] },
 }));
 
 vi.mock("../features/projects/shared/projectFormConfig", () => ({
@@ -55,6 +59,14 @@ vi.mock("../features/projects/shared/projectFormConfig", () => ({
     })),
 }));
 
+function createWrapper() {
+    const queryClient = new QueryClient({
+        defaultOptions: { queries: { retry: false } },
+    });
+    return ({ children }: { children: React.ReactNode }) =>
+        createElement(QueryClientProvider, { client: queryClient }, children);
+}
+
 describe("useEditController", () => {
     beforeEach(() => {
         vi.clearAllMocks();
@@ -68,17 +80,12 @@ describe("useEditController", () => {
         mockedGetProjectManagers.mockResolvedValue([
             { id: 1, first_name: "Alice", last_name: "Manager" },
         ]);
-
         mockedGetEmployees.mockResolvedValue([
             { id: 10, first_name: "Bob", last_name: "Employee" },
         ]);
+        mockedGetProject.mockResolvedValue({ id: 42, name: "Loaded Project" });
 
-        mockedGetProject.mockResolvedValue({
-            id: 42,
-            name: "Loaded Project",
-        });
-
-        const { result } = renderHook(() => useEditController());
+        const { result } = renderHook(() => useEditController(), { wrapper: createWrapper() });
 
         await waitFor(() => {
             expect(result.current.loading).toBe(false);
@@ -102,9 +109,6 @@ describe("useEditController", () => {
         const mockedGetEmployees = projectApi.getEmployees as ReturnType<typeof vi.fn>;
         const mockedGetProject = projectApi.getProject as ReturnType<typeof vi.fn>;
 
-        /**
-         * Suppress expected console.error noise for this intentional error-path test.
-         */
         const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
         try {
@@ -112,13 +116,13 @@ describe("useEditController", () => {
             mockedGetEmployees.mockResolvedValue([]);
             mockedGetProject.mockRejectedValue(new Error("project load failed"));
 
-            const { result } = renderHook(() => useEditController());
+            const { result } = renderHook(() => useEditController(), { wrapper: createWrapper() });
 
             await waitFor(() => {
                 expect(result.current.loading).toBe(false);
             });
 
-            expect(result.current.apiError).toBe("Failed to load project data.");
+            expect(result.current.apiError).toBe("Failed to load project data. Please retry.");
         } finally {
             consoleErrorSpy.mockRestore();
         }
@@ -135,7 +139,7 @@ describe("useEditController", () => {
         mockedGetProject.mockResolvedValue({ id: 42 });
         mockedUpdateProject.mockResolvedValue({ id: 42 });
 
-        const { result } = renderHook(() => useEditController());
+        const { result } = renderHook(() => useEditController(), { wrapper: createWrapper() });
 
         await waitFor(() => {
             expect(result.current.loading).toBe(false);
@@ -173,22 +177,15 @@ describe("useEditController", () => {
         const mockedGetProject = projectApi.getProject as ReturnType<typeof vi.fn>;
         const mockedUpdateProject = projectApi.updateProject as ReturnType<typeof vi.fn>;
 
-        /**
-         * Suppress expected console.error noise for this intentional error-path test.
-         */
         const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
         try {
             mockedGetProjectManagers.mockResolvedValue([]);
             mockedGetEmployees.mockResolvedValue([]);
             mockedGetProject.mockResolvedValue({ id: 42 });
-            mockedUpdateProject.mockRejectedValue({
-                response: {
-                    status: 500,
-                },
-            });
+            mockedUpdateProject.mockRejectedValue({ response: { status: 500 } });
 
-            const { result } = renderHook(() => useEditController());
+            const { result } = renderHook(() => useEditController(), { wrapper: createWrapper() });
 
             await waitFor(() => {
                 expect(result.current.loading).toBe(false);

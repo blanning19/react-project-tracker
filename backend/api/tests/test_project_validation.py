@@ -5,13 +5,15 @@ from api.models import Employee, Manager
 @pytest.mark.django_db
 class TestProjectValidation:
     """
-    Validates that the API enforces field-level constraints correctly.
+    Validates that the API enforces field-level and cross-field constraints.
 
     Tests cover:
     - required fields
+    - whitespace normalization and rejection
     - status TextChoices enforcement
     - security_level TextChoices enforcement
     - duplicate name rejection
+    - date-range business validation
     """
 
     @pytest.fixture
@@ -61,6 +63,40 @@ class TestProjectValidation:
         assert r.status_code == 400
         assert "end_date" in r.data
 
+    def test_whitespace_only_name_rejected(self, auth_client, base_payload):
+        """A name containing only spaces should be rejected by the API."""
+        payload = {
+            **base_payload,
+            "name": "     ",
+        }
+
+        r = auth_client.post("/api/projects/", payload, format="json")
+        assert r.status_code == 400
+        assert "name" in r.data
+
+    def test_name_is_trimmed_before_save(self, auth_client, base_payload):
+        """Leading and trailing spaces should be removed before save."""
+        payload = {
+            **base_payload,
+            "name": "  Valid Project Trimmed  ",
+        }
+
+        r = auth_client.post("/api/projects/", payload, format="json")
+        assert r.status_code in (200, 201)
+        assert r.data["name"] == "Valid Project Trimmed"
+
+    def test_end_date_cannot_be_before_start_date(self, auth_client, base_payload):
+        """The API must reject projects whose end date is before the start date."""
+        payload = {
+            **base_payload,
+            "start_date": "2025-12-31",
+            "end_date": "2025-01-01",
+        }
+
+        r = auth_client.post("/api/projects/", payload, format="json")
+        assert r.status_code == 400
+        assert "end_date" in r.data
+
     def test_invalid_status_rejected(self, auth_client, base_payload):
         """
         Status uses TextChoices — invalid values should be rejected.
@@ -69,7 +105,7 @@ class TestProjectValidation:
         """
         r = auth_client.post(
             "/api/projects/",
-            {**base_payload, "status": "In progress"},  # old invalid value
+            {**base_payload, "status": "In progress"},
             format="json",
         )
         assert r.status_code == 400
@@ -106,3 +142,36 @@ class TestProjectValidation:
         )
         assert r.status_code == 400
         assert "security_level" in r.data
+
+    def test_patch_rejects_invalid_date_range(self, auth_client, base_payload):
+        """PATCH must not allow a valid project to become invalid."""
+        create = auth_client.post("/api/projects/", base_payload, format="json")
+        assert create.status_code in (200, 201)
+
+        project_id = create.data["id"]
+
+        r = auth_client.patch(
+            f"/api/projects/{project_id}/",
+            {"end_date": "2024-01-01"},
+            format="json",
+        )
+        assert r.status_code == 400
+        assert "end_date" in r.data
+
+    def test_put_rejects_invalid_date_range(self, auth_client, base_payload):
+        """PUT must enforce the same date-range validation as create."""
+        create = auth_client.post("/api/projects/", base_payload, format="json")
+        assert create.status_code in (200, 201)
+
+        project_id = create.data["id"]
+
+        payload = {
+            **base_payload,
+            "name": "Updated Project",
+            "start_date": "2025-10-01",
+            "end_date": "2025-01-01",
+        }
+
+        r = auth_client.put(f"/api/projects/{project_id}/", payload, format="json")
+        assert r.status_code == 400
+        assert "end_date" in r.data

@@ -159,7 +159,17 @@ export function useProjectFormController({ mode, projectId = "" }: UseProjectFor
                 });
             }
 
-            navigate("/");
+            // Pass a success message through router state so HomeView can display
+            // a confirmation banner. Using state avoids a global store and the
+            // message is automatically discarded if the user navigates away and back.
+            navigate("/", {
+                state: {
+                    successMessage:
+                        mode === "edit"
+                            ? "Project updated successfully."
+                            : "Project created successfully.",
+                },
+            });
         },
 
         onError: (err) => {

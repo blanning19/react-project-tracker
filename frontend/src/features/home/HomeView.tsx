@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import {
+    Alert,
     Badge,
     Button,
     Card,
@@ -10,7 +11,7 @@ import {
     Spinner,
     Table,
 } from "react-bootstrap";
-import { Calendar, CalendarCheck, Lock, Pencil, RefreshCw, Trash2, TriangleAlert, User } from "lucide-react";
+import { Calendar, CalendarCheck, Lock, Pencil, Plus, RefreshCw, Trash2, TriangleAlert, User } from "lucide-react";
 import type { HomeViewProps, HomeSortKey } from "./home.types";
 import { HOME_PAGE_SIZE_OPTIONS } from "./home.constants";
 import type { ProjectRecord } from "../projects/models/project.types";
@@ -85,7 +86,18 @@ export default function HomeView({
     actions,
 }: HomeViewProps) {
     const navigate = useNavigate();
+    const location = useLocation();
     const [deleteTarget, setDeleteTarget] = useState<DeleteTarget>(null);
+
+    // Read success message passed via router state from Create/Edit on save.
+    // Replace the history entry immediately so the message does not reappear
+    // if the user refreshes the page.
+    const successMessage =
+        (location.state as { successMessage?: string } | null)?.successMessage ?? "";
+
+    if (successMessage) {
+        navigate(location.pathname, { replace: true, state: {} });
+    }
 
     const { loading, refreshing, apiError } = state;
 
@@ -147,21 +159,43 @@ export default function HomeView({
                 <Card.Header className="pt-section-header">
                     <div className="d-flex align-items-center justify-content-between flex-wrap gap-2">
                         <span>Projects</span>
-                        <Button
-                            variant="outline-secondary"
-                            size="sm"
-                            onClick={() => void getData({ isRefresh: true })}
-                            disabled={refreshing}
-                            className="d-flex align-items-center gap-1"
-                            aria-label="Refresh projects"
-                        >
-                            <RefreshCw size={14} className={refreshing ? "spin-icon" : ""} />
-                            {refreshing ? "Refreshing…" : "Refresh"}
-                        </Button>
+                        <div className="d-flex align-items-center gap-2">
+                            <Button
+                                variant="dark"
+                                size="sm"
+                                className="d-flex align-items-center gap-1"
+                                onClick={() => navigate("/create")}
+                            >
+                                <Plus size={14} />
+                                Add Project
+                            </Button>
+                            <Button
+                                variant="outline-secondary"
+                                size="sm"
+                                onClick={() => void getData()}
+                                disabled={refreshing}
+                                className="d-flex align-items-center gap-1"
+                                aria-label="Refresh projects"
+                            >
+                                <RefreshCw size={14} className={refreshing ? "spin-icon" : ""} />
+                                {refreshing ? "Refreshing…" : "Refresh"}
+                            </Button>
+                        </div>
                     </div>
                 </Card.Header>
 
                 <Card.Body className="pb-0">
+                    {/* ── Success banner ── */}
+                    {successMessage && (
+                        <Alert
+                            variant="success"
+                            className="py-2 px-3 small mb-3 d-flex align-items-center justify-content-between"
+                            aria-live="polite"
+                        >
+                            {successMessage}
+                        </Alert>
+                    )}
+
                     {/* ── Filters ── */}
                     <Row className="g-2 mb-3">
                         <Col xs={12} sm={6} md={5} lg={4}>
@@ -238,8 +272,8 @@ export default function HomeView({
                                             <td>{project.start_date ?? "—"}</td>
                                             <td>{project.end_date ?? "—"}</td>
                                             <td>
-                                                {project.manager
-                                                    ? project.manager.name
+                                                {project.projectmanager
+                                                    ? project.projectmanager.name
                                                     : <span className="text-body-secondary">—</span>}
                                             </td>
                                             <td>
@@ -292,10 +326,10 @@ export default function HomeView({
                                                 <div className="text-body-secondary small mb-2">{project.comments}</div>
                                             )}
                                             <div className="d-flex flex-wrap gap-2 small text-body-secondary mb-2">
-                                                {project.manager && (
+                                                {project.projectmanager && (
                                                     <span className="d-flex align-items-center gap-1">
                                                         <User size={12} />
-                                                        {project.manager.name}
+                                                        {project.projectmanager.name}
                                                     </span>
                                                 )}
                                                 {project.start_date && (

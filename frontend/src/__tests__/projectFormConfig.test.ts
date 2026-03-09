@@ -29,7 +29,7 @@ describe("DEFAULT_VALUES", () => {
         expect(DEFAULT_VALUES.name).toBe("");
         expect(DEFAULT_VALUES.comments).toBe("");
         expect(DEFAULT_VALUES.status).toBe("");
-        expect(DEFAULT_VALUES.projectmanager).toBe("");
+        expect(DEFAULT_VALUES.managerId).toBe("");
         expect(DEFAULT_VALUES.start_date).toBe("");
         expect(DEFAULT_VALUES.end_date).toBe("");
     });
@@ -48,7 +48,7 @@ describe("DEFAULT_VALUES", () => {
 describe("PROJECT_SCHEMA", () => {
     const validData = {
         name: "My Project",
-        projectmanager: "1",
+        managerId: "1",
         status: "Active",
         employees: ["10"],
         comments: "Some notes",
@@ -66,8 +66,8 @@ describe("PROJECT_SCHEMA", () => {
         await expect(PROJECT_SCHEMA.validate(data)).rejects.toThrow("Name is a required field");
     });
 
-    test("rejects when projectmanager is missing", async () => {
-        const data = { ...validData, projectmanager: "" };
+    test("rejects when managerId is missing", async () => {
+        const data = { ...validData, managerId: "" };
         await expect(PROJECT_SCHEMA.validate(data)).rejects.toThrow(
             "Project manager is a required field"
         );
@@ -141,7 +141,7 @@ describe("projectToFormValues", () => {
         expect(result.security_level).toBe("Confidential");
     });
 
-    test("converts projectmanager object to string id", () => {
+    test("converts projectmanager object to managerId string", () => {
         const result = projectToFormValues({
             id: 1,
             name: "Alpha",
@@ -154,7 +154,7 @@ describe("projectToFormValues", () => {
             security_level: "Internal",
         });
 
-        expect(result.projectmanager).toBe("5");
+        expect(result.managerId).toBe("5");
     });
 
     test("keeps projectmanager as string when it arrives as a primitive string id", () => {
@@ -170,7 +170,7 @@ describe("projectToFormValues", () => {
             security_level: "Internal",
         });
 
-        expect(result.projectmanager).toBe("7");
+        expect(result.managerId).toBe("7");
     });
 
     test("converts employee objects to string ids", () => {
@@ -266,14 +266,14 @@ describe("formToPayload", () => {
         name: "My Project",
         comments: "Notes here",
         status: "Active",
-        projectmanager: "3",
+        managerId: "3",
         employees: ["10", "11"],
         start_date: "2026-03-01",
         end_date: "2026-12-31",
         security_level: "Confidential" as const,
     };
 
-    test("converts projectmanager string to a number", () => {
+    test("converts managerId string to backend projectmanager number", () => {
         const payload = formToPayload(baseForm);
         expect(payload.projectmanager).toBe(3);
         expect(typeof payload.projectmanager).toBe("number");

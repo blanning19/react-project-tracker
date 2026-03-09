@@ -24,10 +24,7 @@ function TestWrapper({
         <ProjectFormFields
             control={form.control}
             errors={{}}
-
-            // REMARK: Prop renamed from `projectManagers` to `managers`.
             managers={[]}
-
             employees={employees}
             statusOptions={STATUS_OPTIONS}
         />
@@ -45,12 +42,10 @@ describe("ProjectFormFields", () => {
         const checkboxes = screen.getAllByRole("checkbox");
         expect(checkboxes).toHaveLength(3);
 
-        // Alphabetical order: Brad Lanning, Mattie Smith, Rocco Jones
         expect(screen.getByLabelText("Brad Lanning")).toBeInTheDocument();
         expect(screen.getByLabelText("Mattie Smith")).toBeInTheDocument();
         expect(screen.getByLabelText("Rocco Jones")).toBeInTheDocument();
 
-        // None checked on initial render
         expect(getCheckedCount()).toBe(0);
     });
 
@@ -71,7 +66,6 @@ describe("ProjectFormFields", () => {
         expect(screen.getByLabelText("Brad Lanning")).not.toBeChecked();
     });
 
-    // Button label changed from "Clear selected" → "Clear all"
     test("clear all removes every selected employee", () => {
         render(
             <TestWrapper
@@ -92,8 +86,6 @@ describe("ProjectFormFields", () => {
         expect(screen.getByLabelText("Rocco Jones")).not.toBeChecked();
     });
 
-    // Non-matching employees are unmounted from the DOM when filtered,
-    // so we check presence rather than visibility.
     test("filters the employee list using the search input", () => {
         render(<TestWrapper />);
 
@@ -120,7 +112,6 @@ describe("ProjectFormFields", () => {
         render(<TestWrapper employees={[]} />);
 
         expect(screen.getByText("No employees available.")).toBeInTheDocument();
-        // "Clear all" is a button; disabled when count is 0
         expect(screen.getByRole("button", { name: "Clear all" })).toBeDisabled();
     });
 
@@ -131,7 +122,6 @@ describe("ProjectFormFields", () => {
         expect(screen.getByLabelText("Mattie Smith")).toBeChecked();
         expect(getCheckedCount()).toBe(1);
 
-        // Filter to only Mattie — Brad and Rocco are unmounted
         fireEvent.change(screen.getByPlaceholderText("Search employees\u2026"), {
             target: { value: "matt" },
         });
@@ -140,7 +130,6 @@ describe("ProjectFormFields", () => {
         expect(screen.getByLabelText("Mattie Smith")).toBeChecked();
         expect(screen.queryByLabelText("Rocco Jones")).not.toBeInTheDocument();
 
-        // Clear search — all three visible again
         fireEvent.change(screen.getByPlaceholderText("Search employees\u2026"), {
             target: { value: "" },
         });

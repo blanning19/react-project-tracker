@@ -25,7 +25,7 @@ vi.mock("../features/projects/shared/projectFormConfig", () => ({
         name: "",
         comments: "",
         status: "",
-        projectmanager: "",
+        managerId: "",
         employees: [],
         start_date: "",
         end_date: "",
@@ -35,7 +35,7 @@ vi.mock("../features/projects/shared/projectFormConfig", () => ({
         name: yup.string().required(),
         comments: yup.string().default(""),
         status: yup.string().required(),
-        projectmanager: yup.mixed().required(),
+        managerId: yup.mixed().required(),
         employees: yup.array().default([]),
         start_date: yup.string().default(""),
         end_date: yup.string().default(""),
@@ -79,10 +79,7 @@ describe("useCreateController", () => {
 
         expect(mockedGetManagers).toHaveBeenCalledTimes(1);
         expect(mockedGetEmployees).toHaveBeenCalledTimes(1);
-
-        // REMARK: Controller return value renamed from `projectManagers` to `managers`.
         expect(result.current.managers).toHaveLength(1);
-
         expect(result.current.employees).toHaveLength(1);
         expect(result.current.apiError).toBe("");
     });
@@ -128,7 +125,7 @@ describe("useCreateController", () => {
                 name: "New Project",
                 comments: "New project comments",
                 status: "Open",
-                projectmanager: "2",
+                managerId: "2",
                 employees: ["10"],
                 start_date: "2026-03-01",
                 end_date: "2026-03-20",
@@ -170,7 +167,7 @@ describe("useCreateController", () => {
                     name: "New Project",
                     comments: "",
                     status: "Open",
-                    projectmanager: "1",
+                    managerId: "1",
                     employees: [],
                     start_date: "",
                     end_date: "",

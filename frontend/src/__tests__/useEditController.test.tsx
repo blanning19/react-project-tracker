@@ -27,7 +27,7 @@ vi.mock("../features/projects/shared/projectFormConfig", () => ({
         name: "",
         comments: "",
         status: "",
-        projectmanager: "",
+        managerId: "",
         employees: [],
         start_date: "",
         end_date: "",
@@ -37,7 +37,7 @@ vi.mock("../features/projects/shared/projectFormConfig", () => ({
         name: yup.string().required(),
         comments: yup.string().default(""),
         status: yup.string().required(),
-        projectmanager: yup.mixed().required(),
+        managerId: yup.mixed().required(),
         employees: yup.array().default([]),
         start_date: yup.string().default(""),
         end_date: yup.string().default(""),
@@ -51,7 +51,7 @@ vi.mock("../features/projects/shared/projectFormConfig", () => ({
         name: "Loaded Project",
         comments: "Existing project comments",
         status: "Open",
-        projectmanager: "1",
+        managerId: "1",
         employees: ["10", "11"],
         start_date: "2026-03-01",
         end_date: "2026-03-31",
@@ -98,7 +98,7 @@ describe("useEditController", () => {
         expect(result.current.getValues("name")).toBe("Loaded Project");
         expect(result.current.getValues("comments")).toBe("Existing project comments");
         expect(result.current.getValues("status")).toBe("Open");
-        expect(result.current.getValues("projectmanager")).toBe("1");
+        expect(result.current.getValues("managerId")).toBe("1");
         expect(result.current.getValues("employees")).toEqual(["10", "11"]);
         expect(result.current.getValues("security_level")).toBe("Confidential");
         expect(result.current.apiError).toBe("");
@@ -150,7 +150,7 @@ describe("useEditController", () => {
                 name: "Updated Project",
                 comments: "Updated comments",
                 status: "Completed",
-                projectmanager: "2",
+                managerId: "2",
                 employees: ["10"],
                 start_date: "2026-03-01",
                 end_date: "2026-03-20",
@@ -196,7 +196,7 @@ describe("useEditController", () => {
                     name: "Updated Project",
                     comments: "",
                     status: "Open",
-                    projectmanager: "1",
+                    managerId: "1",
                     employees: [],
                     start_date: "",
                     end_date: "",

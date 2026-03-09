@@ -1,7 +1,7 @@
 export type SecurityLevel = "Public" | "Internal" | "Confidential" | "Restricted";
 
 /**
- * Shape of a person record returned by the API for project manager
+ * Shape of a person record returned by the API for manager
  * and employee lookups (/api/managers/ and /api/employees/).
  */
 export interface PersonOption {
@@ -15,9 +15,10 @@ export interface PersonOption {
  * Shape of a project record returned by GET /api/projects/ and
  * GET /api/projects/:id/ (ProjectReadSerializer).
  *
- * projectmanager and employees are always nested objects on reads.
- * The write endpoints (POST/PUT/PATCH) accept IDs — handled in
- * projectFormConfig.ts via formToPayload().
+ * REMARK: The API still returns `projectmanager` for now.
+ * Option A only cleans up the frontend form/UI boundary, not the backend
+ * contract. We will translate `projectmanager` <-> `managerId` in
+ * projectFormConfig.ts.
  */
 export interface ProjectRecord {
     id: number;
@@ -38,11 +39,18 @@ export interface PaginatedResponse<T> {
     results: T[];
 }
 
+/**
+ * Frontend form shape used by React Hook Form.
+ *
+ * REMARK: Frontend form state now uses `managerId` instead of `projectmanager`
+ * so the UI layer has a cleaner, more intentional name. Mapping back to the
+ * backend contract happens in projectFormConfig.ts.
+ */
 export interface ProjectFormValues {
     name: string;
     comments: string;
     status: string;
-    projectmanager: string;
+    managerId: string;
     employees: string[];
     start_date: string;
     end_date: string;

@@ -29,10 +29,8 @@ export const DEFAULT_VALUES: ProjectFormValues = {
     comments: "",
     status: "",
 
-    // REMARK: Keep the form field name as `projectmanager` because the backend
-    // contract still uses that field name. This step only renamed frontend-local
-    // manager collection variables/props to `managers`.
-    projectmanager: "",
+    // REMARK: Frontend form now uses `managerId` as the selected manager field.
+    managerId: "",
 
     employees: [],
     start_date: "",
@@ -49,8 +47,8 @@ export const DEFAULT_VALUES: ProjectFormValues = {
 export const PROJECT_SCHEMA: yup.ObjectSchema<ProjectFormValues> = yup.object({
     name: yup.string().required("Name is a required field"),
 
-    // REMARK: Restored `projectmanager` after accidental rename drift to `manager`.
-    projectmanager: yup.string().required("Project manager is a required field"),
+    // REMARK: Frontend validation now targets `managerId`.
+    managerId: yup.string().required("Project manager is a required field"),
 
     status: yup
         .string()
@@ -85,10 +83,13 @@ export const PROJECT_SCHEMA: yup.ObjectSchema<ProjectFormValues> = yup.object({
 }).required();
 
 /**
- * Converts a ProjectRecord (API read shape) into ProjectFormValues (form shape).
+ * Converts a ProjectRecord (API read shape) into ProjectFormValues (frontend form shape).
  *
- * projectmanager and employees arrive as nested objects on reads; the form
- * fields need their IDs as strings to populate select/checkbox fields.
+ * REMARK:
+ * - API/read shape still uses `projectmanager`
+ * - frontend form shape now uses `managerId`
+ *
+ * This function is the adapter boundary between those two shapes.
  */
 export const projectToFormValues = (project: ProjectRecord): ProjectFormValues => {
     const pm = project.projectmanager ?? "";
@@ -99,8 +100,8 @@ export const projectToFormValues = (project: ProjectRecord): ProjectFormValues =
         comments: project.comments ?? "",
         status: project.status ?? "",
 
-        // REMARK: Restored output form field name `projectmanager`.
-        projectmanager: String(typeof pm === "object" && pm ? pm.id : pm),
+        // REMARK: Map API `projectmanager` -> frontend `managerId`.
+        managerId: String(typeof pm === "object" && pm ? pm.id : pm),
 
         employees: emps
             .map((employee) =>
@@ -114,16 +115,19 @@ export const projectToFormValues = (project: ProjectRecord): ProjectFormValues =
 };
 
 /**
- * Converts ProjectFormValues (form shape) into the API write payload.
+ * Converts ProjectFormValues (frontend form shape) into the API write payload.
  *
- * The form stores IDs as strings (from select elements); the API expects
- * numbers. Dates are normalized to YYYY-MM-DD.
+ * REMARK:
+ * - frontend form shape uses `managerId`
+ * - backend write payload still uses `projectmanager`
+ *
+ * This function isolates the backend field naming from the rest of the UI layer.
  */
 export const formToPayload = (data: ProjectFormValues) => ({
     name: data.name,
 
-    // REMARK: Restored backend write field name `projectmanager`.
-    projectmanager: Number(data.projectmanager),
+    // REMARK: Map frontend `managerId` -> backend `projectmanager`.
+    projectmanager: Number(data.managerId),
 
     employees: data.employees.map(Number),
     status: data.status,

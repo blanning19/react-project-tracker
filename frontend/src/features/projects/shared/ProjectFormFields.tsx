@@ -7,10 +7,7 @@ import styles from "./ProjectFormFields.module.css";
 interface ProjectFormFieldsProps {
     control: Control<ProjectFormValues>;
     errors: FieldErrors<ProjectFormValues>;
-
-    // REMARK: Renamed prop from `projectManagers` to `managers` for frontend consistency.
     managers?: PersonOption[];
-
     employees?: PersonOption[];
     statusOptions?: Array<{ id: string; name: string }>;
 }
@@ -72,10 +69,7 @@ function FieldGroup({
 function ProjectFormFields({
     control,
     errors,
-
-    // REMARK: Renamed local prop binding from `projectManagers` to `managers`.
     managers = [],
-
     employees = [],
     statusOptions = [],
 }: ProjectFormFieldsProps): JSX.Element {
@@ -167,18 +161,16 @@ function ProjectFormFields({
             <div className={styles.section}>
                 <SectionLabel step={2} title="People" description="Manager and assigned employees." />
                 <div className={styles.fields}>
-                    <FieldGroup label="Project manager" error={errors.projectmanager?.message}>
+                    <FieldGroup label="Project manager" error={errors.managerId?.message}>
                         <Controller
-                            name="projectmanager"
+                            name="managerId"
                             control={control}
                             render={({ field }) => (
                                 <select
                                     {...field}
-                                    className={`${styles.select}${errors.projectmanager ? ` ${styles.invalid}` : ""}`}
+                                    className={`${styles.select}${errors.managerId ? ` ${styles.invalid}` : ""}`}
                                 >
                                     <option value="">Select project manager…</option>
-
-                                    {/* REMARK: Renamed source collection from `projectManagers` to `managers`. */}
                                     {managers.map((manager) => (
                                         <option key={manager.id} value={String(manager.id)}>
                                             {getPersonName(manager)}

@@ -181,4 +181,29 @@ describe("useCreateController", () => {
             consoleErrorSpy.mockRestore();
         }
     });
+    test("reloadData refetches lookup queries in create mode", async () => {
+        const mockedGetManagers = projectApi.getManagers as ReturnType<typeof vi.fn>;
+        const mockedGetEmployees = projectApi.getEmployees as ReturnType<typeof vi.fn>;
+
+        mockedGetManagers.mockResolvedValue([]);
+        mockedGetEmployees.mockResolvedValue([]);
+
+        const { result } = renderHook(() => useCreateController(), { wrapper: createWrapper() });
+
+        await waitFor(() => {
+            expect(result.current.loading).toBe(false);
+        });
+
+        expect(mockedGetManagers).toHaveBeenCalledTimes(1);
+        expect(mockedGetEmployees).toHaveBeenCalledTimes(1);
+
+        await act(async () => {
+            await result.current.reloadData();
+        });
+
+        await waitFor(() => {
+            expect(mockedGetManagers).toHaveBeenCalledTimes(2);
+            expect(mockedGetEmployees).toHaveBeenCalledTimes(2);
+        });
+    });
 });

@@ -30,77 +30,50 @@ interface UseProjectFormControllerArgs {
 /**
  * Shared controller logic for Project Create and Project Edit.
  *
- * Lookup data (managers, employees) is fetched via React Query so it is:
- * - cached across Create/Edit mounts (no re-fetch if data is still fresh)
- * - deduplicated — opening Create then Edit does not fire two parallel requests
- * - automatically revalidated in the background after 5 minutes
- *
- * The existing project record (edit mode) is also fetched via React Query,
- * which means navigating back to the same edit URL uses the cached record
- * instantly while a background revalidation runs.
- *
- * Create wrapper: `useProjectFormController({ mode: "create" })`
- * Edit wrapper:   `useProjectFormController({ mode: "edit", projectId })`
+ * Lookup data (managers, employees) and the edit record are fetched with
+ * React Query so they can be cached, deduplicated, and explicitly refetched
+ * when the user clicks Retry.
  */
 export function useProjectFormController({ mode, projectId = "" }: UseProjectFormControllerArgs) {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [apiError, setApiError] = useState("");
     const navigate = useNavigate();
 
-    // ── React Hook Form ──────────────────────────────────────────────────────
     const form = useForm<ProjectFormValues>({
         defaultValues: DEFAULT_VALUES,
         resolver: yupResolver(PROJECT_SCHEMA),
     });
     const { reset } = form;
 
-    // ── Lookup data — cached via React Query ─────────────────────────────────
-    //
-    // staleTime: 5 minutes — managers and employees change infrequently.
-    // Both queries share the same cache keys across the whole app, so opening
-    // Create after Edit (or vice versa) reuses the already-cached data.
+    // ── Lookup queries ────────────────────────────────────────────────────────
 
-    const {
-        data: projectManagers = [],
-        isLoading: managersLoading,
-        isError: managersError,
-    } = useQuery({
+    const managersQuery = useQuery({
         queryKey: lookupKeys.managers(),
         queryFn: getManagers,
         staleTime: 5 * 60 * 1000,
     });
 
-    const {
-        data: employees = [],
-        isLoading: employeesLoading,
-        isError: employeesError,
-    } = useQuery({
+    const employeesQuery = useQuery({
         queryKey: lookupKeys.employees(),
         queryFn: getEmployees,
         staleTime: 5 * 60 * 1000,
     });
 
-    // ── Existing project — edit mode only ────────────────────────────────────
-    //
-    // enabled: false when projectId is empty (create mode) so the query
-    // never fires. React Query still tracks the state, so the loading
-    // logic below is uniform regardless of mode.
+    // ── Existing project query (edit only) ───────────────────────────────────
 
-    const {
-        data: existingProject,
-        isLoading: projectLoading,
-        isError: projectError,
-    } = useQuery<ProjectRecord>({
+    const projectQuery = useQuery<ProjectRecord>({
         queryKey: ["projects", "detail", projectId],
         queryFn: () => getProject(projectId),
         enabled: mode === "edit" && projectId !== "",
-        staleTime: 60_000, // 1 minute — project data changes more often than lookups
+        staleTime: 60_000,
     });
 
-    // ── Populate form when existing project data arrives ─────────────────────
-    //
-    // useEffect is the correct tool here: reset() is a side effect that should
-    // run once when the data first becomes available (or changes on refetch).
+    const projectManagers = managersQuery.data ?? [];
+    const employees = employeesQuery.data ?? [];
+    const existingProject = projectQuery.data;
+
+    // ── Populate form from edit data ─────────────────────────────────────────
+
     useEffect(() => {
         if (existingProject) {
             reset(projectToFormValues(existingProject));
@@ -110,22 +83,12 @@ export function useProjectFormController({ mode, projectId = "" }: UseProjectFor
     // ── Derived loading / error state ────────────────────────────────────────
 
     const loading =
-        managersLoading ||
-        employeesLoading ||
-        (mode === "edit" && projectLoading);
+        managersQuery.isLoading ||
+        employeesQuery.isLoading ||
+        (mode === "edit" && projectQuery.isLoading);
 
-    const hasLookupError = managersError || employeesError;
-    const hasProjectError = mode === "edit" && projectError;
-
-    // Surface lookup/project fetch errors through the same apiError channel
-    // the form already uses, so the view only needs one error display path.
-    const reloadData = async () => {
-        // React Query manages refetching via invalidation. This function is
-        // exposed so the Retry button in ProjectFormPageView has something to
-        // call, but the actual refetch is handled by React Query automatically
-        // when the queries are invalidated or when the component re-mounts.
-        setApiError("");
-    };
+    const hasLookupError = managersQuery.isError || employeesQuery.isError;
+    const hasProjectError = mode === "edit" && projectQuery.isError;
 
     useEffect(() => {
         if (hasLookupError) {
@@ -140,6 +103,23 @@ export function useProjectFormController({ mode, projectId = "" }: UseProjectFor
             setApiError("");
         }
     }, [hasLookupError, hasProjectError, mode]);
+
+    // ── Retry / refetch support ───────────────────────────────────────────────
+
+    const reloadData = async () => {
+        setApiError("");
+
+        const tasks: Array<Promise<unknown>> = [
+            managersQuery.refetch(),
+            employeesQuery.refetch(),
+        ];
+
+        if (mode === "edit" && projectId) {
+            tasks.push(projectQuery.refetch());
+        }
+
+        await Promise.all(tasks);
+    };
 
     // ── Form submission ──────────────────────────────────────────────────────
 

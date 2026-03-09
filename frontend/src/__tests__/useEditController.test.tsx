@@ -210,4 +210,33 @@ describe("useEditController", () => {
             consoleErrorSpy.mockRestore();
         }
     });
+    test("reloadData refetches lookup queries and the project in edit mode", async () => {
+        const mockedGetManagers = projectApi.getManagers as ReturnType<typeof vi.fn>;
+        const mockedGetEmployees = projectApi.getEmployees as ReturnType<typeof vi.fn>;
+        const mockedGetProject = projectApi.getProject as ReturnType<typeof vi.fn>;
+
+        mockedGetManagers.mockResolvedValue([]);
+        mockedGetEmployees.mockResolvedValue([]);
+        mockedGetProject.mockResolvedValue({ id: 42, name: "Loaded Project" });
+
+        const { result } = renderHook(() => useEditController(), { wrapper: createWrapper() });
+
+        await waitFor(() => {
+            expect(result.current.loading).toBe(false);
+        });
+
+        expect(mockedGetManagers).toHaveBeenCalledTimes(1);
+        expect(mockedGetEmployees).toHaveBeenCalledTimes(1);
+        expect(mockedGetProject).toHaveBeenCalledTimes(1);
+
+        await act(async () => {
+            await result.current.reloadData();
+        });
+
+        await waitFor(() => {
+            expect(mockedGetManagers).toHaveBeenCalledTimes(2);
+            expect(mockedGetEmployees).toHaveBeenCalledTimes(2);
+            expect(mockedGetProject).toHaveBeenCalledTimes(2);
+        });
+    });
 });

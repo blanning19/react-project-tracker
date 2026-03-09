@@ -11,34 +11,29 @@ import Edit from "./features/projects/edit/Edit";
 /**
  * Route tree using React Router layout routes.
  *
- * Layout route pattern:
- * - Navbar renders <Outlet /> in the main content area.
- * - RequireAuth renders <Outlet /> when authenticated, or redirects to /login.
+ * Public routes are intentionally kept outside the protected application shell
+ * so login can never be caught in an auth-redirect loop.
  *
  * Structure:
- *   Navbar (layout — sidebar + chrome)
- *   ├── /login         — public
- *   ├── /about         — public
- *   └── RequireAuth (layout — auth guard)
- *       ├── /          — Home (includes inline DeleteModal)
- *       ├── /create    — Create project
- *       └── /edit/:id  — Edit project
- *
- * Note: /delete/:id has been removed. Deletion is now handled by DeleteModal
- * inline in HomeView, which avoids a full page navigation for a single
- * confirmation step.
+ *   /login            — public
+ *   /about            — public
+ *   RequireAuth       — protected guard
+ *   └── Navbar        — protected app shell
+ *       ├── /         — Home
+ *       ├── /create   — Create project
+ *       └── /edit/:id — Edit project
  */
 function App() {
     return (
         <div className="App">
             <Routes>
-                <Route element={<Navbar />}>
-                    {/* Public routes */}
-                    <Route path="/login" element={<Login />} />
-                    <Route path="/about" element={<About />} />
+                {/* Public routes */}
+                <Route path="/login" element={<Login />} />
+                <Route path="/about" element={<About />} />
 
-                    {/* Protected routes */}
-                    <Route element={<RequireAuth />}>
+                {/* Protected application shell */}
+                <Route element={<RequireAuth />}>
+                    <Route element={<Navbar />}>
                         <Route path="/" element={<Home />} />
                         <Route path="/create" element={<Create />} />
                         <Route path="/edit/:id" element={<Edit />} />

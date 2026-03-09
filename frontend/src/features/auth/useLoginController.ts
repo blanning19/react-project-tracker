@@ -1,8 +1,7 @@
 import { FormEvent, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { isCookieAuth } from "../../shared/auth/mode";
-import { tokenStore } from "../../shared/auth/tokens";
-import FetchInstance from "../../shared/http/fetchClient";
+import { loginRequest } from "../../shared/auth/authApi";
+import { useAuth } from "../../shared/auth/AuthProvider";
 
 export const useLoginController = () => {
     const [username, setUsername] = useState("");
@@ -10,8 +9,10 @@ export const useLoginController = () => {
     const [error, setError] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
 
+    const auth = useAuth();
     const navigate = useNavigate();
     const location = useLocation();
+
     const from =
         (location.state as { from?: { pathname?: string } } | null)?.from?.pathname ?? "/";
 
@@ -21,16 +22,10 @@ export const useLoginController = () => {
         setIsSubmitting(true);
 
         try {
-            const res = await FetchInstance.post<{ access?: string; refresh?: string }>(
-                "auth/login/",
-                { username, password }
-            );
-            tokenStore.setAccess(res.data.access ?? null);
-            if (!isCookieAuth) tokenStore.setRefresh(res.data.refresh ?? null);
+            const tokens = await loginRequest(username, password);
+            auth.login(tokens);
             navigate(from, { replace: true });
         } catch (err) {
-            // Distinguish a credentials failure (401) from a network/server error
-            // so users know whether to retry or check their username/password.
             const status = (err as { status?: number })?.status
                 ?? (err as { response?: { status?: number } })?.response?.status;
 
@@ -44,9 +39,6 @@ export const useLoginController = () => {
         }
     };
 
-    // Return handler functions, not raw setState dispatchers.
-    // This keeps LoginView's prop contract stable and consistent with
-    // every other view in the app.
     return {
         username,
         password,

@@ -11,29 +11,28 @@ import Edit from "./features/projects/edit/Edit";
 /**
  * Route tree using React Router layout routes.
  *
- * Public routes are intentionally kept outside the protected application shell
- * so login can never be caught in an auth-redirect loop.
+ * REMARK: /login stays outside the Navbar shell so the login page remains
+ * simple and can never get caught in a protected-layout redirect loop.
  *
- * Structure:
- *   /login            — public
- *   /about            — public
- *   RequireAuth       — protected guard
- *   └── Navbar        — protected app shell
- *       ├── /         — Home
- *       ├── /create   — Create project
- *       └── /edit/:id — Edit project
+ * REMARK: /about is public, but now lives inside the Navbar layout so users
+ * keep the application shell when navigating there.
+ *
+ * REMARK: Only the project pages are protected by RequireAuth.
  */
 function App() {
     return (
         <div className="App">
             <Routes>
-                {/* Public routes */}
+                {/* REMARK: Public standalone route with no Navbar */}
                 <Route path="/login" element={<Login />} />
-                <Route path="/about" element={<About />} />
 
-                {/* Protected application shell */}
-                <Route element={<RequireAuth />}>
-                    <Route element={<Navbar />}>
+                {/* REMARK: Shared application shell with Navbar */}
+                <Route element={<Navbar />}>
+                    {/* REMARK: Public route that still keeps the Navbar visible */}
+                    <Route path="/about" element={<About />} />
+
+                    {/* REMARK: Protected routes only */}
+                    <Route element={<RequireAuth />}>
                         <Route path="/" element={<Home />} />
                         <Route path="/create" element={<Create />} />
                         <Route path="/edit/:id" element={<Edit />} />

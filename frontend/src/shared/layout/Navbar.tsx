@@ -146,14 +146,16 @@ export default function Navbar() {
                 {/* Desktop sidebar */}
                 <aside
                     className="d-none d-md-flex border-end bg-body-tertiary flex-column"
-                    style={{
-                        width: currentWidth,
-                        minHeight: "100vh",
-                        position: "sticky",
-                        top: 0,
-                        transition: "width 0.25s ease",
-                        overflow: "hidden",
-                    }}
+                        style={{
+                            width: currentWidth,
+                            minWidth: currentWidth, // REMARK: Keep the sidebar from compressing narrower than its intended width
+                            flexShrink: 0,          // REMARK: Prevent wide page content (like About) from shrinking the sidebar
+                            minHeight: "100vh",
+                            position: "sticky",
+                            top: 0,
+                            transition: "width 0.25s ease",
+                            overflow: "hidden",
+                        }}
                 >
                     <div className={`p-3 border-bottom d-flex align-items-center ${collapsed ? "justify-content-center" : "justify-content-between"}`}>
                         {!collapsed && (

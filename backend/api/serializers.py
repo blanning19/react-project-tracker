@@ -31,18 +31,20 @@ class EmployeeSerializer(serializers.ModelSerializer):
 class ProjectReadSerializer(serializers.ModelSerializer):
     """
     Used for GET (list + detail).
-    Returns nested objects for projectmanager and employees so the frontend
+    Returns nested objects for manager and employees so the frontend
     gets names directly without additional lookups.
     """
     employees = EmployeeSerializer(many=True, read_only=True)
-    projectmanager = ManagerSerializer(read_only=True)
+
+    # REMARK: Renamed serializer field from `projectmanager` to `manager`.
+    manager = ManagerSerializer(read_only=True)
 
     class Meta:
         model = Project
         fields = (
             "id",
             "name",
-            "projectmanager",
+            "manager",
             "start_date",
             "employees",
             "end_date",
@@ -55,14 +57,16 @@ class ProjectReadSerializer(serializers.ModelSerializer):
 class ProjectWriteSerializer(serializers.ModelSerializer):
     """
     Used for POST, PUT, PATCH.
-    Accepts IDs for projectmanager and employees, matching what the frontend
+    Accepts IDs for manager and employees, matching what the frontend
     dropdowns submit.
     """
     employees = serializers.PrimaryKeyRelatedField(
         many=True,
         queryset=Employee.objects.all(),
     )
-    projectmanager = serializers.PrimaryKeyRelatedField(
+
+    # REMARK: Renamed write field from `projectmanager` to `manager`.
+    manager = serializers.PrimaryKeyRelatedField(
         queryset=Manager.objects.all(),
         required=False,
         allow_null=True,
@@ -73,7 +77,7 @@ class ProjectWriteSerializer(serializers.ModelSerializer):
         fields = (
             "id",
             "name",
-            "projectmanager",
+            "manager",
             "start_date",
             "employees",
             "end_date",

@@ -128,7 +128,10 @@ describe("projectToFormValues", () => {
             name: "Alpha",
             comments: "Some notes",
             status: "Active",
-            projectmanager: "3",
+
+            // REMARK: API read field is now `manager`.
+            manager: "3",
+
             employees: ["10", "11"],
             start_date: "2026-03-01",
             end_date: "2026-03-31",
@@ -141,13 +144,16 @@ describe("projectToFormValues", () => {
         expect(result.security_level).toBe("Confidential");
     });
 
-    test("converts projectmanager object to managerId string", () => {
+    test("converts manager object to managerId string", () => {
         const result = projectToFormValues({
             id: 1,
             name: "Alpha",
             comments: "",
             status: "Active",
-            projectmanager: { id: 5, first_name: "Alice", last_name: "Manager" },
+
+            // REMARK: API read field is now `manager`.
+            manager: { id: 5, first_name: "Alice", last_name: "Manager" },
+
             employees: [],
             start_date: "2026-03-01",
             end_date: "2026-03-31",
@@ -157,13 +163,16 @@ describe("projectToFormValues", () => {
         expect(result.managerId).toBe("5");
     });
 
-    test("keeps projectmanager as string when it arrives as a primitive string id", () => {
+    test("keeps manager as string when it arrives as a primitive string id", () => {
         const result = projectToFormValues({
             id: 1,
             name: "Alpha",
             comments: "",
             status: "Active",
-            projectmanager: "7",
+
+            // REMARK: API read field is now `manager`.
+            manager: "7",
+
             employees: [],
             start_date: "2026-03-01",
             end_date: "2026-03-31",
@@ -179,7 +188,7 @@ describe("projectToFormValues", () => {
             name: "Alpha",
             comments: "",
             status: "Active",
-            projectmanager: "3",
+            manager: "3",
             employees: [
                 { id: 10, first_name: "Bob", last_name: "One" },
                 { id: 11, first_name: "Carol", last_name: "Two" },
@@ -198,7 +207,7 @@ describe("projectToFormValues", () => {
             name: "Alpha",
             comments: "",
             status: "Active",
-            projectmanager: "3",
+            manager: "3",
             employees: [],
             start_date: "2026-03-01",
             end_date: "2026-12-31",
@@ -215,7 +224,7 @@ describe("projectToFormValues", () => {
             name: "Alpha",
             comments: "",
             status: "Active",
-            projectmanager: "3",
+            manager: "3",
             employees: [],
             start_date: null,
             end_date: null,
@@ -232,7 +241,7 @@ describe("projectToFormValues", () => {
             name: "Alpha",
             comments: "",
             status: "Active",
-            projectmanager: "3",
+            manager: "3",
             employees: [],
             start_date: "2026-03-01",
             end_date: "2026-03-31",
@@ -248,7 +257,7 @@ describe("projectToFormValues", () => {
             name: "Alpha",
             comments: null,
             status: "Active",
-            projectmanager: "3",
+            manager: "3",
             employees: [],
             start_date: "2026-03-01",
             end_date: "2026-03-31",
@@ -273,10 +282,12 @@ describe("formToPayload", () => {
         security_level: "Confidential" as const,
     };
 
-    test("converts managerId string to backend projectmanager number", () => {
+    test("converts managerId string to backend manager number", () => {
         const payload = formToPayload(baseForm);
-        expect(payload.projectmanager).toBe(3);
-        expect(typeof payload.projectmanager).toBe("number");
+
+        // REMARK: API write field is now `manager`.
+        expect(payload.manager).toBe(3);
+        expect(typeof payload.manager).toBe("number");
     });
 
     test("converts employee string ids to numbers", () => {

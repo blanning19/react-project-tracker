@@ -15,9 +15,8 @@ export interface PersonOption {
  * Shape of a project record returned by GET /api/projects/ and
  * GET /api/projects/:id/ (ProjectReadSerializer).
  *
- * REMARK: The API still returns `projectmanager` for now.
- * Option A only cleans up the frontend form/UI boundary, not the backend
- * contract. We will translate `projectmanager` <-> `managerId` in
+ * REMARK: API contract is now `manager`, not `projectmanager`.
+ * Frontend form state still uses `managerId`, with mapping handled in
  * projectFormConfig.ts.
  */
 export interface ProjectRecord {
@@ -27,7 +26,7 @@ export interface ProjectRecord {
     status?: string;
     start_date?: string | null;
     end_date?: string | null;
-    projectmanager?: PersonOption | null;
+    manager?: PersonOption | null;
     employees?: PersonOption[];
     security_level: SecurityLevel;
 }
@@ -41,10 +40,6 @@ export interface PaginatedResponse<T> {
 
 /**
  * Frontend form shape used by React Hook Form.
- *
- * REMARK: Frontend form state now uses `managerId` instead of `projectmanager`
- * so the UI layer has a cleaner, more intentional name. Mapping back to the
- * backend contract happens in projectFormConfig.ts.
  */
 export interface ProjectFormValues {
     name: string;
@@ -59,15 +54,6 @@ export interface ProjectFormValues {
 
 /**
  * Query parameters accepted by GET /api/projects/.
- *
- * Maps directly to the backend ProjectViewset filter/search/ordering params:
- * - search:        ?search=keyword     (searches name and comments)
- * - status:        ?status=Active      (exact match on status field)
- * - ordering:      ?ordering=name      (prefix with - for descending)
- * - page:          ?page=2
- * - page_size:     ?page_size=25
- *
- * All fields are optional — omitting a param uses the backend default.
  */
 export interface ProjectListParams {
     search?: string;

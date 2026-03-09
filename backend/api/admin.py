@@ -4,7 +4,7 @@ from .models import Employee, Manager, Project
 
 @admin.register(Project)
 class ProjectAdmin(admin.ModelAdmin):
-    list_display = ("name", "status", "security_level", "projectmanager", "start_date", "end_date", "modified")
+    list_display = ("name", "status", "security_level", "manager", "start_date", "end_date", "modified")
     list_filter = ("status", "security_level")
     search_fields = ("name", "comments")
     ordering = ("-modified",)

@@ -23,13 +23,9 @@ class Employee(models.Model):
     model class name — plural model names produce awkward results like
     'Employeess' in some contexts and confusing reverse relation names.
     """
-    # Names are not unique in the real world.
     first_name = models.CharField(max_length=100)
     last_name = models.CharField(max_length=100)
-
-    # Email is a better unique identifier.
     email = models.EmailField(unique=True)
-
     created = models.DateTimeField(auto_now_add=True)
     modified = models.DateTimeField(auto_now=True)
 
@@ -68,12 +64,16 @@ class Project(models.Model):
         blank=True,
         related_name="projects",
     )
-    projectmanager = models.ForeignKey(
+
+    # REMARK: Renamed database/ORM field from `projectmanager` to `manager`
+    # for a cleaner domain model and API contract.
+    manager = models.ForeignKey(
         Manager,
         on_delete=models.SET_NULL,
         blank=True,
         null=True,
     )
+
     start_date = models.DateField()
     end_date = models.DateField()
     comments = models.CharField(max_length=500, blank=True, null=True)

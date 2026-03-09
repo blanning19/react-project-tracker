@@ -47,20 +47,19 @@ class ProjectViewset(viewsets.ModelViewSet):
 
     Serializers:
     - GET  (list, retrieve): ProjectReadSerializer — nested objects for
-      projectmanager and employees so the frontend gets names directly.
-    - POST/PUT/PATCH/DELETE:  ProjectWriteSerializer — accepts IDs from
+      manager and employees so the frontend gets names directly.
+    - POST/PUT/PATCH/DELETE: ProjectWriteSerializer — accepts IDs from
       the frontend dropdowns.
     """
     permission_classes = [permissions.IsAuthenticated]
     pagination_class = ProjectPagination
     queryset = (
         Project.objects
-        .select_related("projectmanager")
+        .select_related("manager")
         .prefetch_related("employees")
         .order_by("-modified")
     )
 
-    # Filtering
     filter_backends = [
         DjangoFilterBackend,
         filters.SearchFilter,

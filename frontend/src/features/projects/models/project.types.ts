@@ -53,6 +53,25 @@ export interface ProjectFormValues {
 }
 
 /**
+ * Exact payload shape the frontend sends to the backend for create/update.
+ *
+ * REMARK:
+ * - The backend expects `manager` as a numeric foreign-key ID.
+ * - Dates are nullable in the API payload after form normalization.
+ * - employees is always an array of numeric IDs.
+ */
+export interface ProjectWritePayload {
+    name: string;
+    comments: string;
+    status: string;
+    manager: number;
+    employees: number[];
+    start_date: string | null;
+    end_date: string | null;
+    security_level: SecurityLevel;
+}
+
+/**
  * Query parameters accepted by GET /api/projects/.
  */
 export interface ProjectListParams {

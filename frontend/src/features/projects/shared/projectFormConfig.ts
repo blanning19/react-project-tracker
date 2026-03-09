@@ -1,6 +1,11 @@
 import Dayjs from "dayjs";
 import * as yup from "yup";
-import type { ProjectFormValues, ProjectRecord, SecurityLevel } from "../models/project.types";
+import type {
+    ProjectFormValues,
+    ProjectRecord,
+    ProjectWritePayload,
+    SecurityLevel,
+} from "../models/project.types";
 
 /**
  * STATUS_OPTIONS matches backend Project.Status TextChoices exactly.
@@ -96,13 +101,18 @@ export const projectToFormValues = (project: ProjectRecord): ProjectFormValues =
 };
 
 /**
- * Converts frontend form values into API payload.
+ * Converts frontend form values into the exact API write payload.
  *
- * REMARK: API write field is now `manager`.
+ * REMARK:
+ * - The explicit return type locks this mapper to the backend write contract.
+ * - If either the API payload shape or the mapper drifts, TypeScript will fail.
  */
-export const formToPayload = (data: ProjectFormValues) => ({
+export const formToPayload = (data: ProjectFormValues): ProjectWritePayload => ({
     name: data.name,
+
+    // REMARK: Frontend form field `managerId` maps to backend API field `manager`.
     manager: Number(data.managerId),
+
     employees: data.employees.map(Number),
     status: data.status,
     comments: data.comments,

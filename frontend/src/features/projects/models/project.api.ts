@@ -5,6 +5,7 @@ import type {
     PersonOption,
     ProjectListParams,
     ProjectRecord,
+    ProjectWritePayload,
 } from "./project.types";
 
 // ---------------------------------------------------------------------------
@@ -14,25 +15,25 @@ import type {
 // Centralising query keys here means:
 // - keys are typed (no raw string arrays scattered across the app)
 // - invalidation is easy: queryClient.invalidateQueries({ queryKey: projectKeys.all })
-// - all keys follow a consistent hierarchy:  ["projects"] > ["projects", "list", params]
+// - all keys follow a consistent hierarchy: ["projects"] > ["projects", "list", params]
 //
 // Usage:
 //   useQuery({ queryKey: projectKeys.list(params), queryFn: ... })
-//   useQuery({ queryKey: projectKeys.detail(id),   queryFn: ... })
-//   useQuery({ queryKey: lookupKeys.managers(),     queryFn: ... })
-//   useQuery({ queryKey: lookupKeys.employees(),    queryFn: ... })
+//   useQuery({ queryKey: projectKeys.detail(id), queryFn: ... })
+//   useQuery({ queryKey: lookupKeys.managers(), queryFn: ... })
+//   useQuery({ queryKey: lookupKeys.employees(), queryFn: ... })
 
 export const projectKeys = {
-    all:    ()                          => ["projects"]                        as const,
-    lists:  ()                          => ["projects", "list"]                as const,
-    list:   (params: ProjectListParams) => ["projects", "list", params]        as const,
-    detail: (id: string | number)       => ["projects", "detail", String(id)]  as const,
+    all: () => ["projects"] as const,
+    lists: () => ["projects", "list"] as const,
+    list: (params: ProjectListParams) => ["projects", "list", params] as const,
+    detail: (id: string | number) => ["projects", "detail", String(id)] as const,
 };
 
 export const lookupKeys = {
-    all:       () => ["lookups"]               as const,
-    managers:  () => ["lookups", "managers"]   as const,
-    employees: () => ["lookups", "employees"]  as const,
+    all: () => ["lookups"] as const,
+    managers: () => ["lookups", "managers"] as const,
+    employees: () => ["lookups", "employees"] as const,
 };
 
 // ---------------------------------------------------------------------------
@@ -47,10 +48,6 @@ export const lookupKeys = {
  *
  * The backend always returns a PaginatedResponse envelope:
  *   { count, next, previous, results: ProjectRecord[] }
- *
- * Note: normalizeListResponse has been removed. Now that pagination params
- * are explicit, the API always returns the paginated envelope — there is no
- * ambiguity to normalize away.
  */
 export const listProjects = async (
     params: ProjectListParams = {}
@@ -62,17 +59,44 @@ export const listProjects = async (
     return res.data;
 };
 
+/**
+ * Fetches a single project record by id.
+ */
 export const getProject = async (id: string | number): Promise<ProjectRecord> => {
     const res = await FetchInstance.get<ProjectRecord>(API.projects.detail(id));
     return res.data;
 };
 
-export const createProject = async (payload: unknown) =>
-    FetchInstance.post<ProjectRecord>(API.projects.list, payload);
+/**
+ * Creates a project using the backend write contract.
+ *
+ * REMARK: payload is strongly typed now. This prevents accidental drift
+ * between form mapping logic and the API contract.
+ */
+export const createProject = async (
+    payload: ProjectWritePayload
+): Promise<ProjectRecord> => {
+    const res = await FetchInstance.post<ProjectRecord>(API.projects.list, payload);
+    return res.data;
+};
 
-export const updateProject = async (id: string | number, payload: unknown) =>
-    FetchInstance.put<ProjectRecord>(API.projects.detail(id), payload);
+/**
+ * Updates a project using the backend write contract.
+ *
+ * REMARK: payload is strongly typed now. This makes create/update APIs
+ * consistent and removes the old `unknown` escape hatch.
+ */
+export const updateProject = async (
+    id: string | number,
+    payload: ProjectWritePayload
+): Promise<ProjectRecord> => {
+    const res = await FetchInstance.put<ProjectRecord>(API.projects.detail(id), payload);
+    return res.data;
+};
 
+/**
+ * Deletes a project by id.
+ */
 export const deleteProject = async (id: string | number) =>
     FetchInstance.delete(API.projects.detail(id));
 

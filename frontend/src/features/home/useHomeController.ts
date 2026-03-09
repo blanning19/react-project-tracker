@@ -25,7 +25,7 @@ import type { HomeSortDirection, HomeSortKey, HomeStatusFilter } from "./home.ty
  * - initial loading state
  * - background refetch on window focus
  * - cache — navigating away and back does not re-spinner if data is fresh
- * - manual invalidation via getData({ isRefresh: true })
+ * - manual invalidation via getData()
  *
  * Return shape is grouped into sub-objects so callers can destructure only
  * what they need:
@@ -88,7 +88,7 @@ export function useHomeController() {
     // Called by the Refresh button and by DeleteModal's onDeleted callback.
     // Invalidating the lists key triggers a background refetch for the current
     // params without clearing the cached data first (so the table stays visible).
-    const getData = async ({ isRefresh: _ = false }: { isRefresh?: boolean } = {}) => {
+    const getData = async () => {
         await queryClient.invalidateQueries({ queryKey: projectKeys.lists() });
     };
 

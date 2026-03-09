@@ -15,7 +15,7 @@ If none exist, the command creates placeholder records automatically.
 import random
 from datetime import date, timedelta
 
-from django.core.management.base import BaseCommand, CommandError
+from django.core.management.base import BaseCommand
 
 from api.models import Employee, Manager, Project
 
@@ -87,6 +87,7 @@ class Command(BaseCommand):
             action="store_true",
             help="Delete all existing projects, managers, and employees before seeding",
         )
+
     def handle(self, *args, **options):
         count = options["count"]
 
@@ -175,6 +176,8 @@ class Command(BaseCommand):
                 start = random_date(today - timedelta(days=365), today)
                 end = random_date(today + timedelta(days=30), today + timedelta(days=540))
 
+            # FIX: renamed field from `projectmanager` to `manager` to match
+            # the updated Project model in api/models.py.
             project = Project.objects.create(
                 name=name,
                 status=status,
@@ -182,7 +185,7 @@ class Command(BaseCommand):
                 start_date=start,
                 end_date=end,
                 comments=random.choice(COMMENTS),
-                projectmanager=random.choice(managers),
+                manager=random.choice(managers),
             )
             # Assign 1–4 random employees
             project.employees.set(random.sample(employees, k=min(random.randint(1, 4), len(employees))))

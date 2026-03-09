@@ -2,9 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { Button, Offcanvas } from "react-bootstrap";
 import { Home, Info, Plus, Menu, PanelLeftClose, PanelLeftOpen, LogIn, LogOut } from "lucide-react";
-import { isCookieAuth } from "../auth/mode";
+import { useAuth } from "../auth/AuthProvider";
 import { tokenStore } from "../auth/tokens";
-import FetchInstance from "../http/fetchClient";
 import ThemeToggle from "../theme/ThemeToggle";
 
 // ---------------------------------------------------------------------------
@@ -43,6 +42,7 @@ const SIDEBAR_STORAGE_KEY = "pt.sidebar.collapsed";
 
 export default function Navbar() {
     const navigate = useNavigate();
+    const { logout } = useAuth();
     const isLoggedIn = Boolean(tokenStore.getAccess());
     const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -57,18 +57,8 @@ export default function Navbar() {
     }, [collapsed]);
 
     const handleLogout = async () => {
-        tokenStore.clear();
-
-        if (isCookieAuth) {
-            try {
-                await FetchInstance.post("auth/logout/", {});
-            } catch {
-                // ignore — token is already cleared locally
-            }
-        }
-
         setMobileOpen(false);
-        navigate("/login");
+        await logout();
     };
 
     const navLinkClass = useMemo(() => {

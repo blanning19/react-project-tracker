@@ -64,7 +64,7 @@ export interface HomeStateProps {
 }
 
 export interface HomeActionsProps {
-    getData: (options?: { isRefresh?: boolean }) => Promise<void>;
+    getData: () => Promise<void>;
 }
 
 export interface HomeViewProps {

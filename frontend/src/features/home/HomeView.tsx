@@ -238,8 +238,8 @@ export default function HomeView({
                                             <td>{project.start_date ?? "—"}</td>
                                             <td>{project.end_date ?? "—"}</td>
                                             <td>
-                                                {project.projectmanager
-                                                    ? project.projectmanager.name
+                                                {project.manager
+                                                    ? project.manager.name
                                                     : <span className="text-body-secondary">—</span>}
                                             </td>
                                             <td>
@@ -292,10 +292,10 @@ export default function HomeView({
                                                 <div className="text-body-secondary small mb-2">{project.comments}</div>
                                             )}
                                             <div className="d-flex flex-wrap gap-2 small text-body-secondary mb-2">
-                                                {project.projectmanager && (
+                                                {project.manager && (
                                                     <span className="d-flex align-items-center gap-1">
                                                         <User size={12} />
-                                                        {project.projectmanager.name}
+                                                        {project.manager.name}
                                                     </span>
                                                 )}
                                                 {project.start_date && (

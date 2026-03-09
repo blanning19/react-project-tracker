@@ -1,7 +1,7 @@
-import { useState } from "react";
 import { Button, Modal, Spinner } from "react-bootstrap";
 import { AlertTriangle } from "lucide-react";
-import { deleteProject } from "../../../features/projects/models/project.api";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { deleteProject, projectKeys } from "../../../features/projects/models/project.api";
 
 interface DeleteModalProps {
     projectId: number;
@@ -22,13 +22,12 @@ interface DeleteModalProps {
  *   projectName — shown in the confirmation prompt
  *   show        — controls modal visibility
  *   onHide      — called when the user cancels or closes
- *   onDeleted   — called after a successful delete; caller should refresh data
+ *   onDeleted   — called after a successful delete; caller can perform any
+ *                 UI-specific cleanup after the cache refresh completes
  *
- * FIX: was calling FetchInstance.delete() directly with a manually constructed
- * URL. Now uses deleteProject() from project.api.ts so the URL is derived from
- * the same API.projects.detail() route helper used everywhere else. Direct
- * FetchInstance calls in feature components bypass the typed API layer and make
- * URL changes harder to track down.
+ * REMARK:
+ * Delete now uses a React Query mutation instead of component-local async state.
+ * This keeps pending/error handling aligned with the rest of the app's data layer.
  */
 export default function DeleteModal({
     projectId,
@@ -37,32 +36,40 @@ export default function DeleteModal({
     onHide,
     onDeleted,
 }: DeleteModalProps) {
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
+    // REMARK: Added queryClient so delete can invalidate cached project lists.
+    const queryClient = useQueryClient();
 
-    const handleConfirm = async () => {
-        setLoading(true);
-        setError(null);
-        try {
-            await deleteProject(projectId);
+    const deleteMutation = useMutation({
+        mutationFn: async () => deleteProject(projectId),
+
+        onSuccess: async () => {
+            // REMARK: Refresh all project list queries after a delete.
+            await queryClient.invalidateQueries({ queryKey: projectKeys.lists() });
+
             onDeleted();
             onHide();
-        } catch {
-            setError("Something went wrong. Please try again.");
-        } finally {
-            setLoading(false);
-        }
+        },
+    });
+
+    const handleConfirm = async () => {
+        await deleteMutation.mutateAsync();
     };
 
     const handleHide = () => {
-        if (loading) return; // prevent close while in flight
-        setError(null);
+        if (deleteMutation.isPending) return; // prevent close while in flight
+        deleteMutation.reset();
         onHide();
     };
 
     return (
-        <Modal show={show} onHide={handleHide} centered size="sm" backdrop={loading ? "static" : true}>
-            <Modal.Header closeButton={!loading}>
+        <Modal
+            show={show}
+            onHide={handleHide}
+            centered
+            size="sm"
+            backdrop={deleteMutation.isPending ? "static" : true}
+        >
+            <Modal.Header closeButton={!deleteMutation.isPending}>
                 <Modal.Title className="d-flex align-items-center gap-2 fs-6">
                     <AlertTriangle size={18} strokeWidth={2} className="text-danger" />
                     Delete project
@@ -76,9 +83,12 @@ export default function DeleteModal({
                     This action cannot be undone.
                 </p>
 
-                {error && (
-                    <div className="alert alert-danger py-2 px-3 mt-3 mb-0" style={{ fontSize: "0.83rem" }}>
-                        {error}
+                {deleteMutation.isError && (
+                    <div
+                        className="alert alert-danger py-2 px-3 mt-3 mb-0"
+                        style={{ fontSize: "0.83rem" }}
+                    >
+                        Something went wrong. Please try again.
                     </div>
                 )}
             </Modal.Body>
@@ -88,19 +98,19 @@ export default function DeleteModal({
                     variant="outline-secondary"
                     size="sm"
                     onClick={handleHide}
-                    disabled={loading}
+                    disabled={deleteMutation.isPending}
                 >
                     Cancel
                 </Button>
                 <Button
                     variant="danger"
                     size="sm"
-                    onClick={handleConfirm}
-                    disabled={loading}
+                    onClick={() => void handleConfirm()}
+                    disabled={deleteMutation.isPending}
                     className="d-flex align-items-center gap-2"
                 >
-                    {loading && <Spinner size="sm" />}
-                    {loading ? "Deleting…" : "Delete"}
+                    {deleteMutation.isPending && <Spinner size="sm" />}
+                    {deleteMutation.isPending ? "Deleting…" : "Delete"}
                 </Button>
             </Modal.Footer>
         </Modal>

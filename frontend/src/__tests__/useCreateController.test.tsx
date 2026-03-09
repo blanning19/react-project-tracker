@@ -16,8 +16,18 @@ vi.mock("../features/projects/models/project.api", () => ({
     createProject: vi.fn(),
     getEmployees: vi.fn(),
     getManagers: vi.fn(),
-    projectKeys: { all: () => ["projects"], list: (p: unknown) => ["projects", "list", p] },
-    lookupKeys: { managers: () => ["lookups", "managers"], employees: () => ["lookups", "employees"] },
+    getProject: vi.fn(),
+    updateProject: vi.fn(),
+    projectKeys: {
+        all: () => ["projects"],
+        lists: () => ["projects", "list"],
+        list: (p: unknown) => ["projects", "list", p],
+        detail: (id: unknown) => ["projects", "detail", String(id)],
+    },
+    lookupKeys: {
+        managers: () => ["lookups", "managers"],
+        employees: () => ["lookups", "employees"],
+    },
 }));
 
 vi.mock("../features/projects/shared/projectFormConfig", () => ({
@@ -45,12 +55,17 @@ vi.mock("../features/projects/shared/projectFormConfig", () => ({
         ...data,
         transformed: true,
     })),
+    projectToFormValues: vi.fn(),
 }));
 
 function createWrapper() {
     const queryClient = new QueryClient({
-        defaultOptions: { queries: { retry: false } },
+        defaultOptions: {
+            queries: { retry: false },
+            mutations: { retry: false },
+        },
     });
+
     return ({ children }: { children: React.ReactNode }) =>
         createElement(QueryClientProvider, { client: queryClient }, children);
 }
@@ -154,7 +169,9 @@ describe("useCreateController", () => {
         try {
             mockedGetManagers.mockResolvedValue([]);
             mockedGetEmployees.mockResolvedValue([]);
-            mockedCreateProject.mockRejectedValue({ response: { status: 500 } });
+            mockedCreateProject.mockRejectedValue({
+                response: { status: 500 },
+            });
 
             const { result } = renderHook(() => useCreateController(), { wrapper: createWrapper() });
 
@@ -163,19 +180,28 @@ describe("useCreateController", () => {
             });
 
             await act(async () => {
-                await result.current.submission({
-                    name: "New Project",
-                    comments: "",
-                    status: "Open",
-                    managerId: "1",
-                    employees: [],
-                    start_date: "",
-                    end_date: "",
-                    security_level: "Internal",
-                });
+                await expect(
+                    result.current.submission({
+                        name: "New Project",
+                        comments: "",
+                        status: "Open",
+                        managerId: "1",
+                        employees: [],
+                        start_date: "",
+                        end_date: "",
+                        security_level: "Internal",
+                    })
+                ).rejects.toEqual(
+                    expect.objectContaining({
+                        response: { status: 500 },
+                    })
+                );
             });
 
-            expect(result.current.apiError).toBe("Request failed (500).");
+            await waitFor(() => {
+                expect(result.current.apiError).toBe("Request failed (500).");
+            });
+
             expect(mockNavigate).not.toHaveBeenCalled();
         } finally {
             consoleErrorSpy.mockRestore();

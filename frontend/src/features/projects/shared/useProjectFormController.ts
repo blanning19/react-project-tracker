@@ -2,13 +2,14 @@ import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import { useNavigate } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
     createProject,
     getEmployees,
     getProject,
     getManagers,
     lookupKeys,
+    projectKeys,
     updateProject,
 } from "../models/project.api";
 import type { ProjectFormValues, ProjectRecord } from "../models/project.types";
@@ -33,11 +34,17 @@ interface UseProjectFormControllerArgs {
  * Lookup data (managers, employees) and the edit record are fetched with
  * React Query so they can be cached, deduplicated, and explicitly refetched
  * when the user clicks Retry.
+ *
+ * REMARK:
+ * Submit behavior now uses React Query mutations instead of manual async state.
+ * This centralizes pending state and cache invalidation in the data layer.
  */
 export function useProjectFormController({ mode, projectId = "" }: UseProjectFormControllerArgs) {
-    const [isSubmitting, setIsSubmitting] = useState(false);
     const [apiError, setApiError] = useState("");
     const navigate = useNavigate();
+
+    // REMARK: Added queryClient so create/update can invalidate cached project lists.
+    const queryClient = useQueryClient();
 
     const form = useForm<ProjectFormValues>({
         defaultValues: DEFAULT_VALUES,
@@ -62,7 +69,7 @@ export function useProjectFormController({ mode, projectId = "" }: UseProjectFor
     // ── Existing project query (edit only) ───────────────────────────────────
 
     const projectQuery = useQuery<ProjectRecord>({
-        queryKey: ["projects", "detail", projectId],
+        queryKey: projectKeys.detail(projectId),
         queryFn: () => getProject(projectId),
         enabled: mode === "edit" && projectId !== "",
         staleTime: 60_000,
@@ -121,36 +128,54 @@ export function useProjectFormController({ mode, projectId = "" }: UseProjectFor
         await Promise.all(tasks);
     };
 
-    // ── Form submission ──────────────────────────────────────────────────────
+    // ── Submit mutation ───────────────────────────────────────────────────────
+    //
+    // REMARK:
+    // Create and Edit now share one mutation wrapper. The mutation function
+    // chooses create vs update based on mode, while onSuccess handles cache
+    // invalidation and navigation in one place.
 
-    const submission = async (data: ProjectFormValues) => {
-        if (mode === "edit" && !projectId) {
-            setApiError("Project id is missing.");
-            return;
-        }
+    const submitMutation = useMutation({
+        mutationFn: async (data: ProjectFormValues) => {
+            if (mode === "edit" && !projectId) {
+                throw new Error("Project id is missing.");
+            }
 
-        setApiError("");
-        setIsSubmitting(true);
-
-        try {
             const payload = formToPayload(data);
 
-            if (mode === "edit") {
-                await updateProject(projectId, payload);
-            } else {
-                await createProject(payload);
+            return mode === "edit"
+                ? updateProject(projectId, payload)
+                : createProject(payload);
+        },
+
+        onSuccess: async () => {
+            // REMARK: Invalidate all project list queries so Home refreshes with the new data.
+            await queryClient.invalidateQueries({ queryKey: projectKeys.lists() });
+
+            // REMARK: If editing, also invalidate this specific detail cache entry.
+            if (mode === "edit" && projectId) {
+                await queryClient.invalidateQueries({
+                    queryKey: projectKeys.detail(projectId),
+                });
             }
 
             navigate("/");
-        } catch (err) {
+        },
+
+        onError: (err) => {
             console.error(
                 mode === "edit" ? "PUT project failed:" : "POST project failed:",
                 err
             );
             setApiError(getApiErrorMessage(err, "Request failed"));
-        } finally {
-            setIsSubmitting(false);
-        }
+        },
+    });
+
+    // ── Form submission ──────────────────────────────────────────────────────
+
+    const submission = async (data: ProjectFormValues) => {
+        setApiError("");
+        await submitMutation.mutateAsync(data);
     };
 
     return {
@@ -161,6 +186,8 @@ export function useProjectFormController({ mode, projectId = "" }: UseProjectFor
         employees,
         loading,
         apiError,
-        isSubmitting,
+
+        // REMARK: isSubmitting now comes from the React Query mutation pending state.
+        isSubmitting: submitMutation.isPending,
     };
 }

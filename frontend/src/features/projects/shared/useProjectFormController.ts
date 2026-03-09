@@ -68,7 +68,7 @@ export function useProjectFormController({ mode, projectId = "" }: UseProjectFor
         staleTime: 60_000,
     });
 
-    const projectManagers = managersQuery.data ?? [];
+    const managers = managersQuery.data ?? [];
     const employees = employeesQuery.data ?? [];
     const existingProject = projectQuery.data;
 
@@ -157,7 +157,7 @@ export function useProjectFormController({ mode, projectId = "" }: UseProjectFor
         ...form,
         submission,
         reloadData,
-        projectManagers,
+        managers,
         employees,
         loading,
         apiError,

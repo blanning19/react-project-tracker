@@ -15,14 +15,15 @@ function Create(): JSX.Element {
         handleSubmit,
         submission,
         reloadData,
-        projectManagers,
+
+        // REMARK: Renamed controller output from `projectManagers` to `managers`.
+        managers,
+
         employees,
         loading,
         apiError,
         isSubmitting,
     } = useCreateController();
-
-
 
     return (
         <ProjectFormPageView
@@ -33,7 +34,10 @@ function Create(): JSX.Element {
             errors={errors}
             handleSubmit={handleSubmit}
             submission={submission}
-            projectManagers={projectManagers}
+
+            // REMARK: Renamed prop from `projectManagers` to `managers`.
+            managers={managers}
+
             employees={employees}
             loading={loading}
             apiError={apiError}

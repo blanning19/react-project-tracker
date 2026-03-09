@@ -61,10 +61,10 @@ describe("useCreateController", () => {
     });
 
     test("loads lookup data on mount", async () => {
-        const mockedGetProjectManagers = projectApi.getManagers as ReturnType<typeof vi.fn>;
+        const mockedGetManagers = projectApi.getManagers as ReturnType<typeof vi.fn>;
         const mockedGetEmployees = projectApi.getEmployees as ReturnType<typeof vi.fn>;
 
-        mockedGetProjectManagers.mockResolvedValue([
+        mockedGetManagers.mockResolvedValue([
             { id: 1, first_name: "Alice", last_name: "Manager" },
         ]);
         mockedGetEmployees.mockResolvedValue([
@@ -77,20 +77,23 @@ describe("useCreateController", () => {
             expect(result.current.loading).toBe(false);
         });
 
-        expect(mockedGetProjectManagers).toHaveBeenCalledTimes(1);
+        expect(mockedGetManagers).toHaveBeenCalledTimes(1);
         expect(mockedGetEmployees).toHaveBeenCalledTimes(1);
-        expect(result.current.projectManagers).toHaveLength(1);
+
+        // REMARK: Controller return value renamed from `projectManagers` to `managers`.
+        expect(result.current.managers).toHaveLength(1);
+
         expect(result.current.employees).toHaveLength(1);
         expect(result.current.apiError).toBe("");
     });
 
     test("sets an api error when lookup loading fails", async () => {
-        const mockedGetProjectManagers = projectApi.getManagers as ReturnType<typeof vi.fn>;
+        const mockedGetManagers = projectApi.getManagers as ReturnType<typeof vi.fn>;
         const mockedGetEmployees = projectApi.getEmployees as ReturnType<typeof vi.fn>;
         const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
         try {
-            mockedGetProjectManagers.mockRejectedValue(new Error("lookup load failed"));
+            mockedGetManagers.mockRejectedValue(new Error("lookup load failed"));
             mockedGetEmployees.mockResolvedValue([]);
 
             const { result } = renderHook(() => useCreateController(), { wrapper: createWrapper() });
@@ -106,11 +109,11 @@ describe("useCreateController", () => {
     });
 
     test("submits new project data and navigates home on success", async () => {
-        const mockedGetProjectManagers = projectApi.getManagers as ReturnType<typeof vi.fn>;
+        const mockedGetManagers = projectApi.getManagers as ReturnType<typeof vi.fn>;
         const mockedGetEmployees = projectApi.getEmployees as ReturnType<typeof vi.fn>;
         const mockedCreateProject = projectApi.createProject as ReturnType<typeof vi.fn>;
 
-        mockedGetProjectManagers.mockResolvedValue([]);
+        mockedGetManagers.mockResolvedValue([]);
         mockedGetEmployees.mockResolvedValue([]);
         mockedCreateProject.mockResolvedValue({ id: 42 });
 
@@ -146,13 +149,13 @@ describe("useCreateController", () => {
     });
 
     test("shows a status-based error when create fails without validation body", async () => {
-        const mockedGetProjectManagers = projectApi.getManagers as ReturnType<typeof vi.fn>;
+        const mockedGetManagers = projectApi.getManagers as ReturnType<typeof vi.fn>;
         const mockedGetEmployees = projectApi.getEmployees as ReturnType<typeof vi.fn>;
         const mockedCreateProject = projectApi.createProject as ReturnType<typeof vi.fn>;
         const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
         try {
-            mockedGetProjectManagers.mockResolvedValue([]);
+            mockedGetManagers.mockResolvedValue([]);
             mockedGetEmployees.mockResolvedValue([]);
             mockedCreateProject.mockRejectedValue({ response: { status: 500 } });
 
@@ -181,6 +184,7 @@ describe("useCreateController", () => {
             consoleErrorSpy.mockRestore();
         }
     });
+
     test("reloadData refetches lookup queries in create mode", async () => {
         const mockedGetManagers = projectApi.getManagers as ReturnType<typeof vi.fn>;
         const mockedGetEmployees = projectApi.getEmployees as ReturnType<typeof vi.fn>;

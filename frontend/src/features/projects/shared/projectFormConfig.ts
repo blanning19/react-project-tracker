@@ -28,7 +28,12 @@ export const DEFAULT_VALUES: ProjectFormValues = {
     name: "",
     comments: "",
     status: "",
+
+    // REMARK: Keep the form field name as `projectmanager` because the backend
+    // contract still uses that field name. This step only renamed frontend-local
+    // manager collection variables/props to `managers`.
     projectmanager: "",
+
     employees: [],
     start_date: "",
     end_date: "",
@@ -43,7 +48,10 @@ export const DEFAULT_VALUES: ProjectFormValues = {
  */
 export const PROJECT_SCHEMA: yup.ObjectSchema<ProjectFormValues> = yup.object({
     name: yup.string().required("Name is a required field"),
+
+    // REMARK: Restored `projectmanager` after accidental rename drift to `manager`.
     projectmanager: yup.string().required("Project manager is a required field"),
+
     status: yup
         .string()
         .oneOf(
@@ -90,7 +98,10 @@ export const projectToFormValues = (project: ProjectRecord): ProjectFormValues =
         name: project.name,
         comments: project.comments ?? "",
         status: project.status ?? "",
+
+        // REMARK: Restored output form field name `projectmanager`.
         projectmanager: String(typeof pm === "object" && pm ? pm.id : pm),
+
         employees: emps
             .map((employee) =>
                 String(typeof employee === "object" && employee ? employee.id : employee)
@@ -107,13 +118,13 @@ export const projectToFormValues = (project: ProjectRecord): ProjectFormValues =
  *
  * The form stores IDs as strings (from select elements); the API expects
  * numbers. Dates are normalized to YYYY-MM-DD.
- *
- * Note: `data` is a validated ProjectFormValues object — it is never null
- * or undefined at this point, so optional chaining is not needed here.
  */
 export const formToPayload = (data: ProjectFormValues) => ({
     name: data.name,
+
+    // REMARK: Restored backend write field name `projectmanager`.
     projectmanager: Number(data.projectmanager),
+
     employees: data.employees.map(Number),
     status: data.status,
     comments: data.comments,

@@ -24,7 +24,10 @@ function TestWrapper({
         <ProjectFormFields
             control={form.control}
             errors={{}}
-            projectManagers={[]}
+
+            // REMARK: Prop renamed from `projectManagers` to `managers`.
+            managers={[]}
+
             employees={employees}
             statusOptions={STATUS_OPTIONS}
         />

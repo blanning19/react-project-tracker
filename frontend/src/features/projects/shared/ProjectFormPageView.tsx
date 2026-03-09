@@ -13,7 +13,7 @@ interface ProjectFormPageViewProps {
     errors: FieldErrors<ProjectFormValues>;
     handleSubmit: UseFormHandleSubmit<ProjectFormValues>;
     submission: (data: ProjectFormValues) => Promise<void>;
-    projectManagers: PersonOption[];
+    managers?: PersonOption[];
     employees: PersonOption[];
     loading: boolean;
     apiError: string;
@@ -29,7 +29,7 @@ function ProjectFormPageView({
     errors,
     handleSubmit,
     submission,
-    projectManagers,
+    managers,
     employees,
     loading,
     apiError,
@@ -74,7 +74,7 @@ function ProjectFormPageView({
                             <ProjectFormFields
                                 control={control}
                                 errors={errors}
-                                projectManagers={projectManagers}
+                                managers={managers}
                                 employees={employees}
                                 statusOptions={STATUS_OPTIONS}
                             />

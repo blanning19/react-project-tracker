@@ -73,11 +73,11 @@ describe("useEditController", () => {
     });
 
     test("loads lookup data and existing project data on mount", async () => {
-        const mockedGetProjectManagers = projectApi.getManagers as ReturnType<typeof vi.fn>;
+        const mockedGetManagers = projectApi.getManagers as ReturnType<typeof vi.fn>;
         const mockedGetEmployees = projectApi.getEmployees as ReturnType<typeof vi.fn>;
         const mockedGetProject = projectApi.getProject as ReturnType<typeof vi.fn>;
 
-        mockedGetProjectManagers.mockResolvedValue([
+        mockedGetManagers.mockResolvedValue([
             { id: 1, first_name: "Alice", last_name: "Manager" },
         ]);
         mockedGetEmployees.mockResolvedValue([
@@ -91,7 +91,7 @@ describe("useEditController", () => {
             expect(result.current.loading).toBe(false);
         });
 
-        expect(mockedGetProjectManagers).toHaveBeenCalledTimes(1);
+        expect(mockedGetManagers).toHaveBeenCalledTimes(1);
         expect(mockedGetEmployees).toHaveBeenCalledTimes(1);
         expect(mockedGetProject).toHaveBeenCalledWith("42");
 
@@ -105,14 +105,14 @@ describe("useEditController", () => {
     });
 
     test("sets an api error when edit page data loading fails", async () => {
-        const mockedGetProjectManagers = projectApi.getManagers as ReturnType<typeof vi.fn>;
+        const mockedGetManagers = projectApi.getManagers as ReturnType<typeof vi.fn>;
         const mockedGetEmployees = projectApi.getEmployees as ReturnType<typeof vi.fn>;
         const mockedGetProject = projectApi.getProject as ReturnType<typeof vi.fn>;
 
         const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
         try {
-            mockedGetProjectManagers.mockResolvedValue([]);
+            mockedGetManagers.mockResolvedValue([]);
             mockedGetEmployees.mockResolvedValue([]);
             mockedGetProject.mockRejectedValue(new Error("project load failed"));
 
@@ -129,12 +129,12 @@ describe("useEditController", () => {
     });
 
     test("submits updated project data and navigates home on success", async () => {
-        const mockedGetProjectManagers = projectApi.getManagers as ReturnType<typeof vi.fn>;
+        const mockedGetManagers = projectApi.getManagers as ReturnType<typeof vi.fn>;
         const mockedGetEmployees = projectApi.getEmployees as ReturnType<typeof vi.fn>;
         const mockedGetProject = projectApi.getProject as ReturnType<typeof vi.fn>;
         const mockedUpdateProject = projectApi.updateProject as ReturnType<typeof vi.fn>;
 
-        mockedGetProjectManagers.mockResolvedValue([]);
+        mockedGetManagers.mockResolvedValue([]);
         mockedGetEmployees.mockResolvedValue([]);
         mockedGetProject.mockResolvedValue({ id: 42 });
         mockedUpdateProject.mockResolvedValue({ id: 42 });
@@ -172,7 +172,7 @@ describe("useEditController", () => {
     });
 
     test("shows a status-based error when update fails without validation body", async () => {
-        const mockedGetProjectManagers = projectApi.getManagers as ReturnType<typeof vi.fn>;
+        const mockedGetManagers = projectApi.getManagers as ReturnType<typeof vi.fn>;
         const mockedGetEmployees = projectApi.getEmployees as ReturnType<typeof vi.fn>;
         const mockedGetProject = projectApi.getProject as ReturnType<typeof vi.fn>;
         const mockedUpdateProject = projectApi.updateProject as ReturnType<typeof vi.fn>;
@@ -180,7 +180,7 @@ describe("useEditController", () => {
         const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
         try {
-            mockedGetProjectManagers.mockResolvedValue([]);
+            mockedGetManagers.mockResolvedValue([]);
             mockedGetEmployees.mockResolvedValue([]);
             mockedGetProject.mockResolvedValue({ id: 42 });
             mockedUpdateProject.mockRejectedValue({ response: { status: 500 } });
@@ -210,6 +210,7 @@ describe("useEditController", () => {
             consoleErrorSpy.mockRestore();
         }
     });
+
     test("reloadData refetches lookup queries and the project in edit mode", async () => {
         const mockedGetManagers = projectApi.getManagers as ReturnType<typeof vi.fn>;
         const mockedGetEmployees = projectApi.getEmployees as ReturnType<typeof vi.fn>;

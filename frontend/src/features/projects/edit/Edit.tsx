@@ -15,7 +15,10 @@ function Edit(): JSX.Element {
         handleSubmit,
         submission,
         reloadData,
-        projectManagers,
+
+        // REMARK: Renamed controller output from `projectManagers` to `managers`.
+        managers,
+
         employees,
         loading,
         apiError,
@@ -31,7 +34,10 @@ function Edit(): JSX.Element {
             errors={errors}
             handleSubmit={handleSubmit}
             submission={submission}
-            projectManagers={projectManagers}
+
+            // REMARK: Renamed prop from `projectManagers` to `managers`.
+            managers={managers}
+
             employees={employees}
             loading={loading}
             apiError={apiError}

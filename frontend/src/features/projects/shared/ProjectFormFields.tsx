@@ -7,7 +7,10 @@ import styles from "./ProjectFormFields.module.css";
 interface ProjectFormFieldsProps {
     control: Control<ProjectFormValues>;
     errors: FieldErrors<ProjectFormValues>;
-    projectManagers?: PersonOption[];
+
+    // REMARK: Renamed prop from `projectManagers` to `managers` for frontend consistency.
+    managers?: PersonOption[];
+
     employees?: PersonOption[];
     statusOptions?: Array<{ id: string; name: string }>;
 }
@@ -69,7 +72,10 @@ function FieldGroup({
 function ProjectFormFields({
     control,
     errors,
-    projectManagers = [],
+
+    // REMARK: Renamed local prop binding from `projectManagers` to `managers`.
+    managers = [],
+
     employees = [],
     statusOptions = [],
 }: ProjectFormFieldsProps): JSX.Element {
@@ -92,7 +98,6 @@ function ProjectFormFields({
 
     return (
         <div className={styles.root}>
-
             {/* ── 1. Basics ── */}
             <div className={styles.section}>
                 <SectionLabel step={1} title="Basics" description="Name, status, and classification." />
@@ -172,9 +177,11 @@ function ProjectFormFields({
                                     className={`${styles.select}${errors.projectmanager ? ` ${styles.invalid}` : ""}`}
                                 >
                                     <option value="">Select project manager…</option>
-                                    {projectManagers.map((pm) => (
-                                        <option key={pm.id} value={String(pm.id)}>
-                                            {getPersonName(pm)}
+
+                                    {/* REMARK: Renamed source collection from `projectManagers` to `managers`. */}
+                                    {managers.map((manager) => (
+                                        <option key={manager.id} value={String(manager.id)}>
+                                            {getPersonName(manager)}
                                         </option>
                                     ))}
                                 </select>
@@ -188,6 +195,7 @@ function ProjectFormFields({
                         render={({ field }) => {
                             const selectedValues = (field.value ?? []).map(String);
                             const count = selectedValues.length;
+
                             return (
                                 <FieldGroup label="Employees" error={errors.employees?.message}>
                                     <div className={styles.searchRow}>
@@ -312,7 +320,6 @@ function ProjectFormFields({
                     />
                 </div>
             </div>
-
         </div>
     );
 }

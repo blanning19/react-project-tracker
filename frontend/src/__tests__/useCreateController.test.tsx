@@ -156,7 +156,9 @@ describe("useCreateController", () => {
                 security_level: "Restricted",
             })
         );
-        expect(mockNavigate).toHaveBeenCalledWith("/");
+        expect(mockNavigate).toHaveBeenCalledWith("/", {
+            state: { successMessage: "Project created successfully." },
+        });
         expect(result.current.apiError).toBe("");
     });
 

@@ -72,6 +72,11 @@ class ProjectWriteSerializer(serializers.ModelSerializer):
         allow_null=True,
     )
 
+    # Declared explicitly so that omitting `comments` from the payload never
+    # produces NULL at the DB level — the field default ensures an empty string
+    # is used when the key is absent entirely.
+    comments = serializers.CharField(required=False, default="", allow_blank=True)
+
     class Meta:
         model = Project
         fields = (
@@ -101,14 +106,13 @@ class ProjectWriteSerializer(serializers.ModelSerializer):
     def validate_comments(self, value):
         """
         Normalize comments so whitespace-only input does not get stored as
-        meaningful text. Keep None as None to avoid widening this refactor
-        into a model/storage change.
+        meaningful text. Returns empty string instead of None now that the
+        field no longer allows NULL at the database level.
         """
         if value is None:
-            return value
+            return ""
 
-        normalized = value.strip()
-        return normalized or None
+        return value.strip()
 
     def validate(self, attrs):
         """

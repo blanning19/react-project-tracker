@@ -48,6 +48,7 @@ def project_set(db):
         security_level="Internal",
         start_date="2025-03-01",
         end_date="2025-09-30",
+        comments="",
         manager=pm,
     )
 
@@ -57,6 +58,7 @@ def project_set(db):
         security_level="Public",
         start_date="2024-06-01",
         end_date="2024-12-31",
+        comments="",
         manager=pm,
     )
 
@@ -66,6 +68,7 @@ def project_set(db):
         security_level="Restricted",
         start_date="2026-01-01",
         end_date="2026-12-31",
+        comments="",
         manager=pm,
     )
 

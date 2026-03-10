@@ -147,3 +147,20 @@ class TestProjectValidation:
         r = auth_client.put(f"/api/projects/{project_id}/", payload, format="json")
         assert r.status_code == 400
         assert "end_date" in r.data
+
+    def test_comments_defaults_to_empty_string_when_omitted(self, auth_client, base_payload):
+        """
+        Submitting a payload with no `comments` key must succeed and store "".
+
+        This documents the serializer contract introduced alongside the NOT NULL
+        migration: the `comments` CharField on ProjectWriteSerializer declares
+        default="" so that an absent key never reaches the DB as NULL.
+        """
+        payload = {k: v for k, v in base_payload.items() if k != "comments"}
+
+        r = auth_client.post("/api/projects/", payload, format="json")
+        assert r.status_code in (200, 201), r.data
+
+        get = auth_client.get(f"/api/projects/{r.data['id']}/")
+        assert get.status_code == 200
+        assert get.data["comments"] == ""

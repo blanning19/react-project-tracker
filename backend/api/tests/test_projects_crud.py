@@ -25,11 +25,9 @@ def project_payload(db):
         "end_date": "2026-02-25",
         "status": "Active",
         "security_level": "Internal",
-
-        # REMARK: API payload field renamed from `projectmanager` to `manager`.
         "manager": pm.id,
-
         "employees": [e1.id, e2.id],
+        "comments": "",
     }
 
 

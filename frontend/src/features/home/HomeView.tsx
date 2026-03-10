@@ -117,7 +117,7 @@ export default function HomeView({
     // ── Loading skeleton ──
     if (loading) {
         return (
-            <div className="d-flex justify-content-center align-items-center" style={{ minHeight: 300 }}>
+            <div style={{ minHeight: 300, display: "flex", justifyContent: "center", alignItems: "center" }}>
                 <Spinner animation="border" variant="secondary" />
             </div>
         );
@@ -126,17 +126,27 @@ export default function HomeView({
     // ── Error state ──
     if (apiError) {
         return (
-            <Card className="border shadow-sm">
-                <Card.Header className="pt-section-header">Projects</Card.Header>
-                <Card.Body className="text-center py-5">
+            <div style={{ background: "var(--pfp-bg-page, #f5f2ee)", minHeight: "100vh", margin: "-1rem", transition: "background 0.2s" }}>
+            <div style={{ maxWidth: 880, margin: "0 auto", padding: "56px 24px 40px" }}>
+                <div style={{
+                    display: "flex", justifyContent: "space-between", alignItems: "flex-end",
+                    borderBottom: "2px solid var(--bs-emphasis-color, #1a1a1a)",
+                    paddingBottom: "20px", marginBottom: "32px",
+                }}>
+                    <div style={{ fontFamily: "Georgia, 'Times New Roman', serif", fontSize: "24px", fontWeight: 700, letterSpacing: "-0.02em", lineHeight: 1.2, color: "var(--bs-emphasis-color, #1a1a1a)" }}>
+                        Projects
+                    </div>
+                </div>
+                <div className="text-center py-5">
                     <TriangleAlert size={32} className="text-danger mb-3" />
                     <div className="text-danger fw-semibold mb-2">Failed to load projects</div>
                     <div className="text-body-secondary small mb-4">{apiError}</div>
                     <Button variant="outline-secondary" size="sm" onClick={() => void getData()}>
                         Retry
                     </Button>
-                </Card.Body>
-            </Card>
+                </div>
+            </div>
+            </div>
         );
     }
 
@@ -153,10 +163,46 @@ export default function HomeView({
                 />
             )}
 
-            <Card className="border shadow-sm">
-                <Card.Header className="pt-section-header">
-                    <div className="d-flex align-items-center justify-content-between flex-wrap gap-2">
-                        <span>Projects</span>
+            <div style={{ background: "var(--pfp-bg-page, #f5f2ee)", minHeight: "100vh", margin: "-1rem", transition: "background 0.2s" }}>
+            <div style={{ maxWidth: 880, margin: "0 auto", padding: "56px 24px 120px" }}>
+                {/* ── Page header ── */}
+                <div
+                    style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "flex-end",
+                        borderBottom: "2px solid var(--bs-emphasis-color, #1a1a1a)",
+                        paddingBottom: "20px",
+                        marginBottom: "32px",
+                        gap: "12px",
+                        flexWrap: "wrap",
+                    }}
+                >
+                        <div>
+                            <div
+                                style={{
+                                    fontFamily: "Georgia, 'Times New Roman', serif",
+                                    fontSize: "24px",
+                                    fontWeight: 700,
+                                    letterSpacing: "-0.02em",
+                                    lineHeight: 1.2,
+                                    color: "var(--bs-emphasis-color, #1a1a1a)",
+                                }}
+                            >
+                                Projects
+                            </div>
+                            <div
+                                style={{
+                                    fontFamily: "'Helvetica Neue', Helvetica, Arial, sans-serif",
+                                    fontSize: "13px",
+                                    color: "var(--bs-secondary-color, #999)",
+                                    marginTop: "4px",
+                                    fontStyle: "italic",
+                                }}
+                            >
+                                Browse, filter, and manage all active projects.
+                            </div>
+                        </div>
                         <div className="d-flex align-items-center gap-2">
                             <Button
                                 variant="dark"
@@ -179,10 +225,10 @@ export default function HomeView({
                                 {refreshing ? "Refreshing…" : "Refresh"}
                             </Button>
                         </div>
-                    </div>
-                </Card.Header>
+                </div>
 
-                <Card.Body className="pb-0">
+                {/* ── Content ── */}
+                <div>
                     {/* ── Success banner ── */}
                     {successMessage && (
                         <Alert
@@ -373,11 +419,11 @@ export default function HomeView({
                             </div>
                         )}
                     </div>
-                </Card.Body>
+                </div>
 
                 {/* ── Pagination ── */}
                 {total > 0 && (
-                    <Card.Footer className="d-flex align-items-center justify-content-between flex-wrap gap-2 py-2">
+                    <div className="d-flex align-items-center justify-content-between flex-wrap gap-2 py-2 mt-2">
                         <div className="text-body-secondary" style={{ fontSize: "0.8rem" }}>
                             Showing {displayStart}–{displayEnd} of {total}
                         </div>
@@ -421,9 +467,10 @@ export default function HomeView({
                                 </Button>
                             </div>
                         </div>
-                    </Card.Footer>
+                    </div>
                 )}
-            </Card>
+            </div>
+            </div>
         </>
     );
 }

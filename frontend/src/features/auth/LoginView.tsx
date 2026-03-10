@@ -38,7 +38,12 @@ export default function LoginView({
                     </p>
 
                     {error && (
-                        <Alert variant="danger" className="py-2 px-3 small">
+                        <Alert
+                            id="login-error"
+                            variant="danger"
+                            className="py-2 px-3 small"
+                            aria-live="polite"
+                        >
                             {error}
                         </Alert>
                     )}
@@ -53,6 +58,7 @@ export default function LoginView({
                                 autoComplete="username"
                                 autoFocus
                                 disabled={isSubmitting}
+                                aria-describedby={error ? "login-error" : undefined}
                             />
                         </Form.Group>
 
@@ -64,6 +70,7 @@ export default function LoginView({
                                 onChange={(e) => onPasswordChange(e.target.value)}
                                 autoComplete="current-password"
                                 disabled={isSubmitting}
+                                aria-describedby={error ? "login-error" : undefined}
                             />
                         </Form.Group>
 

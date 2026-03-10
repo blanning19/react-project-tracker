@@ -1,5 +1,6 @@
 import pytest
 from django.contrib.auth import get_user_model
+from django.core.cache import cache
 from rest_framework.test import APIClient
 
 TEST_USERNAME = "User1"
@@ -36,11 +37,15 @@ def disable_throttling(request, settings):
     Disables DRF throttling for all tests except those marked with
     @pytest.mark.throttle_test.
 
-    Also resets any view-level throttle_classes patch that throttle tests
-    may have applied, so the patch does not bleed into subsequent tests.
+    Also clears the cache before each non-throttle test so that any
+    throttle counts accumulated by a previous throttle_test run do not
+    bleed through and cause spurious 429s.
     """
     if request.node.get_closest_marker("throttle_test"):
         return
+
+    # Clear any throttle counts left by a previous test
+    cache.clear()
 
     # Disable throttling via settings
     settings.REST_FRAMEWORK["DEFAULT_THROTTLE_CLASSES"] = []

@@ -30,9 +30,14 @@ class TestLoginThrottle:
         Patches the login view's throttle_classes directly and uses a real
         in-memory cache so throttle counts actually accumulate.
 
-        Clears the cache before each test so counts from a previous test
-        in this class do not carry over.
+        Clears the cache before and after each test, and fully restores
+        CACHES so the locmem backend does not bleed into subsequent tests
+        that rely on the default dummy cache.
         """
+        # Snapshot the original cache config so we can restore it exactly
+        import copy
+        original_caches = copy.deepcopy(settings.CACHES)
+
         # Use a real cache backend so throttle counts are tracked
         settings.CACHES = {
             "default": {
@@ -53,9 +58,11 @@ class TestLoginThrottle:
 
         yield
 
-        # Restore original state after the test
+        # Restore original state after the test — including CACHES so the
+        # locmem backend does not bleed throttle counts into other test files
         TokenObtainPairView.throttle_classes = original_throttle_classes
         cache.clear()
+        settings.CACHES = original_caches
 
     def test_requests_below_limit_are_allowed(self, api_client):
         """First 5 requests should get through (401 = bad creds, not throttled)."""

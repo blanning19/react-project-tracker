@@ -7,6 +7,14 @@ class Manager(models.Model):
     convention (e.g. MyModel.objects is a Manager instance). Having a *model*
     named ProjectManager confused Django tooling and every developer reading
     the code expecting a custom queryset manager, not a data model.
+
+    SAFETY NOTE — "Manager" vs Django's built-in manager class:
+    Django's built-in manager is never imported by name in application code.
+    It is always accessed as an attribute (e.g. Project.objects, which is a
+    Manager instance). Naming this model "Manager" is therefore safe — there
+    is no import-level collision. If a future developer is concerned, the
+    alternative names are ProjectLead or ProjectOwner, but renaming would
+    require a new migration and API contract change for no practical benefit.
     """
     name = models.CharField(unique=True, max_length=100)
     created = models.DateTimeField(auto_now_add=True)

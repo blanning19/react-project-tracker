@@ -19,6 +19,9 @@ class ManagerViewset(viewsets.ReadOnlyModelViewSet):
     queryset = Manager.objects.all().order_by("name")
     serializer_class = ManagerSerializer
     pagination_class = NoPagination
+    # Explicitly opt out of global filter backends — these are simple lookup
+    # endpoints that return all records and do not support filtering or search.
+    filter_backends = []
 
 
 class EmployeeViewset(viewsets.ReadOnlyModelViewSet):
@@ -30,6 +33,9 @@ class EmployeeViewset(viewsets.ReadOnlyModelViewSet):
     )
     serializer_class = EmployeeSerializer
     pagination_class = NoPagination
+    # Explicitly opt out of global filter backends — same reasoning as
+    # ManagerViewset above.
+    filter_backends = []
 
 
 class ProjectViewset(viewsets.ModelViewSet):

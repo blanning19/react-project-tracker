@@ -38,6 +38,7 @@ class TestProjectListQueryCount:
                 start_date="2025-01-01",
                 end_date="2025-12-31",
                 status="Active",
+                comments="",
             )
             project.employees.set(employees[i * 2: i * 2 + 2])
             projects.append(project)
@@ -72,6 +73,7 @@ class TestProjectListQueryCount:
                 start_date="2025-01-01",
                 end_date="2025-12-31",
                 status="Active",
+                comments="",
             )
             p.employees.set(employees[:2])
 

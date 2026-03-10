@@ -38,6 +38,7 @@ function ProjectFormPageView({
 }: ProjectFormPageViewProps): JSX.Element {
     return (
         <div className={styles.page}>
+            <div className={styles.pageInner}>
             <div className={styles.header}>
                 <div>
                     <div className={styles.title}>{title}</div>
@@ -98,6 +99,7 @@ function ProjectFormPageView({
                     </form>
                 </>
             )}
+            </div>
         </div>
     );
 }

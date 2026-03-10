@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import {
     Alert,
@@ -89,15 +89,18 @@ export default function HomeView({
     const location = useLocation();
     const [deleteTarget, setDeleteTarget] = useState<DeleteTarget>(null);
 
-    // Read success message passed via router state from Create/Edit on save.
-    // Replace the history entry immediately so the message does not reappear
-    // if the user refreshes the page.
-    const successMessage =
-        (location.state as { successMessage?: string } | null)?.successMessage ?? "";
+    // Capture the success message from router state into local state on mount.
+    // Storing it locally means we can immediately clear it from history (so a
+    // page refresh won't re-show it) without wiping the value before it renders.
+    const [successMessage, setSuccessMessage] = useState<string>(() => {
+        return (location.state as { successMessage?: string } | null)?.successMessage ?? "";
+    });
 
-    if (successMessage) {
-        navigate(location.pathname, { replace: true, state: {} });
-    }
+    useEffect(() => {
+        if (location.state && (location.state as { successMessage?: string }).successMessage) {
+            navigate(location.pathname, { replace: true, state: {} });
+        }
+    }, []);
 
     const { loading, refreshing, apiError } = state;
 
@@ -189,7 +192,9 @@ export default function HomeView({
                     {successMessage && (
                         <Alert
                             variant="success"
-                            className="py-2 px-3 small mb-3 d-flex align-items-center justify-content-between"
+                            dismissible
+                            onClose={() => setSuccessMessage("")}
+                            className="py-2 px-3 small mb-3"
                             aria-live="polite"
                         >
                             {successMessage}

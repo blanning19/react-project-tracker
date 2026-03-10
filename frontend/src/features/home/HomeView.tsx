@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import {
     Alert,
     Badge,
@@ -68,12 +68,6 @@ function SortHeader({
 }
 
 // ---------------------------------------------------------------------------
-// Delete target state
-// ---------------------------------------------------------------------------
-
-type DeleteTarget = { id: number; name: string } | null;
-
-// ---------------------------------------------------------------------------
 // Main view
 // ---------------------------------------------------------------------------
 
@@ -84,10 +78,11 @@ export default function HomeView({
     filters,
     state,
     actions,
+    navigation,
 }: HomeViewProps) {
-    const navigate = useNavigate();
     const location = useLocation();
-    const [deleteTarget, setDeleteTarget] = useState<DeleteTarget>(null);
+    const navigate = useNavigate();
+    const { onNavigateCreate, onNavigateEdit, deleteTarget, onDeleteRequest, onDeleteCancel } = navigation;
 
     // Capture the success message from router state into local state on mount.
     // Storing it locally means we can immediately clear it from history (so a
@@ -153,7 +148,7 @@ export default function HomeView({
                     projectId={deleteTarget.id}
                     projectName={deleteTarget.name}
                     show={Boolean(deleteTarget)}
-                    onHide={() => setDeleteTarget(null)}
+                    onHide={onDeleteCancel}
                     onDeleted={() => void getData({ isRefresh: true })}
                 />
             )}
@@ -167,7 +162,7 @@ export default function HomeView({
                                 variant="dark"
                                 size="sm"
                                 className="d-flex align-items-center gap-1"
-                                onClick={() => navigate("/create")}
+                                onClick={onNavigateCreate}
                             >
                                 <Plus size={14} />
                                 Add Project
@@ -277,8 +272,8 @@ export default function HomeView({
                                             <td>{project.start_date ?? "—"}</td>
                                             <td>{project.end_date ?? "—"}</td>
                                             <td>
-                                                {project.projectmanager
-                                                    ? project.projectmanager.name
+                                                {project.manager
+                                                    ? project.manager.name
                                                     : <span className="text-body-secondary">—</span>}
                                             </td>
                                             <td>
@@ -288,7 +283,7 @@ export default function HomeView({
                                                         size="sm"
                                                         className="p-1"
                                                         aria-label={`Edit ${project.name}`}
-                                                        onClick={() => navigate(`/edit/${project.id}`)}
+                                                        onClick={() => onNavigateEdit(project.id)}
                                                     >
                                                         <Pencil size={14} />
                                                     </Button>
@@ -297,7 +292,7 @@ export default function HomeView({
                                                         size="sm"
                                                         className="p-1"
                                                         aria-label={`Delete ${project.name}`}
-                                                        onClick={() => setDeleteTarget({ id: project.id, name: project.name })}
+                                                        onClick={() => onDeleteRequest({ id: project.id, name: project.name })}
                                                     >
                                                         <Trash2 size={14} />
                                                     </Button>
@@ -331,10 +326,10 @@ export default function HomeView({
                                                 <div className="text-body-secondary small mb-2">{project.comments}</div>
                                             )}
                                             <div className="d-flex flex-wrap gap-2 small text-body-secondary mb-2">
-                                                {project.projectmanager && (
+                                                {project.manager && (
                                                     <span className="d-flex align-items-center gap-1">
                                                         <User size={12} />
-                                                        {project.projectmanager.name}
+                                                        {project.manager.name}
                                                     </span>
                                                 )}
                                                 {project.start_date && (
@@ -359,7 +354,7 @@ export default function HomeView({
                                                     variant="outline-secondary"
                                                     size="sm"
                                                     aria-label={`Edit ${project.name}`}
-                                                    onClick={() => navigate(`/edit/${project.id}`)}
+                                                    onClick={() => onNavigateEdit(project.id)}
                                                 >
                                                     Edit
                                                 </Button>
@@ -367,7 +362,7 @@ export default function HomeView({
                                                     variant="outline-danger"
                                                     size="sm"
                                                     aria-label={`Delete ${project.name}`}
-                                                    onClick={() => setDeleteTarget({ id: project.id, name: project.name })}
+                                                    onClick={() => onDeleteRequest({ id: project.id, name: project.name })}
                                                 >
                                                     Delete
                                                 </Button>

@@ -5,6 +5,11 @@ import { createElement } from "react";
 import { useHomeController } from "../features/home/useHomeController";
 import * as projectApi from "../features/projects/models/project.api";
 
+
+vi.mock("react-router-dom", () => ({
+    useNavigate: vi.fn(() => vi.fn()),
+}));
+
 vi.mock("../features/projects/models/project.api", () => ({
     listProjects: vi.fn(),
     projectKeys: {
@@ -355,7 +360,7 @@ describe("useHomeController", () => {
         });
 
         await act(async () => {
-            await result.current.actions.getData({ isRefresh: true });
+            await result.current.actions.getData();
         });
 
         // invalidateQueries triggers a background refetch — called at least twice
@@ -390,7 +395,7 @@ describe("useHomeController", () => {
         expect(result.current.pagination.total).toBe(1);
 
         await act(async () => {
-            await result.current.actions.getData({ isRefresh: true });
+            await result.current.actions.getData();
         });
 
         await waitFor(() => {
@@ -401,5 +406,62 @@ describe("useHomeController", () => {
         expect(result.current.pagination.total).toBe(1);
 
         consoleErrorSpy.mockRestore();
+    });
+
+    test("navigation.onNavigateCreate navigates to /create", async () => {
+        const mockedListProjects = projectApi.listProjects as ReturnType<typeof vi.fn>;
+        mockedListProjects.mockResolvedValue(paginated([]));
+
+        const mockNavigate = vi.fn();
+        const { useNavigate } = await import("react-router-dom");
+        (useNavigate as ReturnType<typeof vi.fn>).mockReturnValue(mockNavigate);
+
+        const { result } = renderHook(() => useHomeController(), { wrapper: createWrapper() });
+
+        await waitFor(() => expect(result.current.state.loading).toBe(false));
+
+        act(() => { result.current.navigation.onNavigateCreate(); });
+
+        expect(mockNavigate).toHaveBeenCalledWith("/create");
+    });
+
+    test("navigation.onNavigateEdit navigates to /edit/:id", async () => {
+        const mockedListProjects = projectApi.listProjects as ReturnType<typeof vi.fn>;
+        mockedListProjects.mockResolvedValue(paginated([]));
+
+        const mockNavigate = vi.fn();
+        const { useNavigate } = await import("react-router-dom");
+        (useNavigate as ReturnType<typeof vi.fn>).mockReturnValue(mockNavigate);
+
+        const { result } = renderHook(() => useHomeController(), { wrapper: createWrapper() });
+
+        await waitFor(() => expect(result.current.state.loading).toBe(false));
+
+        act(() => { result.current.navigation.onNavigateEdit(42); });
+
+        expect(mockNavigate).toHaveBeenCalledWith("/edit/42");
+    });
+
+    test("navigation.onDeleteRequest sets deleteTarget, onDeleteCancel clears it", async () => {
+        const mockedListProjects = projectApi.listProjects as ReturnType<typeof vi.fn>;
+        mockedListProjects.mockResolvedValue(paginated([]));
+
+        const { result } = renderHook(() => useHomeController(), { wrapper: createWrapper() });
+
+        await waitFor(() => expect(result.current.state.loading).toBe(false));
+
+        expect(result.current.navigation.deleteTarget).toBeNull();
+
+        act(() => {
+            result.current.navigation.onDeleteRequest({ id: 7, name: "Project Seven" });
+        });
+
+        expect(result.current.navigation.deleteTarget).toEqual({ id: 7, name: "Project Seven" });
+
+        act(() => {
+            result.current.navigation.onDeleteCancel();
+        });
+
+        expect(result.current.navigation.deleteTarget).toBeNull();
     });
 });

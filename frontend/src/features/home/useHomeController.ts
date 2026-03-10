@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { listProjects, projectKeys } from "../projects/models/project.api";
 import {
@@ -8,6 +9,8 @@ import {
     HOME_DEFAULT_STATUS_FILTER,
 } from "./home.constants";
 import type { HomeSortDirection, HomeSortKey, HomeStatusFilter } from "./home.types";
+
+type DeleteTarget = { id: number; name: string } | null;
 
 /**
  * Controller hook for the Home page.
@@ -33,6 +36,11 @@ import type { HomeSortDirection, HomeSortKey, HomeStatusFilter } from "./home.ty
  *   const { rows, pagination, sort, filters, state, actions } = useHomeController();
  */
 export function useHomeController() {
+    const navigate = useNavigate();
+
+    // ── Delete target ────────────────────────────────────────────────────────
+    const [deleteTarget, setDeleteTarget] = useState<DeleteTarget>(null);
+
     // ── Pagination ───────────────────────────────────────────────────────────
     const [page, setPage] = useState(1);
     const [pageSize, setPageSize] = useState(HOME_DEFAULT_PAGE_SIZE);
@@ -175,6 +183,14 @@ export function useHomeController() {
 
         actions: {
             getData,
+        },
+
+        navigation: {
+            onNavigateCreate: () => navigate("/create"),
+            onNavigateEdit: (id: number) => navigate(`/edit/${id}`),
+            deleteTarget,
+            onDeleteRequest: (target: DeleteTarget) => setDeleteTarget(target),
+            onDeleteCancel: () => setDeleteTarget(null),
         },
     };
 }

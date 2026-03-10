@@ -67,6 +67,14 @@ export interface HomeActionsProps {
     getData: () => Promise<void>;
 }
 
+export interface HomeNavigationProps {
+    onNavigateCreate: () => void;
+    onNavigateEdit: (id: number) => void;
+    deleteTarget: { id: number; name: string } | null;
+    onDeleteRequest: (target: { id: number; name: string }) => void;
+    onDeleteCancel: () => void;
+}
+
 export interface HomeViewProps {
     rows: ProjectRecord[];
     pagination: HomePaginationProps;
@@ -74,4 +82,5 @@ export interface HomeViewProps {
     filters: HomeFiltersProps;
     state: HomeStateProps;
     actions: HomeActionsProps;
+    navigation: HomeNavigationProps;
 }

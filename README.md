@@ -5,7 +5,7 @@ Full-stack Project Tracker application:
 - `backend/`: Django + DRF API (PostgreSQL) — see `backend/README.md`
 - `frontend/`: Vite/React UI — see `frontend/README.md`
 
-This repo uses a **feature-based frontend architecture** (`src/features/*` + `src/shared/*`) to keep UI and feature logic cohesive.
+This repo uses a **feature-based frontend architecture** (`src/features/*` + `src/shared/*`) with a Controller/View pattern to keep logic and rendering cleanly separated. See [`docs/architecture.md`](docs/architecture.md) for a full breakdown.
 
 ---
 

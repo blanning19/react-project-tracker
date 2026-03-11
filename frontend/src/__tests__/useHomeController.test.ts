@@ -140,7 +140,8 @@ describe("useHomeController", () => {
             expect(result.current.rows).toHaveLength(1);
         });
 
-        expect(result.current.rows[0].name).toBe("Beta Project");
+        // FIX: Add ! — noUncheckedIndexedAccess widens rows[0] to ProjectRecord | undefined.
+        expect(result.current.rows[0]!.name).toBe("Beta Project");
     });
 
     test("filters projects by status", async () => {
@@ -196,7 +197,8 @@ describe("useHomeController", () => {
             expect(result.current.rows).toHaveLength(1);
         });
 
-        expect(result.current.rows[0].name).toBe("Beta Project");
+        // FIX: Add ! — noUncheckedIndexedAccess.
+        expect(result.current.rows[0]!.name).toBe("Beta Project");
         expect(result.current.filters.statusFilter).toBe("Completed");
     });
 
@@ -326,14 +328,16 @@ describe("useHomeController", () => {
             expect(result.current.state.loading).toBe(false);
         });
 
-        expect(result.current.rows[0].name).toBe("Alpha Project");
+        // FIX: Add ! — noUncheckedIndexedAccess.
+        expect(result.current.rows[0]!.name).toBe("Alpha Project");
 
         act(() => {
             result.current.sort.toggleSort("name");
         });
 
         await waitFor(() => {
-            expect(result.current.rows[0].name).toBe("Bravo Project");
+            // FIX: Add ! — noUncheckedIndexedAccess.
+            expect(result.current.rows[0]!.name).toBe("Bravo Project");
         });
     });
 

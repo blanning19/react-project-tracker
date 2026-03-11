@@ -1,33 +1,46 @@
+/**
+ * @file Inline delete confirmation modal for the Home page.
+ *
+ * @module projects/delete/DeleteModal
+ */
+
 import { Button, Modal, Spinner } from "react-bootstrap";
 import { AlertTriangle } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { deleteProject, projectKeys } from "../../../features/projects/models/project.api";
 
-interface DeleteModalProps {
+/**
+ * Props for {@link DeleteModal}.
+ */
+export interface DeleteModalProps {
+    /** Numeric ID of the project to delete. */
     projectId: number;
+    /** Shown in the confirmation prompt so the user can verify the right record. */
     projectName: string;
+    /** Controls modal visibility. Pass `true` to open, `false` to close. */
     show: boolean;
+    /** Called when the user cancels or closes the modal without deleting. */
     onHide: () => void;
+    /**
+     * Called after a successful delete and cache invalidation.
+     * The caller can use this to perform any additional UI-specific cleanup.
+     */
     onDeleted: () => void;
 }
 
 /**
  * Inline delete confirmation modal.
  *
- * Replaces the separate /delete/:id route. Trigger this from HomeView by
- * storing { id, name } in a piece of state and passing it here.
+ * Replaces the previous `/delete/:id` route. Trigger this from `HomeView` by
+ * storing `{ id, name }` in a piece of state and passing it here.
  *
- * Props:
- *   projectId   — numeric ID of the project to delete
- *   projectName — shown in the confirmation prompt
- *   show        — controls modal visibility
- *   onHide      — called when the user cancels or closes
- *   onDeleted   — called after a successful delete; caller can perform any
- *                 UI-specific cleanup after the cache refresh completes
+ * Uses a React Query mutation rather than component-local `async` state so
+ * pending and error handling stay aligned with the rest of the app's data layer.
+ * On success the modal invalidates all project list queries before notifying
+ * the caller via `onDeleted`.
  *
- * REMARK:
- * Delete now uses a React Query mutation instead of component-local async state.
- * This keeps pending/error handling aligned with the rest of the app's data layer.
+ * The modal blocks closure while the deletion is in-flight (`backdrop="static"`,
+ * close button hidden) to prevent double-delete or a premature UI reset.
  */
 export default function DeleteModal({
     projectId,

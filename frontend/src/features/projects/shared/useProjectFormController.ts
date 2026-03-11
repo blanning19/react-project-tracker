@@ -1,6 +1,13 @@
+/**
+ * @file Shared controller hook for the Create and Edit project pages.
+ *
+ * @module projects/shared/useProjectFormController
+ */
+
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
+import type { Resolver } from "react-hook-form";
 import { useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -21,34 +28,59 @@ import {
 } from "./projectFormConfig";
 import { getApiErrorMessage } from "./getApiErrorMessage";
 
-type ProjectFormMode = "create" | "edit";
+export type ProjectFormMode = "create" | "edit";
 
-interface UseProjectFormControllerArgs {
+/**
+ * Arguments accepted by {@link useProjectFormController}.
+ */
+export interface UseProjectFormControllerArgs {
+    /** Whether the form is creating a new project or editing an existing one. */
     mode: ProjectFormMode;
+    /**
+     * String route param from `useParams`. Required (and non-empty) when
+     * `mode` is `"edit"`. Ignored for `"create"`.
+     */
     projectId?: string;
 }
 
 /**
- * Shared controller logic for Project Create and Project Edit.
+ * Shared controller hook for the Create and Edit project form pages.
  *
+ * Encapsulates all data-fetching, form wiring, and submit logic so that
+ * `useCreateController` and `useEditController` remain thin wrappers that
+ * only differ in the `mode` argument they pass down.
+ *
+ * ### Data fetching
  * Lookup data (managers, employees) and the edit record are fetched with
  * React Query so they can be cached, deduplicated, and explicitly refetched
  * when the user clicks Retry.
  *
- * REMARK:
- * Submit behavior now uses React Query mutations instead of manual async state.
- * This centralizes pending state and cache invalidation in the data layer.
+ * ### Submit behaviour
+ * Create and Edit share one mutation wrapper. The mutation function
+ * chooses `createProject` vs `updateProject` based on `mode`. On success the
+ * project list cache is invalidated and the user is navigated to `/` with a
+ * router-state success message for the Home page banner.
+ *
+ * ### Why the `yupResolver` cast
+ * `yupResolver` infers a broader generic than React Hook Form expects.
+ * Casting through `unknown as Resolver<ProjectFormValues>` is safe at runtime
+ * and avoids propagating the mismatch into call sites.
+ *
+ * @param args - See {@link UseProjectFormControllerArgs}.
+ * @returns React Hook Form fields, lookup data, submission handler, loading
+ *   state, and a `reloadData` callback for the Retry button.
  */
 export function useProjectFormController({ mode, projectId = "" }: UseProjectFormControllerArgs) {
     const [apiError, setApiError] = useState("");
     const navigate = useNavigate();
 
-    // REMARK: Added queryClient so create/update can invalidate cached project lists.
     const queryClient = useQueryClient();
 
     const form = useForm<ProjectFormValues>({
         defaultValues: DEFAULT_VALUES,
-        resolver: yupResolver(PROJECT_SCHEMA),
+        // Cast required: yupResolver generic resolution does not match RHF's
+        // Resolver<ProjectFormValues> exactly. Safe at runtime.
+        resolver: yupResolver(PROJECT_SCHEMA) as unknown as Resolver<ProjectFormValues>,
     });
     const { reset } = form;
 
@@ -129,11 +161,6 @@ export function useProjectFormController({ mode, projectId = "" }: UseProjectFor
     };
 
     // ── Submit mutation ───────────────────────────────────────────────────────
-    //
-    // REMARK:
-    // Create and Edit now share one mutation wrapper. The mutation function
-    // chooses create vs update based on mode, while onSuccess handles cache
-    // invalidation and navigation in one place.
 
     const submitMutation = useMutation({
         mutationFn: async (data: ProjectFormValues) => {
@@ -149,19 +176,14 @@ export function useProjectFormController({ mode, projectId = "" }: UseProjectFor
         },
 
         onSuccess: async () => {
-            // REMARK: Invalidate all project list queries so Home refreshes with the new data.
             await queryClient.invalidateQueries({ queryKey: projectKeys.lists() });
 
-            // REMARK: If editing, also invalidate this specific detail cache entry.
             if (mode === "edit" && projectId) {
                 await queryClient.invalidateQueries({
                     queryKey: projectKeys.detail(projectId),
                 });
             }
 
-            // Pass a success message through router state so HomeView can display
-            // a confirmation banner. Using state avoids a global store and the
-            // message is automatically discarded if the user navigates away and back.
             navigate("/", {
                 state: {
                     successMessage:
@@ -196,8 +218,6 @@ export function useProjectFormController({ mode, projectId = "" }: UseProjectFor
         employees,
         loading,
         apiError,
-
-        // REMARK: isSubmitting now comes from the React Query mutation pending state.
         isSubmitting: submitMutation.isPending,
     };
 }

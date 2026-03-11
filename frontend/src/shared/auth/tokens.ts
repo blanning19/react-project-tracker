@@ -1,71 +1,87 @@
 /**
- * Keeps a copy of the current access token in memory for fast access during the
- * current browser session.
+ * @file Token storage layer for JWT-based authentication.
  *
- * Security note:
- * - Access tokens are intentionally NOT stored in localStorage.
- * - localStorage is accessible to any JavaScript on the page (XSS risk).
- * - Memory is cleared on tab/browser close, which is the desired behavior
- *   for short-lived access tokens.
- * - sessionStorage survives page navigation within the same tab but is cleared
- *   when the tab is closed, making it an acceptable secondary fallback.
+ * Manages access and refresh token persistence across the two storage tiers:
+ * - **Access token** — memory (primary) + sessionStorage (tab-scoped fallback)
+ * - **Refresh token** — localStorage only (must survive tab close for silent re-auth)
+ *
+ * @module auth/tokens
+ */
+
+/**
+ * In-memory copy of the current access token.
+ *
+ * Kept in module scope so reads are synchronous and do not touch the DOM.
+ * Intentionally NOT stored in localStorage — localStorage is readable by any
+ * JavaScript on the page and is therefore unsuitable for short-lived credentials.
+ *
+ * The value is mirrored to `sessionStorage` so it survives page reloads within
+ * the same tab, but is cleared when the tab is closed.
  */
 let inMemoryAccess: string | null = null;
 
 /**
- * Centralized token storage helper used by the authentication layer.
+ * Centralised token storage helper used by the authentication layer.
  *
- * What this store is responsible for:
- * - Reading the current access token
- * - Persisting/removing the access token
- * - Reading the refresh token
- * - Persisting/removing the refresh token
- * - Clearing all authentication state during logout or auth reset
+ * ### Storage tiers
  *
- * Storage behavior:
- * - Access token:
- *   - stored in memory (primary)
- *   - mirrored to sessionStorage (tab-scoped fallback for page reloads)
- *   - NOT stored in localStorage (XSS risk — localStorage is readable by
- *     any JS on the page, making it unsuitable for access tokens)
- * - Refresh token:
- *   - stored in localStorage only (must survive tab close for silent re-auth)
+ * | Token   | Memory | sessionStorage | localStorage |
+ * |---------|--------|----------------|--------------|
+ * | Access  | ✅ primary | ✅ fallback  | ❌ XSS risk  |
+ * | Refresh | ❌       | ❌             | ✅ only      |
+ *
+ * ### Why two tiers for access tokens?
+ * Memory is fastest and most secure, but is wiped on page reload.
+ * sessionStorage survives navigation within the same tab and acts as a
+ * reload-safe fallback without persisting beyond the browser session.
+ *
+ * ### Why localStorage for refresh tokens?
+ * Refresh tokens must outlive page reloads and tab-close/reopen cycles so
+ * the app can silently obtain a new access token without forcing login.
+ * The backend enforces rotation and blacklisting, which limits the damage
+ * window if a refresh token is ever compromised.
+ *
+ * @example
+ * ```ts
+ * // Store tokens after a successful login
+ * tokenStore.setAccess(tokens.access ?? null);
+ * tokenStore.setRefresh(tokens.refresh ?? null);
+ *
+ * // Read the access token to attach to an Authorization header
+ * const access = tokenStore.getAccess();
+ *
+ * // Clear everything on logout
+ * tokenStore.clear();
+ * ```
  */
 export const tokenStore = {
     /**
      * Returns the current access token.
      *
      * Lookup order:
-     * 1. in-memory token (fastest, most current)
-     * 2. sessionStorage (survives page reload within the same tab)
+     * 1. In-memory value (fastest, most current)
+     * 2. `sessionStorage` (survives page reload within the same tab)
      *
-     * localStorage is intentionally NOT checked here.
-     * Access tokens must not persist beyond the current browser session.
+     * `localStorage` is intentionally **not** checked — access tokens must not
+     * persist beyond the current browser session.
      *
-     * Returns:
-     * - the access token string when found
-     * - null when no access token exists
+     * @returns The access token string, or `null` when no token is present.
      */
     getAccess(): string | null {
         return inMemoryAccess || sessionStorage.getItem("access");
     },
 
     /**
-     * Saves or removes the access token.
+     * Persists or removes the access token.
      *
-     * When a token is provided:
-     * - update the in-memory copy
-     * - write the token to sessionStorage
+     * - When a non-null token is supplied, the in-memory copy and
+     *   `sessionStorage` entry are both updated.
+     * - When `null` is supplied, both storage locations are cleared.
      *
-     * When null is provided:
-     * - clear the in-memory copy
-     * - remove the token from sessionStorage
+     * `localStorage` is intentionally **not** written — access tokens are
+     * short-lived and must not outlive the browser session.
      *
-     * localStorage is intentionally NOT written here.
-     * Access tokens are short-lived and must not outlive the browser session.
-     *
-     * Params:
-     * - token: the new access token to store, or null to remove it
+     * @param token - The new access token to store, or `null` to remove it.
      */
     setAccess(token: string | null) {
         inMemoryAccess = token;
@@ -78,33 +94,22 @@ export const tokenStore = {
     },
 
     /**
-     * Returns the current refresh token from localStorage.
+     * Returns the current refresh token from `localStorage`.
      *
-     * Why only localStorage:
-     * - Refresh tokens are meant to survive page reloads and tab close/reopen
-     *   so the app can silently obtain a new access token without forcing login.
-     * - The backend enforces refresh token rotation and blacklisting, which
-     *   limits the damage window if a refresh token is ever compromised.
+     * Refresh tokens are stored only in `localStorage` because they must
+     * survive page reloads and tab-close/reopen cycles for silent re-auth.
+     * The backend enforces rotation and blacklisting to limit exposure.
      *
-     * Returns:
-     * - the refresh token string when present
-     * - null when no refresh token exists
+     * @returns The refresh token string, or `null` when no token is present.
      */
     getRefresh(): string | null {
         return localStorage.getItem("refresh");
     },
 
     /**
-     * Saves or removes the refresh token in localStorage.
+     * Persists or removes the refresh token in `localStorage`.
      *
-     * When a token is provided:
-     * - persist it to localStorage
-     *
-     * When null is provided:
-     * - remove any stored refresh token
-     *
-     * Params:
-     * - token: the new refresh token to store, or null to remove it
+     * @param token - The new refresh token to store, or `null` to remove it.
      */
     setRefresh(token: string | null) {
         if (token) {
@@ -117,15 +122,13 @@ export const tokenStore = {
     /**
      * Clears all authentication state managed by this token store.
      *
-     * This should be called during:
-     * - logout
-     * - token invalidation
-     * - forced auth reset after refresh failure
+     * Should be called during logout, token invalidation, or a forced auth
+     * reset after a failed refresh attempt.
      *
-     * What gets cleared:
-     * - in-memory access token
-     * - sessionStorage access token
-     * - localStorage refresh token
+     * **What gets cleared:**
+     * - In-memory access token
+     * - `sessionStorage` access token entry
+     * - `localStorage` refresh token entry
      */
     clear() {
         inMemoryAccess = null;

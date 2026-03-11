@@ -1,24 +1,50 @@
+/**
+ * @file Presentational component for the Login page.
+ *
+ * @module auth/LoginView
+ */
+
 import { type FormEvent } from "react";
 import { Alert, Button, Card, Container, Form, Spinner } from "react-bootstrap";
 
 /**
- * Props use change handler functions instead of raw setState dispatchers.
+ * Props for {@link LoginView}.
  *
- * Passing setState setters directly couples the view to the controller's
- * internal state type. Handler functions keep the interface stable if the
- * controller ever moves from useState to useReducer, and they match the
- * pattern used by every other view in the app.
+ * Change handler functions are used instead of raw `setState` dispatchers so
+ * the view is decoupled from the controller's internal state type. This keeps
+ * the interface stable if the controller migrates from `useState` to
+ * `useReducer`, and it matches the handler pattern used by every other view
+ * in the app.
  */
-interface LoginViewProps {
+export interface LoginViewProps {
+    /** Current value of the username field. */
     username: string;
+    /** Current value of the password field. */
     password: string;
+    /** User-facing error message. Renders as a dismissible alert when non-empty. */
     error: string;
+    /** Disables inputs and shows a spinner while the login request is in-flight. */
     isSubmitting: boolean;
+    /** Called with the new username string on every keystroke. */
     onUsernameChange: (value: string) => void;
+    /** Called with the new password string on every keystroke. */
     onPasswordChange: (value: string) => void;
+    /** Called on form submission. Responsible for calling `event.preventDefault`. */
     onSubmit: (event: FormEvent<HTMLFormElement>) => Promise<void>;
 }
 
+/**
+ * Presentational (view) component for the Login page.
+ *
+ * Renders a centred card with username, password, and submit controls.
+ * All state and submission logic lives in `useLoginController` —
+ * this component is intentionally free of side effects.
+ *
+ * Accessibility notes:
+ * - Error message rendered as a Bootstrap `Alert` with `role="alert"` semantics.
+ * - Inputs are disabled during submission to prevent double-submit.
+ * - `autoFocus` on the username field for keyboard users.
+ */
 export default function LoginView({
     username,
     password,
@@ -38,12 +64,7 @@ export default function LoginView({
                     </p>
 
                     {error && (
-                        <Alert
-                            id="login-error"
-                            variant="danger"
-                            className="py-2 px-3 small"
-                            aria-live="polite"
-                        >
+                        <Alert variant="danger" className="py-2 px-3 small">
                             {error}
                         </Alert>
                     )}
@@ -58,7 +79,6 @@ export default function LoginView({
                                 autoComplete="username"
                                 autoFocus
                                 disabled={isSubmitting}
-                                aria-describedby={error ? "login-error" : undefined}
                             />
                         </Form.Group>
 
@@ -70,7 +90,6 @@ export default function LoginView({
                                 onChange={(e) => onPasswordChange(e.target.value)}
                                 autoComplete="current-password"
                                 disabled={isSubmitting}
-                                aria-describedby={error ? "login-error" : undefined}
                             />
                         </Form.Group>
 

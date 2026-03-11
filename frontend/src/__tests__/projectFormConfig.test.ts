@@ -1,4 +1,5 @@
 import { describe, expect, test } from "vitest";
+import type { ProjectRecord } from "../features/projects/models/project.types";
 import {
     DEFAULT_VALUES,
     formToPayload,
@@ -54,7 +55,7 @@ describe("PROJECT_SCHEMA", () => {
         comments: "Some notes",
         start_date: "2026-01-01",
         end_date: "2026-06-30",
-        security_level: "Internal",
+        security_level: "Internal" as const,
     };
 
     test("accepts a fully valid object", async () => {
@@ -128,11 +129,11 @@ describe("projectToFormValues", () => {
             name: "Alpha",
             comments: "Some notes",
             status: "Active",
-
-            // REMARK: API read field is now `manager`.
-            manager: "3",
-
-            employees: ["10", "11"],
+            manager: { id: 3, name: "Manager 3" },
+            employees: [
+                { id: 10, name: "Employee 10" },
+                { id: 11, name: "Employee 11" },
+            ],
             start_date: "2026-03-01",
             end_date: "2026-03-31",
             security_level: "Confidential",
@@ -150,10 +151,7 @@ describe("projectToFormValues", () => {
             name: "Alpha",
             comments: "",
             status: "Active",
-
-            // REMARK: API read field is now `manager`.
             manager: { id: 5, first_name: "Alice", last_name: "Manager" },
-
             employees: [],
             start_date: "2026-03-01",
             end_date: "2026-03-31",
@@ -163,32 +161,13 @@ describe("projectToFormValues", () => {
         expect(result.managerId).toBe("5");
     });
 
-    test("keeps manager as string when it arrives as a primitive string id", () => {
-        const result = projectToFormValues({
-            id: 1,
-            name: "Alpha",
-            comments: "",
-            status: "Active",
-
-            // REMARK: API read field is now `manager`.
-            manager: "7",
-
-            employees: [],
-            start_date: "2026-03-01",
-            end_date: "2026-03-31",
-            security_level: "Internal",
-        });
-
-        expect(result.managerId).toBe("7");
-    });
-
     test("converts employee objects to string ids", () => {
         const result = projectToFormValues({
             id: 1,
             name: "Alpha",
             comments: "",
             status: "Active",
-            manager: "3",
+            manager: { id: 3, name: "Manager 3" },
             employees: [
                 { id: 10, first_name: "Bob", last_name: "One" },
                 { id: 11, first_name: "Carol", last_name: "Two" },
@@ -207,7 +186,7 @@ describe("projectToFormValues", () => {
             name: "Alpha",
             comments: "",
             status: "Active",
-            manager: "3",
+            manager: { id: 3, name: "Manager 3" },
             employees: [],
             start_date: "2026-03-01",
             end_date: "2026-12-31",
@@ -219,50 +198,56 @@ describe("projectToFormValues", () => {
     });
 
     test("returns empty strings for null/missing dates", () => {
-        const result = projectToFormValues({
+        const project = {
             id: 1,
             name: "Alpha",
             comments: "",
             status: "Active",
-            manager: "3",
+            manager: { id: 3, name: "Manager 3" },
             employees: [],
             start_date: null,
             end_date: null,
             security_level: "Internal",
-        });
+        } as unknown as ProjectRecord;
+
+        const result = projectToFormValues(project);
 
         expect(result.start_date).toBe("");
         expect(result.end_date).toBe("");
     });
 
     test("defaults security_level to Internal when missing", () => {
-        const result = projectToFormValues({
+        const project = {
             id: 1,
             name: "Alpha",
             comments: "",
             status: "Active",
-            manager: "3",
+            manager: { id: 3, name: "Manager 3" },
             employees: [],
             start_date: "2026-03-01",
             end_date: "2026-03-31",
             security_level: null,
-        });
+        } as unknown as ProjectRecord;
+
+        const result = projectToFormValues(project);
 
         expect(result.security_level).toBe("Internal");
     });
 
     test("defaults comments to empty string when missing", () => {
-        const result = projectToFormValues({
+        const project = {
             id: 1,
             name: "Alpha",
             comments: null,
             status: "Active",
-            manager: "3",
+            manager: { id: 3, name: "Manager 3" },
             employees: [],
             start_date: "2026-03-01",
             end_date: "2026-03-31",
             security_level: "Internal",
-        });
+        } as unknown as ProjectRecord;
+
+        const result = projectToFormValues(project);
 
         expect(result.comments).toBe("");
     });
@@ -284,8 +269,6 @@ describe("formToPayload", () => {
 
     test("converts managerId string to backend manager number", () => {
         const payload = formToPayload(baseForm);
-
-        // REMARK: API write field is now `manager`.
         expect(payload.manager).toBe(3);
         expect(typeof payload.manager).toBe("number");
     });

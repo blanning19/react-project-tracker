@@ -1,3 +1,13 @@
+/**
+ * @file Application shell layout component with a responsive sidebar.
+ *
+ * Renders as a React Router layout route. `App.tsx` wraps all shared routes
+ * with `<Route element={<Navbar />}>` so the sidebar persists across page
+ * changes without remounting.
+ *
+ * @module shared/layout/Navbar
+ */
+
 import { useEffect, useMemo, useState } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { Button, Offcanvas } from "react-bootstrap";
@@ -21,25 +31,61 @@ import ThemeToggle from "../theme/ThemeToggle";
 //   </Route>
 // ---------------------------------------------------------------------------
 
+/**
+ * A single navigation link entry in the sidebar.
+ */
 interface NavItem {
+    /** React Router path string. */
     to: string;
+    /** Visible label shown next to the icon when the sidebar is expanded. */
     label: string;
+    /**
+     * When `true`, the active check requires an exact path match.
+     * Pass `true` for the Home link to prevent it matching every route.
+     */
     end?: boolean;
+    /** Lucide icon element rendered inside the link. */
     icon: React.ReactNode;
 }
 
 const iconProps = { size: 18, strokeWidth: 2.2 };
 
+/** Navigation items shown in both the desktop sidebar and mobile drawer. */
 const navItems: NavItem[] = [
     { to: "/", label: "Home", end: true, icon: <Home {...iconProps} /> },
     { to: "/about", label: "About", icon: <Info {...iconProps} /> },
     { to: "/create", label: "Create", icon: <Plus {...iconProps} /> },
 ];
 
+/** Pixel width of the sidebar when fully expanded. */
 const SIDEBAR_WIDTH_EXPANDED = 260;
+/** Pixel width of the sidebar when collapsed to icon-only mode. */
 const SIDEBAR_WIDTH_COLLAPSED = 76;
+/** `localStorage` key used to persist the collapsed state across sessions. */
 const SIDEBAR_STORAGE_KEY = "pt.sidebar.collapsed";
 
+/**
+ * Application shell layout component.
+ *
+ * Renders a sticky desktop sidebar and a mobile `Offcanvas` drawer. The active
+ * child route is rendered in the `<main>` area via React Router's `<Outlet />`.
+ *
+ * ### Sidebar behaviour
+ * - Expand/collapse is toggled with the chevron button and persisted to
+ *   `localStorage` so the preference survives page reloads.
+ * - In collapsed mode, icon-only links use the `title` attribute for
+ *   accessibility tooltip text.
+ * - Auth state is read from `tokenStore` directly (not `useAuth`) so the
+ *   login/logout button reflects the current token without depending on a
+ *   re-render from context.
+ *
+ * ### Logout
+ * Delegates entirely to `useAuth().logout()` which handles the backend
+ * blacklist call, clears local token state, and redirects to `/login`.
+ * Navbar must not call `tokenStore.clear()` directly.
+ *
+ * @returns The full application shell with sidebar and page content area.
+ */
 export default function Navbar() {
     const navigate = useNavigate();
     const { logout } = useAuth();

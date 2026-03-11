@@ -1,22 +1,31 @@
+/**
+ * @file Light/dark theme toggle button.
+ *
+ * @module shared/theme/ThemeToggle
+ */
+
 import { useEffect, useState } from "react";
 
 /**
- * Storage key used to persist the user's selected Bootstrap theme.
+ * `localStorage` key used to persist the user's selected Bootstrap theme
+ * across browser sessions.
  */
 const THEME_STORAGE_KEY = "bs-theme";
 
 /**
- * Supported theme values for the application.
+ * Supported Bootstrap theme values for the application.
  */
 type ThemeMode = "light" | "dark";
 
 /**
  * Returns the initial theme to use when the component mounts.
  *
- * Priority:
- * 1. Saved theme from localStorage
- * 2. System/browser preference via prefers-color-scheme media query
- * 3. Light mode as the final fallback
+ * Resolution order:
+ * 1. Saved theme from `localStorage`
+ * 2. System preference via the `prefers-color-scheme` media query
+ * 3. `"light"` as the final fallback
+ *
+ * @returns The theme that should be active on first render.
  */
 function getInitialTheme(): ThemeMode {
     const savedTheme = localStorage.getItem(THEME_STORAGE_KEY);
@@ -29,9 +38,11 @@ function getInitialTheme(): ThemeMode {
 /**
  * Toggles the application's Bootstrap light/dark theme.
  *
- * Writes the selected theme to localStorage so it persists across sessions,
- * and sets the data-bs-theme attribute on the root element so Bootstrap
- * applies the correct color scheme globally.
+ * On each render the selected theme is written to `localStorage` and applied
+ * to `document.documentElement` via the `data-bs-theme` attribute so
+ * Bootstrap picks up the correct color tokens globally.
+ *
+ * @returns A button that switches between light and dark mode.
  */
 export default function ThemeToggle(): JSX.Element {
     const [theme, setTheme] = useState<ThemeMode>(getInitialTheme);

@@ -1,11 +1,35 @@
+/**
+ * @file Controller hook for the Create Project page.
+ *
+ * @module projects/create/useCreateController
+ */
+
 import { useProjectFormController } from "../shared/useProjectFormController";
 
 /**
- * Wrapper controller for the Create feature.
+ * Controller hook for the Create Project feature.
  *
- * Create and Edit share the same form behaviors, so the heavy lifting lives in
- * `useProjectFormController`. This wrapper exists to keep feature boundaries
- * explicit and imports stable for the Create route.
+ * Create and Edit share all form behaviour via {@link useProjectFormController}.
+ * This wrapper exists to:
+ * - Keep the Create feature boundary explicit (clean import path for `Create.tsx`).
+ * - Ensure the `mode` is always `"create"` without the caller having to pass it.
+ *
+ * @returns The full form controller shape from {@link useProjectFormController}.
+ *
+ * @example
+ * ```tsx
+ * function Create() {
+ *   const controller = useCreateController();
+ *   return (
+ *     <ProjectFormPageView
+ *       title="Create project"
+ *       submitLabel="Save"
+ *       submittingLabel="Saving…"
+ *       {...controller}
+ *     />
+ *   );
+ * }
+ * ```
  */
 export function useCreateController() {
     return useProjectFormController({ mode: "create" });

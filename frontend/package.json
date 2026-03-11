@@ -4,6 +4,8 @@
     "version": "0.0.0",
     "type": "module",
     "scripts": {
+        "docs": "typedoc",
+        "docs:watch": "typedoc --watch",
         "dev": "vite",
         "build": "vite build",
         "preview": "vite preview",
@@ -52,6 +54,7 @@
         "eslint-plugin-vitest-globals": "^1.5.0",
         "jsdom": "^28.1.0",
         "prettier": "^3.8.1",
+        "typedoc": "^0.28.17",
         "typescript": "^5.8.2",
         "vite": "^5.0.0",
         "vitest": "^4.0.18"

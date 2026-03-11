@@ -1,3 +1,21 @@
+/**
+ * @file Root application component and React Router route tree.
+ *
+ * Defines the complete route hierarchy using React Router layout routes so
+ * the `Navbar` shell is shared without prop-drilling the route list.
+ *
+ * ### Route structure
+ * ```
+ * /login           — public, no Navbar
+ * /about           — public, inside Navbar shell
+ * /                — protected, inside Navbar + RequireAuth
+ * /create          — protected, inside Navbar + RequireAuth
+ * /edit/:id        — protected, inside Navbar + RequireAuth
+ * ```
+ *
+ * @module App
+ */
+
 import "./App.css";
 import { Route, Routes } from "react-router-dom";
 import Navbar from "./shared/layout/Navbar";
@@ -9,29 +27,28 @@ import Create from "./features/projects/create/Create";
 import Edit from "./features/projects/edit/Edit";
 
 /**
- * Route tree using React Router layout routes.
+ * Root component that owns the React Router route tree.
  *
- * REMARK: /login stays outside the Navbar shell so the login page remains
- * simple and can never get caught in a protected-layout redirect loop.
+ * `/login` is deliberately kept outside the `Navbar` layout route so the
+ * login page remains standalone and cannot get caught in a protected-layout
+ * redirect loop.
  *
- * REMARK: /about is public, but now lives inside the Navbar layout so users
- * keep the application shell when navigating there.
- *
- * REMARK: Only the project pages are protected by RequireAuth.
+ * `/about` is public but lives inside the `Navbar` shell so users retain the
+ * application navigation when browsing there.
  */
 function App() {
     return (
         <div className="App">
             <Routes>
-                {/* REMARK: Public standalone route with no Navbar */}
+                {/* Public standalone route — no Navbar */}
                 <Route path="/login" element={<Login />} />
 
-                {/* REMARK: Shared application shell with Navbar */}
+                {/* Shared application shell with Navbar */}
                 <Route element={<Navbar />}>
-                    {/* REMARK: Public route that still keeps the Navbar visible */}
+                    {/* Public route that still shows the Navbar */}
                     <Route path="/about" element={<About />} />
 
-                    {/* REMARK: Protected routes only */}
+                    {/* All project routes are gated by RequireAuth */}
                     <Route element={<RequireAuth />}>
                         <Route path="/" element={<Home />} />
                         <Route path="/create" element={<Create />} />

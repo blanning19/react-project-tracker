@@ -1,17 +1,40 @@
+/**
+ * @file Reusable form field group for project create/edit forms.
+ *
+ * @module projects/shared/ProjectFormFields
+ */
+
 import { useMemo, useState } from "react";
 import { Controller, type Control, type FieldErrors } from "react-hook-form";
 import type { PersonOption, ProjectFormValues } from "../models/project.types";
 import { SECURITY_LEVEL_OPTIONS } from "./projectFormConfig";
 import styles from "./ProjectFormFields.module.css";
 
-interface ProjectFormFieldsProps {
+/**
+ * Props for {@link ProjectFormFields}.
+ */
+export interface ProjectFormFieldsProps {
+    /** React Hook Form `control` object used by every `<Controller>` in the form. */
     control: Control<ProjectFormValues>;
+    /** Field-level validation errors from React Hook Form. */
     errors: FieldErrors<ProjectFormValues>;
+    /** Manager options for the dropdown, loaded asynchronously. Defaults to `[]`. */
     managers?: PersonOption[];
+    /** Employee options for the checkbox list, loaded asynchronously. Defaults to `[]`. */
     employees?: PersonOption[];
+    /** Status options for the dropdown. Defaults to `[]`. */
     statusOptions?: Array<{ id: string; name: string }>;
 }
 
+/**
+ * Derives a display name for a {@link PersonOption}.
+ *
+ * Prefers the `name` field. Falls back to concatenating `first_name` and
+ * `last_name`. Falls back further to `#<id>` when no name fields are set.
+ *
+ * @param person - The person record to derive a name from.
+ * @returns A non-empty display string.
+ */
 function getPersonName(person: PersonOption): string {
     return (
         person.name ??
@@ -19,12 +42,27 @@ function getPersonName(person: PersonOption): string {
     ) || `#${person.id}`;
 }
 
+/**
+ * Adds or removes an ID from a selection array (pure, returns a new array).
+ *
+ * Used by the employee checkbox list to toggle individual selections without
+ * mutating the React Hook Form field value in place.
+ *
+ * @param values - The current array of selected string IDs.
+ * @param id - The ID to toggle.
+ * @returns A new array with `id` added (if absent) or removed (if present).
+ */
 function toggleSelectedValue(values: string[], id: string): string[] {
     return values.includes(id)
         ? values.filter((v) => v !== id)
         : [...values, id];
 }
 
+/**
+ * Numbered section label used within the form to visually group fields.
+ *
+ * @internal
+ */
 function SectionLabel({
     step,
     title,
@@ -45,6 +83,11 @@ function SectionLabel({
     );
 }
 
+/**
+ * Wraps a single form input with a label, validation error, and optional hint.
+ *
+ * @internal
+ */
 function FieldGroup({
     label,
     hint,
@@ -66,6 +109,22 @@ function FieldGroup({
     );
 }
 
+/**
+ * Renders all input fields for the project form, organised into four numbered
+ * sections: Basics, People, Schedule, and Comments.
+ *
+ * Every field is wired to React Hook Form via `<Controller>`, so this
+ * component itself holds no form state — it delegates entirely to the
+ * `control` prop provided by the parent controller hook.
+ *
+ * ### Sections
+ * 1. **Basics** — project name, status, security level
+ * 2. **People** — project manager dropdown, employee checkbox list with search
+ * 3. **Schedule** — start date, end date
+ * 4. **Comments** — free-text textarea
+ *
+ * @param props - See {@link ProjectFormFieldsProps}.
+ */
 function ProjectFormFields({
     control,
     errors,

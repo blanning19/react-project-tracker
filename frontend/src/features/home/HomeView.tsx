@@ -1,3 +1,26 @@
+/**
+ * @file Presentational component for the Home (project list) page.
+ *
+ * Renders the project table (desktop) and card list (mobile), pagination,
+ * sort controls, search/status filters, and the inline delete confirmation
+ * modal trigger.
+ *
+ * ### Success banner
+ * On mount the component reads `location.state.successMessage` (injected by
+ * the Create/Edit pages after a successful submit) into local state, then
+ * immediately clears it from history so a page refresh does not re-show it.
+ *
+ * ### Delete flow
+ * When `navigation.deleteTarget` is non-null, `DeleteModal` is mounted.
+ * Its `onDeleted` callback calls `actions.getData()` (no arguments) to
+ * invalidate the React Query cache and trigger a background refetch.
+ *
+ * All logic lives in `useHomeController` — this component is
+ * intentionally free of side effects.
+ *
+ * @module home/HomeView
+ */
+
 import { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
@@ -21,11 +44,29 @@ import DeleteModal from "../projects/delete/DeleteModal";
 // Helpers
 // ---------------------------------------------------------------------------
 
+/**
+ * Returns the sort direction icon for a table column header.
+ *
+ * - `⇅` when the column is not the active sort key.
+ * - `▲` when the column is sorted ascending.
+ * - `▼` when the column is sorted descending.
+ *
+ * @param key - The column key this header represents.
+ * @param sortKey - The currently active sort key.
+ * @param sortDir - The current sort direction.
+ * @returns A string containing a leading space and the appropriate icon character.
+ */
 function getSortIcon(key: HomeSortKey, sortKey: HomeSortKey, sortDir: "asc" | "desc"): string {
     if (key !== sortKey) return " ⇅";
     return sortDir === "asc" ? " ▲" : " ▼";
 }
 
+/**
+ * Maps a project status string to a Bootstrap badge variant.
+ *
+ * @param status - The project status (e.g. `"Active"`, `"On Hold"`).
+ * @returns A Bootstrap variant string (e.g. `"success"`, `"warning"`).
+ */
 function statusVariant(status: string): string {
     switch (status) {
         case "Active":     return "success";
@@ -40,19 +81,30 @@ function statusVariant(status: string): string {
 // Sub-components
 // ---------------------------------------------------------------------------
 
+/**
+ * Props for {@link SortHeader}.
+ */
+interface SortHeaderProps {
+    label: string;
+    colKey: HomeSortKey;
+    sortKey: HomeSortKey;
+    sortDir: "asc" | "desc";
+    toggleSort: (key: HomeSortKey) => void;
+}
+
+/**
+ * Clickable `<th>` that displays a sort direction icon and calls `toggleSort`
+ * when clicked.
+ *
+ * @param props - See {@link SortHeaderProps}.
+ */
 function SortHeader({
     label,
     colKey,
     sortKey,
     sortDir,
     toggleSort,
-}: {
-    label: string;
-    colKey: HomeSortKey;
-    sortKey: HomeSortKey;
-    sortDir: "asc" | "desc";
-    toggleSort: (key: HomeSortKey) => void;
-}) {
+}: SortHeaderProps) {
     return (
         <th
             role="button"
@@ -71,6 +123,21 @@ function SortHeader({
 // Main view
 // ---------------------------------------------------------------------------
 
+/**
+ * Presentational component for the Home page.
+ *
+ * Renders differently depending on state:
+ * - **Loading** — centred Bootstrap spinner
+ * - **Error** — error card with a Retry button wired to `actions.getData()`
+ * - **Normal** — project table / mobile cards, filters, and pagination footer
+ *
+ * The delete confirmation modal (`DeleteModal`) is mounted inline when
+ * `navigation.deleteTarget` is non-null. Its `onDeleted` callback calls
+ * `actions.getData()` (no arguments) which invalidates the React Query project
+ * list cache and triggers a background refetch.
+ *
+ * @param props - See {@link HomeViewProps}.
+ */
 export default function HomeView({
     rows,
     pagination,
@@ -114,95 +181,46 @@ export default function HomeView({
     const { searchTerm, statusFilter, hasActiveFilters, onSearchChange, onStatusFilterChange } = filters;
     const { getData } = actions;
 
-    // ── Loading skeleton ──
     if (loading) {
         return (
-            <div style={{ minHeight: 300, display: "flex", justifyContent: "center", alignItems: "center" }}>
+            <div className="d-flex justify-content-center align-items-center" style={{ minHeight: 300 }}>
                 <Spinner animation="border" variant="secondary" />
             </div>
         );
     }
 
-    // ── Error state ──
     if (apiError) {
         return (
-            <div style={{ background: "var(--pfp-bg-page, #f5f2ee)", minHeight: "100vh", margin: "-1rem", transition: "background 0.2s" }}>
-            <div style={{ maxWidth: 880, margin: "0 auto", padding: "56px 24px 40px" }}>
-                <div style={{
-                    display: "flex", justifyContent: "space-between", alignItems: "flex-end",
-                    borderBottom: "2px solid var(--bs-emphasis-color, #1a1a1a)",
-                    paddingBottom: "20px", marginBottom: "32px",
-                }}>
-                    <div style={{ fontFamily: "Georgia, 'Times New Roman', serif", fontSize: "24px", fontWeight: 700, letterSpacing: "-0.02em", lineHeight: 1.2, color: "var(--bs-emphasis-color, #1a1a1a)" }}>
-                        Projects
-                    </div>
-                </div>
-                <div className="text-center py-5">
+            <Card className="border shadow-sm">
+                <Card.Header className="pt-section-header">Projects</Card.Header>
+                <Card.Body className="text-center py-5">
                     <TriangleAlert size={32} className="text-danger mb-3" />
                     <div className="text-danger fw-semibold mb-2">Failed to load projects</div>
                     <div className="text-body-secondary small mb-4">{apiError}</div>
                     <Button variant="outline-secondary" size="sm" onClick={() => void getData()}>
                         Retry
                     </Button>
-                </div>
-            </div>
-            </div>
+                </Card.Body>
+            </Card>
         );
     }
 
     return (
         <>
-            {/* ── Delete confirmation modal ── */}
             {deleteTarget && (
                 <DeleteModal
                     projectId={deleteTarget.id}
                     projectName={deleteTarget.name}
                     show={Boolean(deleteTarget)}
                     onHide={onDeleteCancel}
-                    onDeleted={() => void getData({ isRefresh: true })}
+                    onDeleted={() => void getData()}
                 />
             )}
 
-            <div style={{ background: "var(--pfp-bg-page, #f5f2ee)", minHeight: "100vh", margin: "-1rem", transition: "background 0.2s" }}>
-            <div style={{ maxWidth: 880, margin: "0 auto", padding: "56px 24px 120px" }}>
-                {/* ── Page header ── */}
-                <div
-                    style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "flex-end",
-                        borderBottom: "2px solid var(--bs-emphasis-color, #1a1a1a)",
-                        paddingBottom: "20px",
-                        marginBottom: "32px",
-                        gap: "12px",
-                        flexWrap: "wrap",
-                    }}
-                >
-                        <div>
-                            <div
-                                style={{
-                                    fontFamily: "Georgia, 'Times New Roman', serif",
-                                    fontSize: "24px",
-                                    fontWeight: 700,
-                                    letterSpacing: "-0.02em",
-                                    lineHeight: 1.2,
-                                    color: "var(--bs-emphasis-color, #1a1a1a)",
-                                }}
-                            >
-                                Projects
-                            </div>
-                            <div
-                                style={{
-                                    fontFamily: "'Helvetica Neue', Helvetica, Arial, sans-serif",
-                                    fontSize: "13px",
-                                    color: "var(--bs-secondary-color, #999)",
-                                    marginTop: "4px",
-                                    fontStyle: "italic",
-                                }}
-                            >
-                                Browse, filter, and manage all active projects.
-                            </div>
-                        </div>
+            <Card className="border shadow-sm">
+                <Card.Header className="pt-section-header">
+                    <div className="d-flex align-items-center justify-content-between flex-wrap gap-2">
+                        <span>Projects</span>
                         <div className="d-flex align-items-center gap-2">
                             <Button
                                 variant="dark"
@@ -225,11 +243,10 @@ export default function HomeView({
                                 {refreshing ? "Refreshing…" : "Refresh"}
                             </Button>
                         </div>
-                </div>
+                    </div>
+                </Card.Header>
 
-                {/* ── Content ── */}
-                <div>
-                    {/* ── Success banner ── */}
+                <Card.Body className="pb-0">
                     {successMessage && (
                         <Alert
                             variant="success"
@@ -242,7 +259,6 @@ export default function HomeView({
                         </Alert>
                     )}
 
-                    {/* ── Filters ── */}
                     <Row className="g-2 mb-3">
                         <Col xs={12} sm={6} md={5} lg={4}>
                             <Form.Control
@@ -282,7 +298,7 @@ export default function HomeView({
                         )}
                     </Row>
 
-                    {/* ── Desktop table ── */}
+                    {/* Desktop table */}
                     <div className="d-none d-md-block">
                         <Table hover responsive className="mb-0" style={{ fontSize: "0.875rem" }}>
                             <thead>
@@ -351,7 +367,7 @@ export default function HomeView({
                         </Table>
                     </div>
 
-                    {/* ── Mobile cards ── */}
+                    {/* Mobile cards */}
                     <div className="d-md-none">
                         {rows.length === 0 ? (
                             <div className="text-center text-body-secondary py-4">
@@ -419,11 +435,10 @@ export default function HomeView({
                             </div>
                         )}
                     </div>
-                </div>
+                </Card.Body>
 
-                {/* ── Pagination ── */}
                 {total > 0 && (
-                    <div className="d-flex align-items-center justify-content-between flex-wrap gap-2 py-2 mt-2">
+                    <Card.Footer className="d-flex align-items-center justify-content-between flex-wrap gap-2 py-2">
                         <div className="text-body-secondary" style={{ fontSize: "0.8rem" }}>
                             Showing {displayStart}–{displayEnd} of {total}
                         </div>
@@ -467,10 +482,9 @@ export default function HomeView({
                                 </Button>
                             </div>
                         </div>
-                    </div>
+                    </Card.Footer>
                 )}
-            </div>
-            </div>
+            </Card>
         </>
     );
 }

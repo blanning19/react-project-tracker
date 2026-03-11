@@ -82,7 +82,9 @@ describe("Navbar logout", () => {
         renderNavbar();
 
         const logoutButtons = screen.getAllByRole("button", { name: /logout/i });
-        fireEvent.click(logoutButtons[0]);
+        // FIX: Add ! non-null assertion — noUncheckedIndexedAccess widens
+        // array index access to HTMLElement | undefined.
+        fireEvent.click(logoutButtons[0]!);
 
         await waitFor(() => {
             expect(logoutMock).toHaveBeenCalledTimes(1);
@@ -107,7 +109,8 @@ describe("Navbar logout", () => {
         renderNavbar();
 
         const logoutButtons = screen.getAllByRole("button", { name: /logout/i });
-        fireEvent.click(logoutButtons[0]);
+        // FIX: Add ! non-null assertion.
+        fireEvent.click(logoutButtons[0]!);
 
         await waitFor(() => {
             expect(logoutMock).toHaveBeenCalledTimes(1);
@@ -136,7 +139,8 @@ describe("Navbar logout", () => {
         renderNavbar();
 
         const logoutButtons = screen.getAllByRole("button", { name: /logout/i });
-        fireEvent.click(logoutButtons[0]);
+        // FIX: Add ! non-null assertion.
+        fireEvent.click(logoutButtons[0]!);
 
         // Confirm Navbar called logout() before we resolve it
         await waitFor(() => {

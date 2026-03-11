@@ -264,7 +264,7 @@ describe("useCreateController", () => {
         });
 
         expect(mockedCreateProject).toHaveBeenCalledTimes(1);
-        const payload = mockedCreateProject.mock.calls[0][0];
+        const payload = mockedCreateProject.mock.calls[0]![0]!;
         expect(payload.comments).toBeDefined();
         expect(payload.comments).not.toBeNull();
     });
@@ -298,7 +298,7 @@ describe("useCreateController", () => {
         });
 
         expect(mockedCreateProject).toHaveBeenCalledTimes(1);
-        const payload = mockedCreateProject.mock.calls[0][0];
+        const payload = mockedCreateProject.mock.calls[0]![0]!;
         expect(payload.comments).toBe("Needs budget sign-off before Q3.");
     });
 });

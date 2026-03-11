@@ -1,3 +1,13 @@
+/**
+ * @file Compile-time constants for the Home page feature.
+ *
+ * Extracted from `useHomeController` so the values can be imported by both
+ * the controller hook and any component that needs the raw constants
+ * (e.g. the page-size selector in `HomeView`).
+ *
+ * @module home/home.constants
+ */
+
 import type { HomeSortDirection, HomeSortKey, HomeStatusFilter } from "./home.types";
 
 /**
@@ -23,13 +33,10 @@ export const HOME_DEFAULT_SORT_DIRECTION: HomeSortDirection = "asc";
 /**
  * Available status filter values shown in the Home filter dropdown.
  *
- * FIX: Updated to match backend Project.Status TextChoices.
- * Previous values ("Open", "In progress") no longer exist in the backend.
- *
  * Keep in sync with:
- * - backend:  api/models.py Project.Status
- * - frontend: home.types.ts HomeStatusFilter
- * - frontend: projectFormConfig.ts STATUS_OPTIONS
+ * - backend:  `api/models.py Project.Status`
+ * - frontend: `home.types.ts HomeStatusFilter`
+ * - frontend: `projectFormConfig.ts STATUS_OPTIONS`
  */
 export const HOME_STATUS_FILTER_OPTIONS: HomeStatusFilter[] = [
     "All",

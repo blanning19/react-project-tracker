@@ -30,24 +30,45 @@ describe("Home", () => {
     });
 
     test("calls useHomeController and passes the controller result into HomeView", () => {
-        const mockController = {
-            loading: false,
-            apiError: "",
-            searchQuery: "",
-            total: 2,
-            totalPages: 1,
-            safePage: 1,
-            start: 0,
-            end: 10,
-            page: 1,
-            pageSize: 10,
-            pageRows: [],
-            sortIcon: vi.fn(),
-            getData: vi.fn(),
-            setPage: vi.fn(),
-            setPageSize: vi.fn(),
-            onSearchChange: vi.fn(),
-            toggleSort: vi.fn(),
+        const mockController: ReturnType<typeof useHomeController> = {
+            rows: [],
+            pagination: {
+                page: 1,
+                pageSize: 10,
+                total: 0,
+                totalPages: 1,
+                displayStart: 0,
+                displayEnd: 0,
+                onPageChange: vi.fn(),
+                onPageSizeChange: vi.fn(),
+            },
+            sort: {
+                key: "name",
+                dir: "asc",
+                toggleSort: vi.fn(),
+            },
+            filters: {
+                searchTerm: "",
+                statusFilter: "All",
+                hasActiveFilters: false,
+                onSearchChange: vi.fn(),
+                onStatusFilterChange: vi.fn(),
+            },
+            state: {
+                loading: false,
+                refreshing: false,
+                apiError: "",
+            },
+            actions: {
+                getData: vi.fn(),
+            },
+            navigation: {
+                onNavigateCreate: vi.fn(),
+                onNavigateEdit: vi.fn(),
+                deleteTarget: null,
+                onDeleteRequest: vi.fn(),
+                onDeleteCancel: vi.fn(),
+            },
         };
 
         vi.mocked(useHomeController).mockReturnValue(mockController);

@@ -4,22 +4,53 @@
  * @module home/Home
  */
 
-import { useHomeController } from "./useHomeController";
 import HomeView from "./HomeView";
+import { useHomeController } from "./useHomeController";
 
 /**
- * Wires {@link useHomeController} to {@link HomeView}.
- *
- * This component intentionally stays thin — all logic lives in the controller
- * and all rendering lives in the view. The controller returns a grouped prop
- * shape (rows, pagination, sort, filters, state, actions, navigation) which
- * is spread directly into the view.
+ * Wires the grouped controller contract into the current flat HomeView prop contract.
  *
  * @returns The rendered Home page.
  */
 function Home(): JSX.Element {
-    const props = useHomeController();
-    return <HomeView {...props} />;
+    const {
+        rows,
+        pagination,
+        filters,
+        sort,
+        state,
+        actions,
+        navigation,
+    } = useHomeController();
+
+    return (
+        <HomeView
+            projects={rows}
+            totalCount={pagination.total}
+            currentPage={pagination.page}
+            pageSize={pagination.pageSize}
+            loading={state.loading}
+            apiError={state.apiError}
+            successMessage=""
+            search={filters.searchTerm}
+            statusFilter={filters.statusFilter}
+            sortKey={sort.key}
+            sortDesc={sort.dir === "desc"}
+            onSearchChange={filters.onSearchChange}
+            onStatusFilterChange={filters.onStatusFilterChange}
+            onSortChange={sort.toggleSort}
+            onPageChange={pagination.onPageChange}
+            onDeleteClick={navigation.onDeleteRequest}
+            onRetry={actions.getData}
+            deleteTarget={navigation.deleteTarget}
+            onDeleteCancel={navigation.onDeleteCancel}
+            onDeleteConfirm={navigation.onDeleteConfirm}
+            deleteError=""
+            deleteLoading={false}
+            onCreateClick={navigation.onNavigateCreate}
+            onEditClick={navigation.onNavigateEdit}
+        />
+    );
 }
 
 export default Home;

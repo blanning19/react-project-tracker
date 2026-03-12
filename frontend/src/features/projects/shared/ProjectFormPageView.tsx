@@ -8,61 +8,39 @@ import { Link } from "react-router-dom";
 import type { Control, FieldErrors, UseFormHandleSubmit } from "react-hook-form";
 import ProjectFormFields from "../shared/ProjectFormFields";
 import { STATUS_OPTIONS } from "../shared/projectFormConfig";
-import type { PersonOption, ProjectFormValues } from "../models/project.types";
+import type {
+    EmployeeOption,
+    ManagerOption,
+    PersonOption,
+    ProjectFormValues,
+} from "../models/project.types";
 import styles from "./ProjectFormPageView.module.css";
 
 /**
  * Props for {@link ProjectFormPageView}.
  *
- * All form-related props (`control`, `errors`, `handleSubmit`) are passed
- * directly from the controller hook, which spreads the React Hook Form return
- * value into the view.
+ * `managers` and `employees` are typed as `PersonOption[]` here because the
+ * controller hooks (`useCreateController`, `useEditController`) return
+ * `PersonOption[]` from `getManagers()` / `getEmployees()`. The concrete
+ * subtypes (`ManagerOption[]` / `EmployeeOption[]`) are enforced by the casts
+ * at the `ProjectFormFields` call site below.
  */
 export interface ProjectFormPageViewProps {
-    /** Page heading rendered as the form title (e.g. `"Create project"`). */
     title: string;
-    /** Submit button label in idle state (e.g. `"Save"`). */
     submitLabel: string;
-    /** Submit button label while the mutation is in-flight (e.g. `"Saving…"`). */
     submittingLabel: string;
-    /** React Hook Form `control` object passed through to `ProjectFormFields`. */
     control: Control<ProjectFormValues>;
-    /** React Hook Form field errors passed through to `ProjectFormFields`. */
     errors: FieldErrors<ProjectFormValues>;
-    /** React Hook Form `handleSubmit` function used to wrap `submission`. */
     handleSubmit: UseFormHandleSubmit<ProjectFormValues>;
-    /** Called with validated form data on successful submission. */
     submission: (data: ProjectFormValues) => Promise<void>;
-    /** Manager options for the dropdown, loaded asynchronously. */
     managers?: PersonOption[];
-    /** Employee options for the checkbox list, loaded asynchronously. */
     employees: PersonOption[];
-    /** `true` while lookup data or the project record is loading. */
     loading: boolean;
-    /** Non-empty when a fetch or submission error has occurred. */
     apiError: string;
-    /** `true` while the create/update mutation is in-flight. */
     isSubmitting: boolean;
-    /**
-     * Optional callback for the "Retry" button shown alongside `apiError`.
-     * Omit to hide the retry button.
-     */
     onRetry?: () => Promise<void> | void;
 }
 
-/**
- * Shared presentational component for the Create and Edit project pages.
- *
- * Renders the page header, loading skeleton, error banner, form fields, and
- * submit/cancel footer. All logic lives in the controller hooks
- * (`useCreateController` / `useEditController`) — this component is
- * intentionally free of side effects.
- *
- * ### Layout
- * - Full-bleed cream background matching the Home page.
- * - Form fields are grouped in a bordered card.
- * - Cancel link navigates back to `/` without triggering a submission.
- */
 function ProjectFormPageView({
     title,
     submitLabel,
@@ -116,8 +94,13 @@ function ProjectFormPageView({
                             <ProjectFormFields
                                 control={control}
                                 errors={errors}
-                                managers={managers}
-                                employees={employees}
+                                // Cast from PersonOption[] to the concrete subtypes that
+                                // ProjectFormFields requires. The runtime values are correct —
+                                // getManagers() returns ManagerOption records and getEmployees()
+                                // returns EmployeeOption records; the API functions just type
+                                // their return as PersonOption[] (the union).
+                                managers={managers as ManagerOption[] | undefined}
+                                employees={employees as EmployeeOption[]}
                                 statusOptions={STATUS_OPTIONS}
                             />
                         </div>

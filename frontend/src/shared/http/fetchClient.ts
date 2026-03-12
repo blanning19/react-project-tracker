@@ -125,15 +125,39 @@ async function parseBody(response: Response): Promise<unknown> {
  *
  * On success the new access token is written to `tokenStore`.
  *
+ * The entire function is wrapped in a try/catch so that network errors
+ * (e.g. the server being unreachable) return `false` rather than propagating
+ * an untyped rejection that bypasses the SESSION_EXPIRED handling path in
+ * `request`.
+ *
  * @returns `true` if a new access token was obtained, `false` otherwise.
  */
 const refreshAccessToken = async (): Promise<boolean> => {
-    if (isCookieAuth) {
+    try {
+        if (isCookieAuth) {
+            const response = await fetch(new URL("auth/refresh/", baseUrl), {
+                method: "POST",
+                credentials: "include",
+                headers: { "Content-Type": "application/json", Accept: "application/json" },
+                body: JSON.stringify({}),
+            });
+
+            if (!response.ok) return false;
+
+            const data = await response.json();
+            if (!data?.access) return false;
+
+            tokenStore.setAccess(data.access);
+            return true;
+        }
+
+        const refresh = tokenStore.getRefresh();
+        if (!refresh) return false;
+
         const response = await fetch(new URL("auth/refresh/", baseUrl), {
             method: "POST",
-            credentials: "include",
             headers: { "Content-Type": "application/json", Accept: "application/json" },
-            body: JSON.stringify({}),
+            body: JSON.stringify({ refresh }),
         });
 
         if (!response.ok) return false;
@@ -142,30 +166,18 @@ const refreshAccessToken = async (): Promise<boolean> => {
         if (!data?.access) return false;
 
         tokenStore.setAccess(data.access);
+
+        if (data?.refresh) {
+            tokenStore.setRefresh(data.refresh);
+        }
+
         return true;
+    } catch {
+        // Network error (server unreachable, DNS failure, etc.) — treat as a
+        // failed refresh so the SESSION_EXPIRED path in `request` fires cleanly
+        // rather than propagating an untyped rejection.
+        return false;
     }
-
-    const refresh = tokenStore.getRefresh();
-    if (!refresh) return false;
-
-    const response = await fetch(new URL("auth/refresh/", baseUrl), {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Accept: "application/json" },
-        body: JSON.stringify({ refresh }),
-    });
-
-    if (!response.ok) return false;
-
-    const data = await response.json();
-    if (!data?.access) return false;
-
-    tokenStore.setAccess(data.access);
-
-    if (data?.refresh) {
-        tokenStore.setRefresh(data.refresh);
-    }
-
-    return true;
 };
 
 /**
@@ -246,9 +258,9 @@ interface RequestOptions {
  * On a `401` from any non-auth endpoint:
  * 1. Calls {@link refreshAccessToken} to silently renew the token.
  * 2. If renewal succeeds, retries the original request once with the new token.
- * 3. If renewal fails, calls `tokenStore.clear()`, fires the registered
- *    session-expiry handler, and throws an `ApiError` with
- *    `code: "SESSION_EXPIRED"`.
+ * 3. If renewal fails (including network errors), calls `tokenStore.clear()`,
+ *    fires the registered session-expiry handler, and throws an `ApiError`
+ *    with `code: "SESSION_EXPIRED"`.
  *
  * Auth endpoints (`auth/*`) are excluded from the retry loop to prevent
  * infinite refresh cycles.

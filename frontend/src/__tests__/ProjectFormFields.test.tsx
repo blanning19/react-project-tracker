@@ -3,19 +3,21 @@ import { useForm } from "react-hook-form";
 import { describe, expect, test } from "vitest";
 import ProjectFormFields from "../features/projects/shared/ProjectFormFields";
 import { DEFAULT_VALUES, STATUS_OPTIONS } from "../features/projects/shared/projectFormConfig";
-import type { PersonOption, ProjectFormValues } from "../features/projects/models/project.types";
+import type { EmployeeOption, ProjectFormValues } from "../features/projects/models/project.types";
 
-const mockEmployees: PersonOption[] = [
-    { id: 1, first_name: "Brad", last_name: "Lanning" },
-    { id: 2, first_name: "Mattie", last_name: "Smith" },
-    { id: 3, first_name: "Rocco", last_name: "Jones" },
+// Typed as EmployeeOption[] (not the PersonOption union) so the type satisfies
+// the employees prop on ProjectFormFields which expects EmployeeOption[].
+const mockEmployees: EmployeeOption[] = [
+    { id: 1, first_name: "Brad",   last_name: "Lanning", email: "brad@example.com" },
+    { id: 2, first_name: "Mattie", last_name: "Smith",   email: "mattie@example.com" },
+    { id: 3, first_name: "Rocco",  last_name: "Jones",   email: "rocco@example.com" },
 ];
 
 function TestWrapper({
     employees = mockEmployees,
     defaultValues = DEFAULT_VALUES,
 }: {
-    employees?: PersonOption[];
+    employees?: EmployeeOption[];
     defaultValues?: ProjectFormValues;
 }) {
     const form = useForm<ProjectFormValues>({ defaultValues });

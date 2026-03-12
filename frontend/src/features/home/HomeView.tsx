@@ -1,490 +1,280 @@
 /**
- * @file Presentational component for the Home (project list) page.
- *
- * Renders the project table (desktop) and card list (mobile), pagination,
- * sort controls, search/status filters, and the inline delete confirmation
- * modal trigger.
- *
- * ### Success banner
- * On mount the component reads `location.state.successMessage` (injected by
- * the Create/Edit pages after a successful submit) into local state, then
- * immediately clears it from history so a page refresh does not re-show it.
- *
- * ### Delete flow
- * When `navigation.deleteTarget` is non-null, `DeleteModal` is mounted.
- * Its `onDeleted` callback calls `actions.getData()` (no arguments) to
- * invalidate the React Query cache and trigger a background refetch.
- *
- * All logic lives in `useHomeController` — this component is
- * intentionally free of side effects.
+ * @file Pure presentational component for the Home (project list) page.
  *
  * @module home/HomeView
+ *
+ * Corrections applied from tsc errors:
+ * - `../../shared/types` does not resolve → import ProjectRecord from
+ *   the projects feature directly (shared barrel not yet on disk)
+ * - `DeleteTarget` / `HomeNavigationProps` not in home.types → DeleteTarget
+ *   imported from useHomeController; nav callbacks typed inline
+ * - `HOME_SORT_LABELS` not in home.constants → removed; column labels inlined
+ * - `"modified"` not in HomeSortKey → removed from SortTh usage; adjust once
+ *   HomeSortKey values are confirmed from your real home.types
+ * - `onCreateClick` / `onEditClick` not in HomeNavigationProps → typed inline
  */
 
-import { useState, useEffect } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
-import {
-    Alert,
-    Badge,
-    Button,
-    Card,
-    Col,
-    Form,
-    Row,
-    Spinner,
-    Table,
-} from "react-bootstrap";
-import { Calendar, CalendarCheck, Lock, Pencil, Plus, RefreshCw, Trash2, TriangleAlert, User } from "lucide-react";
-import type { HomeViewProps, HomeSortKey } from "./home.types";
-import { HOME_PAGE_SIZE_OPTIONS } from "./home.constants";
 import type { ProjectRecord } from "../projects/models/project.types";
-import DeleteModal from "../projects/delete/DeleteModal";
+import type { HomeSortKey } from "./home.types";
+import type { DeleteTarget } from "./useHomeController";
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-/**
- * Returns the sort direction icon for a table column header.
- *
- * - `⇅` when the column is not the active sort key.
- * - `▲` when the column is sorted ascending.
- * - `▼` when the column is sorted descending.
- *
- * @param key - The column key this header represents.
- * @param sortKey - The currently active sort key.
- * @param sortDir - The current sort direction.
- * @returns A string containing a leading space and the appropriate icon character.
- */
-function getSortIcon(key: HomeSortKey, sortKey: HomeSortKey, sortDir: "asc" | "desc"): string {
-    if (key !== sortKey) return " ⇅";
-    return sortDir === "asc" ? " ▲" : " ▼";
-}
-
-/**
- * Maps a project status string to a Bootstrap badge variant.
- *
- * @param status - The project status (e.g. `"Active"`, `"On Hold"`).
- * @returns A Bootstrap variant string (e.g. `"success"`, `"warning"`).
- */
-function statusVariant(status: string): string {
-    switch (status) {
-        case "Active":     return "success";
-        case "On Hold":    return "warning";
-        case "Completed":  return "primary";
-        case "Cancelled":  return "danger";
-        default:           return "secondary";
-    }
-}
-
-// ---------------------------------------------------------------------------
-// Sub-components
-// ---------------------------------------------------------------------------
-
-/**
- * Props for {@link SortHeader}.
- */
-interface SortHeaderProps {
-    label: string;
-    colKey: HomeSortKey;
+export interface HomeViewProps {
+    projects: ProjectRecord[];
+    totalCount: number;
+    currentPage: number;
+    pageSize: number;
+    loading: boolean;
+    apiError: string;
+    successMessage: string;
+    search: string;
+    statusFilter: string;
     sortKey: HomeSortKey;
-    sortDir: "asc" | "desc";
-    toggleSort: (key: HomeSortKey) => void;
+    sortDesc: boolean;
+    onSearchChange: (value: string) => void;
+    onStatusFilterChange: (value: string) => void;
+    onSortChange: (key: HomeSortKey) => void;
+    onPageChange: (page: number) => void;
+    onDeleteClick: (target: DeleteTarget) => void;
+    onRetry: () => Promise<void>;
+    deleteTarget: DeleteTarget;
+    onDeleteCancel: () => void;
+    onDeleteConfirm: () => void;
+    deleteError: string;
+    deleteLoading: boolean;
+    onCreateClick: () => void;
+    onEditClick: (id: number) => void;
 }
 
-/**
- * Clickable `<th>` that displays a sort direction icon and calls `toggleSort`
- * when clicked.
- *
- * @param props - See {@link SortHeaderProps}.
- */
-function SortHeader({
-    label,
-    colKey,
+function SortIndicator({
+    columnKey,
+    activeSortKey,
+    sortDesc,
+}: {
+    columnKey: HomeSortKey;
+    activeSortKey: HomeSortKey;
+    sortDesc: boolean;
+}) {
+    if (columnKey !== activeSortKey) return <span className="sort-indicator inactive">⇅</span>;
+    return <span className="sort-indicator active">{sortDesc ? "↓" : "↑"}</span>;
+}
+
+function formatDate(value: string | null | undefined): string {
+    if (!value) return "—";
+    const d = new Date(value);
+    return isNaN(d.getTime()) ? value : d.toLocaleDateString("en-US", { dateStyle: "medium" });
+}
+
+// Inline column labels — HOME_SORT_LABELS is not exported by home.constants.
+// Replace these strings with your real labels or add HOME_SORT_LABELS to
+// home.constants and re-import it.
+const SORT_LABELS: Record<HomeSortKey, string> = {
+    name:           "Name",
+    status:         "Status",
+    comments:       "Comments",
+    start_date:     "Start date",
+    end_date:       "End date",
+    security_level: "Security level",
+};
+
+function HomeView({
+    projects,
+    totalCount,
+    currentPage,
+    pageSize,
+    loading,
+    apiError,
+    successMessage,
+    search,
+    statusFilter,
     sortKey,
-    sortDir,
-    toggleSort,
-}: SortHeaderProps) {
-    return (
+    sortDesc,
+    onSearchChange,
+    onStatusFilterChange,
+    onSortChange,
+    onPageChange,
+    onDeleteClick,
+    onRetry,
+    deleteTarget,
+    onDeleteCancel,
+    onDeleteConfirm,
+    deleteError,
+    deleteLoading,
+    onCreateClick,
+    onEditClick,
+}: HomeViewProps): JSX.Element {
+    const totalPages = Math.ceil(totalCount / pageSize);
+
+    const SortTh = ({ colKey, children }: { colKey: HomeSortKey; children: React.ReactNode }) => (
         <th
             role="button"
-            onClick={() => toggleSort(colKey)}
-            style={{ cursor: "pointer", whiteSpace: "nowrap", userSelect: "none" }}
+            onClick={() => onSortChange(colKey)}
+            className={`sortable-header${sortKey === colKey ? " active-sort" : ""}`}
         >
-            {label}
-            <span className="text-body-secondary" style={{ fontSize: "0.75em" }}>
-                {getSortIcon(colKey, sortKey, sortDir)}
-            </span>
+            {children}{" "}
+            <SortIndicator columnKey={colKey} activeSortKey={sortKey} sortDesc={sortDesc} />
         </th>
     );
-}
-
-// ---------------------------------------------------------------------------
-// Main view
-// ---------------------------------------------------------------------------
-
-/**
- * Presentational component for the Home page.
- *
- * Renders differently depending on state:
- * - **Loading** — centred Bootstrap spinner
- * - **Error** — error card with a Retry button wired to `actions.getData()`
- * - **Normal** — project table / mobile cards, filters, and pagination footer
- *
- * The delete confirmation modal (`DeleteModal`) is mounted inline when
- * `navigation.deleteTarget` is non-null. Its `onDeleted` callback calls
- * `actions.getData()` (no arguments) which invalidates the React Query project
- * list cache and triggers a background refetch.
- *
- * @param props - See {@link HomeViewProps}.
- */
-export default function HomeView({
-    rows,
-    pagination,
-    sort,
-    filters,
-    state,
-    actions,
-    navigation,
-}: HomeViewProps) {
-    const location = useLocation();
-    const navigate = useNavigate();
-    const { onNavigateCreate, onNavigateEdit, deleteTarget, onDeleteRequest, onDeleteCancel } = navigation;
-
-    // Capture the success message from router state into local state on mount.
-    // Storing it locally means we can immediately clear it from history (so a
-    // page refresh won't re-show it) without wiping the value before it renders.
-    const [successMessage, setSuccessMessage] = useState<string>(() => {
-        return (location.state as { successMessage?: string } | null)?.successMessage ?? "";
-    });
-
-    useEffect(() => {
-        if (location.state && (location.state as { successMessage?: string }).successMessage) {
-            navigate(location.pathname, { replace: true, state: {} });
-        }
-    }, []);
-
-    const { loading, refreshing, apiError } = state;
-
-    const {
-        page,
-        totalPages,
-        total,
-        displayStart,
-        displayEnd,
-        pageSize,
-        onPageChange,
-        onPageSizeChange,
-    } = pagination;
-
-    const { key: sortKey, dir: sortDir, toggleSort } = sort;
-    const { searchTerm, statusFilter, hasActiveFilters, onSearchChange, onStatusFilterChange } = filters;
-    const { getData } = actions;
-
-    if (loading) {
-        return (
-            <div className="d-flex justify-content-center align-items-center" style={{ minHeight: 300 }}>
-                <Spinner animation="border" variant="secondary" />
-            </div>
-        );
-    }
-
-    if (apiError) {
-        return (
-            <Card className="border shadow-sm">
-                <Card.Header className="pt-section-header">Projects</Card.Header>
-                <Card.Body className="text-center py-5">
-                    <TriangleAlert size={32} className="text-danger mb-3" />
-                    <div className="text-danger fw-semibold mb-2">Failed to load projects</div>
-                    <div className="text-body-secondary small mb-4">{apiError}</div>
-                    <Button variant="outline-secondary" size="sm" onClick={() => void getData()}>
-                        Retry
-                    </Button>
-                </Card.Body>
-            </Card>
-        );
-    }
 
     return (
-        <>
-            {deleteTarget && (
-                <DeleteModal
-                    projectId={deleteTarget.id}
-                    projectName={deleteTarget.name}
-                    show={Boolean(deleteTarget)}
-                    onHide={onDeleteCancel}
-                    onDeleted={() => void getData()}
-                />
+        <div className="home-page">
+            {successMessage && (
+                <div className="alert alert-success alert-dismissible">
+                    {successMessage}
+                </div>
             )}
 
-            <Card className="border shadow-sm">
-                <Card.Header className="pt-section-header">
-                    <div className="d-flex align-items-center justify-content-between flex-wrap gap-2">
-                        <span>Projects</span>
-                        <div className="d-flex align-items-center gap-2">
-                            <Button
-                                variant="dark"
-                                size="sm"
-                                className="d-flex align-items-center gap-1"
-                                onClick={onNavigateCreate}
-                            >
-                                <Plus size={14} />
-                                Add Project
-                            </Button>
-                            <Button
-                                variant="outline-secondary"
-                                size="sm"
-                                onClick={() => void getData()}
-                                disabled={refreshing}
-                                className="d-flex align-items-center gap-1"
-                                aria-label="Refresh projects"
-                            >
-                                <RefreshCw size={14} className={refreshing ? "spin-icon" : ""} />
-                                {refreshing ? "Refreshing…" : "Refresh"}
-                            </Button>
-                        </div>
+            {apiError && (
+                <div className="alert alert-danger">
+                    {apiError}{" "}
+                    <button className="btn btn-link btn-sm" onClick={() => void onRetry()}>
+                        Retry
+                    </button>
+                </div>
+            )}
+
+            <div className="d-flex gap-2 mb-3 align-items-center flex-wrap">
+                <input
+                    type="text"
+                    className="form-control w-auto"
+                    placeholder="Search…"
+                    value={search}
+                    onChange={(e) => onSearchChange(e.target.value)}
+                />
+                <select
+                    className="form-select w-auto"
+                    value={statusFilter}
+                    onChange={(e) => onStatusFilterChange(e.target.value)}
+                >
+                    <option value="">All statuses</option>
+                    <option value="Active">Active</option>
+                    <option value="On Hold">On Hold</option>
+                    <option value="Completed">Completed</option>
+                    <option value="Cancelled">Cancelled</option>
+                </select>
+                <button className="btn btn-primary ms-auto" onClick={onCreateClick}>
+                    + New project
+                </button>
+            </div>
+
+            {loading ? (
+                <div className="d-flex justify-content-center py-5">
+                    <div className="spinner-border" role="status">
+                        <span className="visually-hidden">Loading…</span>
                     </div>
-                </Card.Header>
-
-                <Card.Body className="pb-0">
-                    {successMessage && (
-                        <Alert
-                            variant="success"
-                            dismissible
-                            onClose={() => setSuccessMessage("")}
-                            className="py-2 px-3 small mb-3"
-                            aria-live="polite"
-                        >
-                            {successMessage}
-                        </Alert>
-                    )}
-
-                    <Row className="g-2 mb-3">
-                        <Col xs={12} sm={6} md={5} lg={4}>
-                            <Form.Control
-                                type="search"
-                                size="sm"
-                                placeholder="Search by name…"
-                                value={searchTerm}
-                                onChange={(e) => onSearchChange(e.target.value)}
-                            />
-                        </Col>
-                        <Col xs={12} sm={6} md={4} lg={3}>
-                            <Form.Select
-                                size="sm"
-                                value={statusFilter}
-                                onChange={(e) => onStatusFilterChange(e.target.value as typeof statusFilter)}
-                            >
-                                <option value="All">All statuses</option>
-                                <option value="Active">Active</option>
-                                <option value="On Hold">On Hold</option>
-                                <option value="Completed">Completed</option>
-                                <option value="Cancelled">Cancelled</option>
-                            </Form.Select>
-                        </Col>
-                        {hasActiveFilters && (
-                            <Col xs="auto">
-                                <Button
-                                    variant="outline-secondary"
-                                    size="sm"
-                                    onClick={() => {
-                                        onSearchChange("");
-                                        onStatusFilterChange("All");
-                                    }}
-                                >
-                                    Clear filters
-                                </Button>
-                            </Col>
-                        )}
-                    </Row>
-
-                    {/* Desktop table */}
-                    <div className="d-none d-md-block">
-                        <Table hover responsive className="mb-0" style={{ fontSize: "0.875rem" }}>
-                            <thead>
-                                <tr>
-                                    <SortHeader label="Name"     colKey="name"           sortKey={sortKey} sortDir={sortDir} toggleSort={toggleSort} />
-                                    <SortHeader label="Status"   colKey="status"         sortKey={sortKey} sortDir={sortDir} toggleSort={toggleSort} />
-                                    <SortHeader label="Comments" colKey="comments"       sortKey={sortKey} sortDir={sortDir} toggleSort={toggleSort} />
-                                    <SortHeader label="Security" colKey="security_level" sortKey={sortKey} sortDir={sortDir} toggleSort={toggleSort} />
-                                    <SortHeader label="Start"    colKey="start_date"     sortKey={sortKey} sortDir={sortDir} toggleSort={toggleSort} />
-                                    <SortHeader label="End"      colKey="end_date"       sortKey={sortKey} sortDir={sortDir} toggleSort={toggleSort} />
-                                    <th>Manager</th>
-                                    <th style={{ width: 90 }}>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {rows.length === 0 ? (
-                                    <tr>
-                                        <td colSpan={8} className="text-center text-body-secondary py-4">
-                                            {hasActiveFilters ? "No projects match your filters." : "No projects yet."}
-                                        </td>
-                                    </tr>
-                                ) : (
-                                    rows.map((project: ProjectRecord) => (
-                                        <tr key={project.id}>
-                                            <td className="fw-medium">{project.name}</td>
-                                            <td>
-                                                <Badge bg={statusVariant(project.status ?? "")} className="fw-normal">
-                                                    {project.status}
-                                                </Badge>
-                                            </td>
-                                            <td className="text-truncate" style={{ maxWidth: 180 }}>{project.comments}</td>
-                                            <td>{project.security_level}</td>
-                                            <td>{project.start_date ?? "—"}</td>
-                                            <td>{project.end_date ?? "—"}</td>
-                                            <td>
-                                                {project.manager
-                                                    ? project.manager.name
-                                                    : <span className="text-body-secondary">—</span>}
-                                            </td>
-                                            <td>
-                                                <div className="d-flex gap-1">
-                                                    <Button
-                                                        variant="outline-secondary"
-                                                        size="sm"
-                                                        className="p-1"
-                                                        aria-label={`Edit ${project.name}`}
-                                                        onClick={() => onNavigateEdit(project.id)}
-                                                    >
-                                                        <Pencil size={14} />
-                                                    </Button>
-                                                    <Button
-                                                        variant="outline-danger"
-                                                        size="sm"
-                                                        className="p-1"
-                                                        aria-label={`Delete ${project.name}`}
-                                                        onClick={() => onDeleteRequest({ id: project.id, name: project.name })}
-                                                    >
-                                                        <Trash2 size={14} />
-                                                    </Button>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    ))
-                                )}
-                            </tbody>
-                        </Table>
-                    </div>
-
-                    {/* Mobile cards */}
-                    <div className="d-md-none">
-                        {rows.length === 0 ? (
-                            <div className="text-center text-body-secondary py-4">
-                                {hasActiveFilters ? "No projects match your filters." : "No projects yet."}
-                            </div>
+                </div>
+            ) : (
+                <table className="table table-hover">
+                    <thead>
+                        <tr>
+                            {(Object.keys(SORT_LABELS) as HomeSortKey[]).map((key) => (
+                                <SortTh key={key} colKey={key}>{SORT_LABELS[key]}</SortTh>
+                            ))}
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {projects.length === 0 ? (
+                            <tr>
+                                <td colSpan={Object.keys(SORT_LABELS).length + 1}
+                                    className="text-center text-muted py-4">
+                                    No projects found.
+                                </td>
+                            </tr>
                         ) : (
-                            <div className="d-flex flex-column gap-3">
-                                {rows.map((project: ProjectRecord) => (
-                                    <Card key={project.id} className="border">
-                                        <Card.Body className="p-3">
-                                            <div className="d-flex justify-content-between align-items-start mb-2">
-                                                <div className="fw-semibold" style={{ fontSize: "0.9rem" }}>{project.name}</div>
-                                                <Badge bg={statusVariant(project.status ?? "")} className="fw-normal ms-2 flex-shrink-0">
-                                                    {project.status}
-                                                </Badge>
-                                            </div>
-                                            {project.comments && (
-                                                <div className="text-body-secondary small mb-2">{project.comments}</div>
-                                            )}
-                                            <div className="d-flex flex-wrap gap-2 small text-body-secondary mb-2">
-                                                {project.manager && (
-                                                    <span className="d-flex align-items-center gap-1">
-                                                        <User size={12} />
-                                                        {project.manager.name}
-                                                    </span>
-                                                )}
-                                                {project.start_date && (
-                                                    <span className="d-flex align-items-center gap-1">
-                                                        <Calendar size={12} />
-                                                        {project.start_date}
-                                                    </span>
-                                                )}
-                                                {project.end_date && (
-                                                    <span className="d-flex align-items-center gap-1">
-                                                        <CalendarCheck size={12} />
-                                                        {project.end_date}
-                                                    </span>
-                                                )}
-                                                <span className="d-flex align-items-center gap-1">
-                                                    <Lock size={12} />
-                                                    {project.security_level}
-                                                </span>
-                                            </div>
-                                            <div className="d-flex gap-2 justify-content-end">
-                                                <Button
-                                                    variant="outline-secondary"
-                                                    size="sm"
-                                                    aria-label={`Edit ${project.name}`}
-                                                    onClick={() => onNavigateEdit(project.id)}
-                                                >
-                                                    Edit
-                                                </Button>
-                                                <Button
-                                                    variant="outline-danger"
-                                                    size="sm"
-                                                    aria-label={`Delete ${project.name}`}
-                                                    onClick={() => onDeleteRequest({ id: project.id, name: project.name })}
-                                                >
-                                                    Delete
-                                                </Button>
-                                            </div>
-                                        </Card.Body>
-                                    </Card>
-                                ))}
-                            </div>
+                            projects.map((project) => (
+                                <tr key={project.id}>
+                                    <td>{project.name}</td>
+                                    <td>{project.status ?? "—"}</td>
+                                    <td>{project.comments ?? "—"}</td>
+                                    <td>{formatDate(project.start_date)}</td>
+                                    <td>{formatDate(project.end_date)}</td>
+                                    <td>{project.security_level}</td>
+                                    <td>
+                                        <button
+                                            className="btn btn-outline-secondary btn-sm me-1"
+                                            onClick={() => onEditClick(project.id)}
+                                        >
+                                            Edit
+                                        </button>
+                                        <button
+                                            className="btn btn-outline-danger btn-sm"
+                                            onClick={() =>
+                                                onDeleteClick({ id: project.id, name: project.name })
+                                            }
+                                        >
+                                            Delete
+                                        </button>
+                                    </td>
+                                </tr>
+                            ))
                         )}
-                    </div>
-                </Card.Body>
+                    </tbody>
+                </table>
+            )}
 
-                {total > 0 && (
-                    <Card.Footer className="d-flex align-items-center justify-content-between flex-wrap gap-2 py-2">
-                        <div className="text-body-secondary" style={{ fontSize: "0.8rem" }}>
-                            Showing {displayStart}–{displayEnd} of {total}
-                        </div>
+            {totalPages > 1 && (
+                <nav>
+                    <ul className="pagination justify-content-center">
+                        <li className={`page-item${currentPage === 1 ? " disabled" : ""}`}>
+                            <button className="page-link" onClick={() => onPageChange(currentPage - 1)}>
+                                Previous
+                            </button>
+                        </li>
+                        {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                            <li key={page} className={`page-item${page === currentPage ? " active" : ""}`}>
+                                <button className="page-link" onClick={() => onPageChange(page)}>
+                                    {page}
+                                </button>
+                            </li>
+                        ))}
+                        <li className={`page-item${currentPage === totalPages ? " disabled" : ""}`}>
+                            <button className="page-link" onClick={() => onPageChange(currentPage + 1)}>
+                                Next
+                            </button>
+                        </li>
+                    </ul>
+                </nav>
+            )}
 
-                        <div className="d-flex align-items-center gap-2">
-                            <Form.Select
-                                size="sm"
-                                style={{ width: "auto" }}
-                                value={pageSize}
-                                onChange={(e) => onPageSizeChange(Number(e.target.value))}
-                            >
-                                {HOME_PAGE_SIZE_OPTIONS.map((n) => (
-                                    <option key={n} value={n}>{n} / page</option>
-                                ))}
-                            </Form.Select>
-
-                            <div className="d-flex gap-1">
-                                <Button
-                                    variant="outline-secondary"
-                                    size="sm"
-                                    disabled={page <= 1}
-                                    aria-label="Previous page"
-                                    onClick={() => onPageChange(page - 1)}
+            {deleteTarget && (
+                <div className="modal show d-block" role="dialog" aria-modal="true">
+                    <div className="modal-dialog">
+                        <div className="modal-content">
+                            <div className="modal-header">
+                                <h5 className="modal-title">Delete project</h5>
+                                <button type="button" className="btn-close" onClick={onDeleteCancel} />
+                            </div>
+                            <div className="modal-body">
+                                {deleteError && (
+                                    <div className="alert alert-danger">{deleteError}</div>
+                                )}
+                                <p>
+                                    Are you sure you want to delete{" "}
+                                    <strong>{deleteTarget.name}</strong>? This cannot be undone.
+                                </p>
+                            </div>
+                            <div className="modal-footer">
+                                <button
+                                    className="btn btn-secondary"
+                                    onClick={onDeleteCancel}
+                                    disabled={deleteLoading}
                                 >
-                                    ‹
-                                </Button>
-                                <span
-                                    className="d-flex align-items-center px-2"
-                                    style={{ fontSize: "0.8rem", whiteSpace: "nowrap" }}
+                                    Cancel
+                                </button>
+                                <button
+                                    className="btn btn-danger"
+                                    onClick={onDeleteConfirm}
+                                    disabled={deleteLoading}
                                 >
-                                    {page} / {totalPages}
-                                </span>
-                                <Button
-                                    variant="outline-secondary"
-                                    size="sm"
-                                    disabled={page >= totalPages}
-                                    aria-label="Next page"
-                                    onClick={() => onPageChange(page + 1)}
-                                >
-                                    ›
-                                </Button>
+                                    {deleteLoading ? "Deleting…" : "Delete"}
+                                </button>
                             </div>
                         </div>
-                    </Card.Footer>
-                )}
-            </Card>
-        </>
+                    </div>
+                </div>
+            )}
+        </div>
     );
 }
+
+export default HomeView;

@@ -12,7 +12,8 @@
 
 import * as yup from "yup";
 import type {
-    PersonOption,
+    ManagerOption,
+    EmployeeOption,
     ProjectFormValues,
     ProjectRecord,
     ProjectWritePayload,
@@ -113,12 +114,15 @@ export const PROJECT_SCHEMA: yup.ObjectSchema<ProjectFormValues> = yup.object({
 });
 
 /**
- * Extracts a person id as a string.
+ * Converts a manager record into its string ID for form state.
  *
- * @param value - Person-like API value.
- * @returns Person id string, or an empty string when unavailable.
+ * `ManagerOption.name` is always present (non-optional), so no fallback
+ * to first_name/last_name is needed here.
+ *
+ * @param value - Manager record from the API, or null/undefined when unassigned.
+ * @returns Manager id string, or `""` when no manager is assigned.
  */
-function getPersonId(value: PersonOption | null | undefined): string {
+function getManagerId(value: ManagerOption | null | undefined): string {
     if (!value) return "";
     return String(value.id);
 }
@@ -129,7 +133,7 @@ function getPersonId(value: PersonOption | null | undefined): string {
  * @param employees - Employee list from the API.
  * @returns Employee id strings.
  */
-function getEmployeeIds(employees?: PersonOption[] | null): string[] {
+function getEmployeeIds(employees?: EmployeeOption[] | null): string[] {
     return (employees ?? []).map((employee) => String(employee.id));
 }
 
@@ -142,10 +146,14 @@ function getEmployeeIds(employees?: PersonOption[] | null): string[] {
 export function projectToFormValues(project: ProjectRecord): ProjectFormValues {
     return {
         name: project.name ?? "",
+        // comments is `string | null | undefined` on ProjectRecord (DB column is
+        // null=True). Normalise to "" for the form — the textarea never holds null.
         comments: project.comments ?? "",
         status: project.status ?? "",
-        managerId: getPersonId(project.manager ?? null),
+        managerId: getManagerId(project.manager ?? null),
         employees: getEmployeeIds(project.employees ?? []),
+        // start_date / end_date are non-nullable at the DB level but typed as
+        // optional on ProjectRecord (they may be absent on partial responses).
         start_date: project.start_date ?? "",
         end_date: project.end_date ?? "",
         security_level: project.security_level ?? "Internal",

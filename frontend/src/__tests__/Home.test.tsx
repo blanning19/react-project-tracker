@@ -29,7 +29,7 @@ describe("Home", () => {
         vi.clearAllMocks();
     });
 
-    test("calls useHomeController and passes the controller result into HomeView", () => {
+    test("calls useHomeController and maps controller state into HomeView props", () => {
         const mockController: ReturnType<typeof useHomeController> = {
             rows: [],
             pagination: {
@@ -68,6 +68,7 @@ describe("Home", () => {
                 deleteTarget: null,
                 onDeleteRequest: vi.fn(),
                 onDeleteCancel: vi.fn(),
+                onDeleteConfirm: vi.fn(),
             },
         };
 
@@ -77,8 +78,24 @@ describe("Home", () => {
 
         expect(useHomeController).toHaveBeenCalledTimes(1);
         expect(screen.getByTestId("home-view")).toBeInTheDocument();
-        expect(screen.getByTestId("home-view-props")).toHaveTextContent(
-            JSON.stringify(mockController)
-        );
+
+        const actualProps = JSON.parse(screen.getByTestId("home-view-props").textContent ?? "{}");
+
+        expect(actualProps).toEqual({
+            projects: mockController.rows,
+            totalCount: mockController.pagination.total,
+            currentPage: mockController.pagination.page,
+            pageSize: mockController.pagination.pageSize,
+            loading: mockController.state.loading,
+            apiError: mockController.state.apiError,
+            successMessage: "",
+            search: mockController.filters.searchTerm,
+            statusFilter: mockController.filters.statusFilter,
+            sortKey: mockController.sort.key,
+            sortDesc: mockController.sort.dir === "desc",
+            deleteTarget: mockController.navigation.deleteTarget,
+            deleteError: "",
+            deleteLoading: false,
+        });
     });
 });

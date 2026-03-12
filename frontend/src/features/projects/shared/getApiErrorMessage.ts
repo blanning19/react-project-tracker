@@ -8,38 +8,18 @@
  * @module shared/getApiErrorMessage
  */
 
-/**
- * Minimal shape of an API error as thrown by the fetch client.
- *
- * The fetch client may populate either the Axios-style `response` sub-object
- * or the flat `status`/`data` fields directly. Both shapes are handled.
- *
- * Using a typed interface + type guard instead of inline `as` casts because:
- * - Inline casts would repeat the same complex type across multiple call sites.
- * - With strict mode enabled, a type guard is the correct way to narrow `unknown`.
- * - This interface documents exactly what the fetch client actually throws.
- */
-interface ApiError {
-    /**
-     * Axios-style error shape: `error.response.status` / `error.response.data`.
-     */
-    response?: {
-        status?: number;
-        data?: Record<string, string[] | string>;
-    };
-    /**
-     * Flat error shape used directly by the fetch client:
-     * `error.status` / `error.data`.
-     */
-    status?: number;
-    data?: Record<string, string[] | string>;
-}
+import type { ApiError } from "../../../shared/types/http";
 
 /**
  * Narrows an unknown value to {@link ApiError}.
  *
  * Only checks that the value is a non-null object — field-level checks are
  * deferred to the body-parsing logic in {@link getApiErrorMessage}.
+ *
+ * The shared `ApiError` from `http.ts` types `data` as `unknown`, which is
+ * correct: the backend can return plain strings (`{"detail": "Not found."}`),
+ * arrays, or nested validation objects. Runtime narrowing below handles all
+ * shapes safely.
  *
  * @param err - The value to test.
  * @returns `true` if `err` is a non-null object.
@@ -60,6 +40,11 @@ function isApiError(err: unknown): err is ApiError {
  *    status code appended.
  * 3. **Plain fallback** — if the error contains nothing recognisable, the
  *    `fallbackMessage` is returned as-is.
+ *
+ * ### Backend error shapes handled
+ * - Field validation: `{ name: ["Too long."], employees: ["Pick one."] }`
+ * - Detail string:    `{ detail: "Not found." }` (404, 400 without fields)
+ * - Plain string:     `{ detail: "No refresh token provided." }` (logout 400)
  *
  * @param err - The unknown error thrown by the API layer.
  * @param fallbackMessage - The default message to show if the error cannot
@@ -89,11 +74,19 @@ export function getApiErrorMessage(err: unknown, fallbackMessage: string): strin
         return fallbackMessage;
     }
 
+    // Support both Axios-style (err.response.data) and flat (err.data) shapes.
     const body = err.response?.data ?? err.data;
     const status = err.response?.status ?? err.status;
 
-    if (body !== undefined && typeof body === "object" && !Array.isArray(body)) {
-        const messages = Object.values(body)
+    // body is `unknown` from the shared ApiError type — narrow to a plain
+    // object before iterating over its values.
+    if (
+        body !== undefined &&
+        body !== null &&
+        typeof body === "object" &&
+        !Array.isArray(body)
+    ) {
+        const messages = Object.values(body as Record<string, unknown>)
             .flatMap((value) => (Array.isArray(value) ? value : [value]))
             .filter(Boolean)
             .map(String);

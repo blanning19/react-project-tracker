@@ -6,7 +6,7 @@
 
 import { useMemo, useState } from "react";
 import { Controller, type Control, type FieldErrors } from "react-hook-form";
-import type { PersonOption, ProjectFormValues } from "../models/project.types";
+import type { ManagerOption, EmployeeOption, ProjectFormValues } from "../models/project.types";
 import { SECURITY_LEVEL_OPTIONS } from "./projectFormConfig";
 import styles from "./ProjectFormFields.module.css";
 
@@ -18,28 +18,33 @@ export interface ProjectFormFieldsProps {
     control: Control<ProjectFormValues>;
     /** Field-level validation errors from React Hook Form. */
     errors: FieldErrors<ProjectFormValues>;
-    /** Manager options for the dropdown, loaded asynchronously. Defaults to `[]`. */
-    managers?: PersonOption[];
-    /** Employee options for the checkbox list, loaded asynchronously. Defaults to `[]`. */
-    employees?: PersonOption[];
+    /**
+     * Manager options for the dropdown, loaded asynchronously.
+     * Uses {@link ManagerOption} — `name` is always present, no fallback needed.
+     * Defaults to `[]`.
+     */
+    managers?: ManagerOption[];
+    /**
+     * Employee options for the checkbox list, loaded asynchronously.
+     * Uses {@link EmployeeOption} — `first_name`, `last_name`, `email` always present.
+     * Defaults to `[]`.
+     */
+    employees?: EmployeeOption[];
     /** Status options for the dropdown. Defaults to `[]`. */
     statusOptions?: Array<{ id: string; name: string }>;
 }
 
 /**
- * Derives a display name for a {@link PersonOption}.
+ * Derives a display name for an {@link EmployeeOption}.
  *
- * Prefers the `name` field. Falls back to concatenating `first_name` and
- * `last_name`. Falls back further to `#<id>` when no name fields are set.
+ * Concatenates `first_name` and `last_name`. Falls back to `#<id>` only
+ * when both are empty strings (should not occur with valid API data).
  *
- * @param person - The person record to derive a name from.
+ * @param employee - The employee record to derive a name from.
  * @returns A non-empty display string.
  */
-function getPersonName(person: PersonOption): string {
-    return (
-        person.name ??
-        `${person.first_name ?? ""} ${person.last_name ?? ""}`.trim()
-    ) || `#${person.id}`;
+function getEmployeeName(employee: EmployeeOption): string {
+    return `${employee.first_name} ${employee.last_name}`.trim() || `#${employee.id}`;
 }
 
 /**
@@ -137,7 +142,7 @@ function ProjectFormFields({
     const employeeOptions = useMemo(
         () =>
             employees
-                .map((e) => ({ id: String(e.id), name: getPersonName(e) }))
+                .map((e) => ({ id: String(e.id), name: getEmployeeName(e) }))
                 .sort((a, b) => a.name.localeCompare(b.name)),
         [employees]
     );
@@ -232,7 +237,8 @@ function ProjectFormFields({
                                     <option value="">Select project manager…</option>
                                     {managers.map((manager) => (
                                         <option key={manager.id} value={String(manager.id)}>
-                                            {getPersonName(manager)}
+                                            {/* manager.name is always present — ManagerOption.name is non-optional */}
+                                            {manager.name}
                                         </option>
                                     ))}
                                 </select>

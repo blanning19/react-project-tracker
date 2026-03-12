@@ -16,46 +16,92 @@
 export type SecurityLevel = "Public" | "Internal" | "Confidential" | "Restricted";
 
 /**
- * Shape of a person record returned by the manager and employee lookup
- * endpoints (`/api/managers/` and `/api/employees/`).
+ * Shape of a manager record returned by the `/api/managers/` lookup endpoint.
  *
- * The `name` field is the preferred display value. When it is absent the UI
- * falls back to concatenating `first_name` and `last_name`.
+ * `name` is always present and non-null — `Manager.name` is a required
+ * `CharField(unique=True)` on the backend with no `blank=True` or `null=True`.
+ * `ManagerSerializer` always serialises it.
+ *
+ * Kept separate from {@link EmployeeOption} because the two serialisers have
+ * different field sets: managers expose `name` while employees expose
+ * `first_name`, `last_name`, and `email`.
  */
-export interface PersonOption {
-    /** Primary key of the person record. */
+export interface ManagerOption {
+    /** Primary key of the manager record. */
     id: number;
-    /** Pre-formatted full name, if the serialiser provides it. */
-    name?: string;
-    first_name?: string;
-    last_name?: string;
+    /** Display name — always present, never null. */
+    name: string;
 }
+
+/**
+ * Shape of an employee record returned by the `/api/employees/` lookup endpoint.
+ *
+ * All string fields map directly to `EmployeeSerializer`'s field list:
+ * `("id", "first_name", "last_name", "email")`.
+ */
+export interface EmployeeOption {
+    /** Primary key of the employee record. */
+    id: number;
+    first_name: string;
+    last_name: string;
+    /** Unique email address — always present from the serialiser. */
+    email: string;
+}
+
+/**
+ * Union type used where a field can hold either a manager or an employee,
+ * e.g. in the generic `getPersonName` helper in `ProjectFormFields`.
+ *
+ * Prefer the concrete types ({@link ManagerOption} / {@link EmployeeOption})
+ * at call sites where the origin is known.
+ */
+export type PersonOption = ManagerOption | EmployeeOption;
 
 /**
  * Shape of a project record returned by `GET /api/projects/` and
  * `GET /api/projects/:id/` (`ProjectReadSerializer`).
  *
- * @remarks
- * The API field is `manager` (not `projectmanager`). The frontend form state
- * still uses `managerId`; mapping is handled in `projectFormConfig.ts`.
+ * ### Nullability notes
+ * - `comments` — the DB column is `null=True` so the API can return `null`
+ *   for rows created before the NOT NULL migration. New rows always store `""`
+ *   thanks to the serialiser default, but the type must accept `null` for
+ *   backwards compatibility with existing data.
+ * - `start_date` / `end_date` — `DateField()` with no `null=True`; the API
+ *   always returns an ISO 8601 string. Not typed as nullable.
+ * - `manager` — `ForeignKey(SET_NULL, null=True)` so it can be `null` when
+ *   the assigned manager has been deleted.
  */
 export interface ProjectRecord {
     /** Primary key. */
     id: number;
     /** Project display name. */
     name: string;
-    /** Optional free-text notes about the project. */
-    comments?: string;
+    /**
+     * Optional free-text notes about the project.
+     *
+     * The DB column is `null=True` so legacy rows may return `null`.
+     * New rows always store `""` (serialiser default). Consumers should
+     * normalise with `comments ?? ""` rather than assuming a string.
+     */
+    comments?: string | null;
     /** Current workflow status (e.g. `"Active"`, `"On Hold"`). */
     status?: string;
-    /** ISO 8601 start date string, or `null` if not yet set. */
-    start_date?: string | null;
-    /** ISO 8601 end date string, or `null` if not yet set. */
-    end_date?: string | null;
-    /** The assigned project manager, or `null` if unassigned. */
-    manager?: PersonOption | null;
+    /**
+     * ISO 8601 start date string.
+     *
+     * `DateField()` with no `null=True` — always present in API responses.
+     */
+    start_date?: string;
+    /**
+     * ISO 8601 end date string.
+     *
+     * `DateField()` with no `null=True` — always present in API responses.
+     */
+    end_date?: string;
+    /** The assigned project manager, or `null` if unassigned (SET_NULL). */
+    manager?: ManagerOption | null;
     /** List of employees assigned to this project. */
-    employees?: PersonOption[];
+    employees?: EmployeeOption[];
     /** Data classification level for this project. */
     security_level: SecurityLevel;
 }

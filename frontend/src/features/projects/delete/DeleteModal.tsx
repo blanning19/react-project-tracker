@@ -1,13 +1,19 @@
 /**
- * @file Inline delete confirmation modal for the Home page.
+ * @file Delete confirmation modal for a project.
+ *
+ * Shown when the user clicks Delete on a project row. Fires the delete
+ * mutation and — on success — invalidates the project list cache so the
+ * home page refreshes automatically.
  *
  * @module projects/delete/DeleteModal
  */
 
-import { Button, Modal, Spinner } from "react-bootstrap";
-import { AlertTriangle } from "lucide-react";
+import Button from "react-bootstrap/Button";
+import Modal from "react-bootstrap/Modal";
+import Alert from "react-bootstrap/Alert";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { deleteProject, projectKeys } from "../../../features/projects/models/project.api";
+import { deleteProject, projectKeys } from "../models/project.api";
+import { getApiErrorMessage } from "../shared/getApiErrorMessage";
 
 /**
  * Props for {@link DeleteModal}.
@@ -15,117 +21,102 @@ import { deleteProject, projectKeys } from "../../../features/projects/models/pr
 export interface DeleteModalProps {
     /** Numeric ID of the project to delete. */
     projectId: number;
-    /** Shown in the confirmation prompt so the user can verify the right record. */
+    /** Display name of the project — shown in the confirmation copy. */
     projectName: string;
-    /** Controls modal visibility. Pass `true` to open, `false` to close. */
-    show: boolean;
-    /** Called when the user cancels or closes the modal without deleting. */
-    onHide: () => void;
+    /** Called when the modal should close (Cancel button or backdrop click). */
+    onCancel: () => void;
     /**
-     * Called after a successful delete and cache invalidation.
-     * The caller can use this to perform any additional UI-specific cleanup.
+     * Called after a successful delete **and** cache invalidation.
+     *
+     * The parent should use this to close the modal and clear `deleteTarget`
+     * state. It must NOT trigger a second cache invalidation — `DeleteModal`
+     * already owns that responsibility via `queryClient.invalidateQueries`.
+     *
+     * FIX #14: Previously `onDeleted` was wired to `getData()` in
+     * `useHomeController`, causing a double invalidation. Wire it to
+     * `onDeleteCancel` instead so only one invalidation fires per delete.
      */
     onDeleted: () => void;
 }
 
 /**
- * Inline delete confirmation modal.
+ * Confirmation modal that deletes a project when the user clicks "Delete".
  *
- * Replaces the previous `/delete/:id` route. Trigger this from `HomeView` by
- * storing `{ id, name }` in a piece of state and passing it here.
+ * ### Error display (Fix #10)
+ * The error shown in the modal is extracted from `deleteMutation.error`
+ * using `getApiErrorMessage`. Previously the modal showed a hardcoded
+ * "Something went wrong." string regardless of what the API returned.
+ * Now it surfaces field-level messages and HTTP status codes consistently
+ * with the project form pages.
  *
- * Uses a React Query mutation rather than component-local `async` state so
- * pending and error handling stay aligned with the rest of the app's data layer.
- * On success the modal invalidates all project list queries before notifying
- * the caller via `onDeleted`.
+ * ### Cache invalidation (Fix #14)
+ * `onSuccess` invalidates `projectKeys.lists()` directly. Callers must not
+ * perform a second invalidation in `onDeleted` — doing so causes two
+ * back-to-back list fetches.
  *
- * The modal blocks closure while the deletion is in-flight (`backdrop="static"`,
- * close button hidden) to prevent double-delete or a premature UI reset.
+ * @param props - See {@link DeleteModalProps}.
  */
-export default function DeleteModal({
+function DeleteModal({
     projectId,
     projectName,
-    show,
-    onHide,
+    onCancel,
     onDeleted,
-}: DeleteModalProps) {
-    // REMARK: Added queryClient so delete can invalidate cached project lists.
+}: DeleteModalProps): JSX.Element {
     const queryClient = useQueryClient();
 
     const deleteMutation = useMutation({
-        mutationFn: async () => deleteProject(projectId),
+        mutationFn: () => deleteProject(projectId),
 
         onSuccess: async () => {
-            // REMARK: Refresh all project list queries after a delete.
+            // Single cache invalidation — the caller must not invalidate again.
             await queryClient.invalidateQueries({ queryKey: projectKeys.lists() });
-
             onDeleted();
-            onHide();
         },
     });
 
-    const handleConfirm = async () => {
-        await deleteMutation.mutateAsync();
-    };
-
-    const handleHide = () => {
-        if (deleteMutation.isPending) return; // prevent close while in flight
-        deleteMutation.reset();
-        onHide();
-    };
+    /**
+     * FIX #10: Use getApiErrorMessage to surface the actual API error rather
+     * than a hardcoded fallback. Handles DRF validation bodies, detail strings,
+     * and plain HTTP status codes consistently with the project form.
+     */
+    const errorMessage = deleteMutation.error
+        ? getApiErrorMessage(deleteMutation.error, "Something went wrong.")
+        : "";
 
     return (
-        <Modal
-            show={show}
-            onHide={handleHide}
-            centered
-            size="sm"
-            backdrop={deleteMutation.isPending ? "static" : true}
-        >
-            <Modal.Header closeButton={!deleteMutation.isPending}>
-                <Modal.Title className="d-flex align-items-center gap-2 fs-6">
-                    <AlertTriangle size={18} strokeWidth={2} className="text-danger" />
-                    Delete project
-                </Modal.Title>
+        <Modal show onHide={onCancel} centered aria-labelledby="delete-modal-title">
+            <Modal.Header closeButton>
+                <Modal.Title id="delete-modal-title">Delete project</Modal.Title>
             </Modal.Header>
 
             <Modal.Body>
-                <p className="mb-0" style={{ fontSize: "0.9rem" }}>
-                    Are you sure you want to delete{" "}
-                    <strong className="text-break">{projectName}</strong>?
+                {errorMessage && (
+                    <Alert variant="danger">{errorMessage}</Alert>
+                )}
+                <p>
+                    Are you sure you want to delete <strong>{projectName}</strong>?
                     This action cannot be undone.
                 </p>
-
-                {deleteMutation.isError && (
-                    <div
-                        className="alert alert-danger py-2 px-3 mt-3 mb-0"
-                        style={{ fontSize: "0.83rem" }}
-                    >
-                        Something went wrong. Please try again.
-                    </div>
-                )}
             </Modal.Body>
 
             <Modal.Footer>
                 <Button
-                    variant="outline-secondary"
-                    size="sm"
-                    onClick={handleHide}
+                    variant="secondary"
+                    onClick={onCancel}
                     disabled={deleteMutation.isPending}
                 >
                     Cancel
                 </Button>
                 <Button
                     variant="danger"
-                    size="sm"
-                    onClick={() => void handleConfirm()}
+                    onClick={() => deleteMutation.mutate()}
                     disabled={deleteMutation.isPending}
-                    className="d-flex align-items-center gap-2"
                 >
-                    {deleteMutation.isPending && <Spinner size="sm" />}
                     {deleteMutation.isPending ? "Deleting…" : "Delete"}
                 </Button>
             </Modal.Footer>
         </Modal>
     );
 }
+
+export default DeleteModal;

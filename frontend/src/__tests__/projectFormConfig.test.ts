@@ -118,6 +118,49 @@ describe("PROJECT_SCHEMA", () => {
         const data = { ...validData, security_level: "TopSecret" };
         await expect(PROJECT_SCHEMA.validate(data)).rejects.toThrow("Security level is invalid");
     });
+    test("accepts blank comments when status is Active", async () => {
+        const data = {
+            ...validData,
+            status: "Active",
+            comments: "",
+        };
+
+        await expect(PROJECT_SCHEMA.validate(data)).resolves.toBeDefined();
+    });
+
+    test("rejects blank comments when status is Completed", async () => {
+        const data = {
+            ...validData,
+            status: "Completed",
+            comments: "",
+        };
+
+        await expect(PROJECT_SCHEMA.validate(data)).rejects.toThrow(
+            "Comments are required when a project is Completed or Cancelled"
+        );
+    });
+
+    test("rejects blank comments when status is Cancelled", async () => {
+        const data = {
+            ...validData,
+            status: "Cancelled",
+            comments: "   ",
+        };
+
+        await expect(PROJECT_SCHEMA.validate(data)).rejects.toThrow(
+            "Comments are required when a project is Completed or Cancelled"
+        );
+    });
+
+    test("accepts comments when status is Completed", async () => {
+        const data = {
+            ...validData,
+            status: "Completed",
+            comments: "Project finished successfully.",
+        };
+
+        await expect(PROJECT_SCHEMA.validate(data)).resolves.toBeDefined();
+    });
 });
 
 // ── projectToFormValues ──────────────────────────────────────────────────────

@@ -61,15 +61,16 @@ export type PersonOption = ManagerOption | EmployeeOption;
  * Shape of a project record returned by `GET /api/projects/` and
  * `GET /api/projects/:id/` (`ProjectReadSerializer`).
  *
- * ### Nullability notes
- * - `comments` — the DB column is `null=True` so the API can return `null`
- *   for rows created before the NOT NULL migration. New rows always store `""`
- *   thanks to the serialiser default, but the type must accept `null` for
- *   backwards compatibility with existing data.
- * - `start_date` / `end_date` — `DateField()` with no `null=True`; the API
- *   always returns an ISO 8601 string. Not typed as nullable.
- * - `manager` — `ForeignKey(SET_NULL, null=True)` so it can be `null` when
- *   the assigned manager has been deleted.
+ * ### Contract notes
+ * - `comments` may be `null` because the database still allows null values.
+ *   UI consumers should normalise with `comments ?? ""` before binding to form
+ *   inputs or rendering text content that expects a string.
+ * - `manager` is required by current business rules, but is still typed as
+ *   nullable for defensive compatibility with older rows or temporary backend
+ *   inconsistencies until the database constraint is tightened.
+ * - `employees` is always returned as an array by the read serializer.
+ * - `start_date` and `end_date` are ISO 8601 date strings in API responses.
+ * - `status` and `security_level` should match the backend choice values.
  */
 export interface ProjectRecord {
     /** Primary key. */
@@ -79,29 +80,27 @@ export interface ProjectRecord {
     /**
      * Optional free-text notes about the project.
      *
-     * The DB column is `null=True` so legacy rows may return `null`.
-     * New rows always store `""` (serialiser default). Consumers should
-     * normalise with `comments ?? ""` rather than assuming a string.
+     * The database still allows `NULL`, so API responses may contain `null`.
+     * New form submissions normalise this to `""` unless the field is left
+     * intentionally null by legacy data.
      */
-    comments?: string | null;
-    /** Current workflow status (e.g. `"Active"`, `"On Hold"`). */
-    status?: string;
+    comments: string | null;
+    /** Current workflow status. */
+    status: string;
+    /** ISO 8601 project start date string. */
+    start_date: string;
+    /** ISO 8601 project end date string. */
+    end_date: string;
     /**
-     * ISO 8601 start date string.
+     * Assigned project manager.
      *
-     * `DateField()` with no `null=True` — always present in API responses.
+     * Business rules require this to be selected on create/edit. The field is
+     * still typed as nullable until the backend model/serializer constraints
+     * are fully tightened.
      */
-    start_date?: string;
-    /**
-     * ISO 8601 end date string.
-     *
-     * `DateField()` with no `null=True` — always present in API responses.
-     */
-    end_date?: string;
-    /** The assigned project manager, or `null` if unassigned (SET_NULL). */
-    manager?: ManagerOption | null;
-    /** List of employees assigned to this project. */
-    employees?: EmployeeOption[];
+    manager: ManagerOption | null;
+    /** Employees assigned to the project. */
+    employees: EmployeeOption[];
     /** Data classification level for this project. */
     security_level: SecurityLevel;
 }

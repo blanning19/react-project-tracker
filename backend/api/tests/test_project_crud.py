@@ -44,11 +44,16 @@ def test_project_crud(auth_client, project_payload):
 
     update = auth_client.put(
         f"/api/projects/{project_id}/",
-        {**project_payload, "status": "Completed"},
+        {
+            **project_payload,
+            "status": "Completed",
+            "comments": "Project completed during CRUD test.",
+        },
         format="json",
     )
     assert update.status_code in (200, 202), getattr(update, "data", None)
     assert update.data["status"] == "Completed"
+    assert update.data["comments"] == "Project completed during CRUD test."
 
     delete = auth_client.delete(f"/api/projects/{project_id}/")
     assert delete.status_code in (200, 202, 204)
@@ -83,6 +88,7 @@ def test_retrieve_returns_nested_objects(auth_client, project_payload):
     if employees:
         assert isinstance(employees[0], dict)
 
+
 @pytest.mark.django_db
 def test_list_response_has_paginated_envelope(auth_client, project_payload):
     auth_client.post("/api/projects/", project_payload, format="json")
@@ -90,6 +96,7 @@ def test_list_response_has_paginated_envelope(auth_client, project_payload):
     assert r.status_code == 200
     for key in ("count", "next", "previous", "results"):
         assert key in r.data
+
 
 @pytest.mark.django_db
 def test_put_updates_all_fields(auth_client, project_payload):
@@ -104,6 +111,7 @@ def test_put_updates_all_fields(auth_client, project_payload):
     get = auth_client.get(f"/api/projects/{project_id}/")
     assert get.data["status"] == "On Hold"
 
+
 @pytest.mark.django_db
 def test_patch_updates_single_field(auth_client, project_payload):
     create = auth_client.post("/api/projects/", project_payload, format="json")
@@ -111,15 +119,20 @@ def test_patch_updates_single_field(auth_client, project_payload):
 
     r = auth_client.patch(
         f"/api/projects/{project_id}/",
-        {"status": "Completed"},
+        {
+            "status": "Completed",
+            "comments": "Project completed during PATCH test.",
+        },
         format="json",
     )
     assert r.status_code in (200, 202), getattr(r, "data", None)
     assert r.data["status"] == "Completed"
+    assert r.data["comments"] == "Project completed during PATCH test."
 
     get = auth_client.get(f"/api/projects/{project_id}/")
     assert get.data["name"] == project_payload["name"]
     assert get.data["security_level"] == project_payload["security_level"]
+
 
 @pytest.mark.django_db
 def test_patch_invalid_status_rejected(auth_client, project_payload):
@@ -134,6 +147,7 @@ def test_patch_invalid_status_rejected(auth_client, project_payload):
     assert r.status_code == 400
     assert "status" in r.data
 
+
 @pytest.mark.django_db
 def test_delete_removes_project(auth_client, project_payload):
     create = auth_client.post("/api/projects/", project_payload, format="json")
@@ -144,6 +158,7 @@ def test_delete_removes_project(auth_client, project_payload):
 
     get = auth_client.get(f"/api/projects/{project_id}/")
     assert get.status_code == 404
+
 
 @pytest.mark.django_db
 def test_retrieve_nonexistent_project_returns_404(auth_client):

@@ -73,13 +73,11 @@ class Project(models.Model):
         related_name="projects",
     )
 
-    # REMARK: Renamed database/ORM field from `projectmanager` to `manager`
-    # for a cleaner domain model and API contract.
     manager = models.ForeignKey(
         Manager,
-        on_delete=models.SET_NULL,
-        blank=True,
-        null=True,
+        on_delete=models.PROTECT,
+        blank=False,
+        null=False,
     )
 
     start_date = models.DateField()

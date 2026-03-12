@@ -65,11 +65,10 @@ class ProjectWriteSerializer(serializers.ModelSerializer):
         queryset=Employee.objects.all(),
     )
 
-    # REMARK: Renamed write field from `projectmanager` to `manager`.
     manager = serializers.PrimaryKeyRelatedField(
         queryset=Manager.objects.all(),
-        required=False,
-        allow_null=True,
+        required=True,
+        allow_null=False,
     )
 
     # Declared explicitly so that omitting `comments` from the payload never
@@ -116,16 +115,40 @@ class ProjectWriteSerializer(serializers.ModelSerializer):
 
     def validate(self, attrs):
         """
-        Enforce cross-field business rules for both create and update flows,
-        including PATCH requests where some values may come from the instance.
+        Enforce cross-field business rules.
+
+        Rules:
+        - end_date cannot be before start_date
+        - comments are required when status is Completed or Cancelled
         """
-        start_date = attrs.get("start_date", getattr(self.instance, "start_date", None))
-        end_date = attrs.get("end_date", getattr(self.instance, "end_date", None))
+        attrs = super().validate(attrs)
+
+        # Support PATCH as well as POST/PUT by falling back to existing instance values.
+        start_date = attrs.get("start_date")
+        end_date = attrs.get("end_date")
+        status = attrs.get("status")
+        comments = attrs.get("comments", "")
+
+        if self.instance is not None:
+            if start_date is None:
+                start_date = self.instance.start_date
+            if end_date is None:
+                end_date = self.instance.end_date
+            if status is None:
+                status = self.instance.status
+            if "comments" not in attrs:
+                comments = self.instance.comments
 
         if start_date and end_date and end_date < start_date:
             raise serializers.ValidationError({
-                "end_date": "End date cannot be before start date."
+                "end_date": "The end date can not be before the start date"
             })
+
+        if status in (Project.Status.COMPLETED, Project.Status.CANCELLED):
+            if not str(comments or "").strip():
+                raise serializers.ValidationError({
+                    "comments": "Comments are required when a project is Completed or Cancelled."
+                })
 
         return attrs
 

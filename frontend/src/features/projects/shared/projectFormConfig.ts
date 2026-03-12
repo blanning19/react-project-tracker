@@ -109,8 +109,17 @@ export const PROJECT_SCHEMA: yup.ObjectSchema<ProjectFormValues> = yup.object({
 
     comments: yup
         .string()
-        .required()
-        .default(""),
+        .default("")
+        .when("status", {
+            is: (status: string) => status === "Completed" || status === "Cancelled",
+            then: (schema) =>
+                schema.test(
+                    "comments-required-for-closed-status",
+                    "Comments are required when a project is Completed or Cancelled",
+                    (value) => (value ?? "").trim() !== ""
+                ),
+            otherwise: (schema) => schema,
+        }),
 });
 
 /**

@@ -91,14 +91,25 @@ class TestProjectValidation:
         assert "status" in r.data
 
     def test_valid_status_values_accepted(self, auth_client, base_payload):
-        valid_statuses = ["Active", "On Hold", "Completed", "Cancelled"]
+        valid_payloads = [
+            {**base_payload, "name": "Project 0", "status": "Active"},
+            {**base_payload, "name": "Project 1", "status": "On Hold"},
+            {
+                **base_payload,
+                "name": "Project 2",
+                "status": "Completed",
+                "comments": "Project completed successfully.",
+            },
+            {
+                **base_payload,
+                "name": "Project 3",
+                "status": "Cancelled",
+                "comments": "Project cancelled due to scope change.",
+            },
+        ]
 
-        for i, status in enumerate(valid_statuses):
-            r = auth_client.post(
-                "/api/projects/",
-                {**base_payload, "name": f"Project {i}", "status": status},
-                format="json",
-            )
+        for payload in valid_payloads:
+            r = auth_client.post("/api/projects/", payload, format="json")
             assert r.status_code in (200, 201)
 
     def test_duplicate_name_rejected(self, auth_client, base_payload):
@@ -148,19 +159,32 @@ class TestProjectValidation:
         assert r.status_code == 400
         assert "end_date" in r.data
 
-    def test_comments_defaults_to_empty_string_when_omitted(self, auth_client, base_payload):
-        """
-        Submitting a payload with no `comments` key must succeed and store "".
-
-        This documents the serializer contract introduced alongside the NOT NULL
-        migration: the `comments` CharField on ProjectWriteSerializer declares
-        default="" so that an absent key never reaches the DB as NULL.
-        """
-        payload = {k: v for k, v in base_payload.items() if k != "comments"}
+    def test_project_requires_manager(self, auth_client, base_payload):
+        payload = {
+            **base_payload,
+            "name": "Missing Manager Project",
+        }
+        payload.pop("manager", None)
 
         r = auth_client.post("/api/projects/", payload, format="json")
-        assert r.status_code in (200, 201), r.data
 
-        get = auth_client.get(f"/api/projects/{r.data['id']}/")
-        assert get.status_code == 200
-        assert get.data["comments"] == ""
+        assert r.status_code == 400
+        assert "manager" in r.data
+
+    def test_completed_status_requires_comments(self, auth_client, base_payload):
+        r = auth_client.post(
+            "/api/projects/",
+            {**base_payload, "name": "Completed No Comments", "status": "Completed"},
+            format="json",
+        )
+        assert r.status_code == 400
+        assert "comments" in r.data
+
+    def test_cancelled_status_requires_comments(self, auth_client, base_payload):
+        r = auth_client.post(
+            "/api/projects/",
+            {**base_payload, "name": "Cancelled No Comments", "status": "Cancelled"},
+            format="json",
+        )
+        assert r.status_code == 400
+        assert "comments" in r.data

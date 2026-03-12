@@ -163,6 +163,10 @@ describe("useCreateController", () => {
     });
 
     test("shows a status-based error when create fails without validation body", async () => {
+        // FIX: submission now suppresses the mutateAsync re-throw (the error is
+        // already handled by onError which sets apiError state). The test
+        // previously asserted `.rejects` on submission(), but submission no
+        // longer rejects — it resolves after setting apiError. Assert on state.
         const mockedGetManagers = projectApi.getManagers as ReturnType<typeof vi.fn>;
         const mockedGetEmployees = projectApi.getEmployees as ReturnType<typeof vi.fn>;
         const mockedCreateProject = projectApi.createProject as ReturnType<typeof vi.fn>;
@@ -182,24 +186,19 @@ describe("useCreateController", () => {
             });
 
             await act(async () => {
-                await expect(
-                    result.current.submission({
-                        name: "New Project",
-                        comments: "",
-                        status: "Open",
-                        managerId: "1",
-                        employees: [],
-                        start_date: "",
-                        end_date: "",
-                        security_level: "Internal",
-                    })
-                ).rejects.toEqual(
-                    expect.objectContaining({
-                        response: { status: 500 },
-                    })
-                );
+                await result.current.submission({
+                    name: "New Project",
+                    comments: "",
+                    status: "Open",
+                    managerId: "1",
+                    employees: [],
+                    start_date: "",
+                    end_date: "",
+                    security_level: "Internal",
+                });
             });
 
+            // submission resolves (does not reject) — error is surfaced via state
             await waitFor(() => {
                 expect(result.current.apiError).toBe("Request failed (500).");
             });
@@ -234,5 +233,72 @@ describe("useCreateController", () => {
             expect(mockedGetManagers).toHaveBeenCalledTimes(2);
             expect(mockedGetEmployees).toHaveBeenCalledTimes(2);
         });
+    });
+
+    test("submits comments as empty string when field is left blank", async () => {
+        // Verifies the frontend side of the NOT NULL contract: an untouched
+        // comments textarea must send "" to the API, never undefined or null.
+        const mockedGetManagers = projectApi.getManagers as ReturnType<typeof vi.fn>;
+        const mockedGetEmployees = projectApi.getEmployees as ReturnType<typeof vi.fn>;
+        const mockedCreateProject = projectApi.createProject as ReturnType<typeof vi.fn>;
+
+        mockedGetManagers.mockResolvedValue([]);
+        mockedGetEmployees.mockResolvedValue([]);
+        mockedCreateProject.mockResolvedValue({ id: 99 });
+
+        const { result } = renderHook(() => useCreateController(), { wrapper: createWrapper() });
+
+        await waitFor(() => expect(result.current.loading).toBe(false));
+
+        await act(async () => {
+            await result.current.submission({
+                name: "Blank Comments Project",
+                comments: "",
+                status: "Active",
+                managerId: "1",
+                employees: [],
+                start_date: "2026-01-01",
+                end_date: "2026-06-01",
+                security_level: "Internal",
+            });
+        });
+
+        expect(mockedCreateProject).toHaveBeenCalledTimes(1);
+        const payload = mockedCreateProject.mock.calls[0]![0]!;
+        expect(payload.comments).toBeDefined();
+        expect(payload.comments).not.toBeNull();
+    });
+
+    test("preserves non-empty comments through the submission payload", async () => {
+        // Guards against a regression where formToPayload could accidentally
+        // strip or coerce a user-entered comments value.
+        const mockedGetManagers = projectApi.getManagers as ReturnType<typeof vi.fn>;
+        const mockedGetEmployees = projectApi.getEmployees as ReturnType<typeof vi.fn>;
+        const mockedCreateProject = projectApi.createProject as ReturnType<typeof vi.fn>;
+
+        mockedGetManagers.mockResolvedValue([]);
+        mockedGetEmployees.mockResolvedValue([]);
+        mockedCreateProject.mockResolvedValue({ id: 100 });
+
+        const { result } = renderHook(() => useCreateController(), { wrapper: createWrapper() });
+
+        await waitFor(() => expect(result.current.loading).toBe(false));
+
+        await act(async () => {
+            await result.current.submission({
+                name: "Commented Project",
+                comments: "Needs budget sign-off before Q3.",
+                status: "Active",
+                managerId: "1",
+                employees: [],
+                start_date: "2026-01-01",
+                end_date: "2026-06-01",
+                security_level: "Internal",
+            });
+        });
+
+        expect(mockedCreateProject).toHaveBeenCalledTimes(1);
+        const payload = mockedCreateProject.mock.calls[0]![0]!;
+        expect(payload.comments).toBe("Needs budget sign-off before Q3.");
     });
 });

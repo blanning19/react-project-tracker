@@ -207,7 +207,11 @@ export function useProjectFormController({ mode, projectId = "" }: UseProjectFor
 
     const submission = async (data: ProjectFormValues) => {
         setApiError("");
-        await submitMutation.mutateAsync(data);
+        try {
+            await submitMutation.mutateAsync(data);
+        } catch {
+            // Error already handled in onError above — suppress the re-throw
+        }
     };
 
     return {

@@ -73,7 +73,7 @@ class ProjectViewset(viewsets.ModelViewSet):
     ]
     filterset_fields = ["status", "security_level"]
     search_fields = ["name", "comments"]
-    ordering_fields = ["name", "status", "start_date", "end_date", "security_level", "modified"]
+    ordering_fields = ["name", "status", "comments", "start_date", "end_date", "security_level", "modified"]
     ordering = ["-modified"]
 
     def get_serializer_class(self):

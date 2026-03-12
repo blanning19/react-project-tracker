@@ -5,7 +5,7 @@
  */
 
 import { HOME_STATUS_FILTER_OPTIONS, HOME_SORT_LABELS } from "./home.constants";
-import type { HomeSortKey, HomeViewProps } from "./home.types";
+import type { HomeSortKey, HomeViewProps, HomeStatusFilter } from "./home.types";
 
 function SortIndicator({
     columnKey,
@@ -91,7 +91,7 @@ function HomeView({
                 <select
                     className="form-select w-auto"
                     value={filters.statusFilter}
-                    onChange={(e) => filters.onStatusFilterChange(e.target.value as typeof filters.statusFilter)}
+                    onChange={(e) => filters.onStatusFilterChange(e.target.value as HomeStatusFilter)}
                 >
                     {HOME_STATUS_FILTER_OPTIONS.map((option) => (
                         <option key={option} value={option}>

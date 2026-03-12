@@ -5,40 +5,8 @@
     "entryPoints": [
         "src/main.tsx",
         "src/App.tsx",
-
-        "src/shared/api/routes.ts",
-        "src/shared/auth/AuthProvider.tsx",
-        "src/shared/auth/authApi.ts",
-        "src/shared/auth/tokens.ts",
-        "src/shared/auth/mode.ts",
-        "src/shared/http/fetchClient.ts",
-        "src/shared/layout/Navbar.tsx",
-        "src/shared/theme/ThemeToggle.tsx",
-        "src/shared/types/http.ts",
-
-        "src/features/auth/Login.tsx",
-        "src/features/auth/LoginView.tsx",
-        "src/features/auth/RequireAuth.tsx",
-        "src/features/auth/useLoginController.ts",
-
-        "src/features/home/Home.tsx",
-        "src/features/home/HomeView.tsx",
-        "src/features/home/home.constants.ts",
-        "src/features/home/home.types.ts",
-        "src/features/home/useHomeController.ts",
-
-        "src/features/projects/models/project.types.ts",
-        "src/features/projects/models/project.api.ts",
-        "src/features/projects/shared/getApiErrorMessage.ts",
-        "src/features/projects/shared/projectFormConfig.ts",
-        "src/features/projects/shared/useProjectFormController.ts",
-        "src/features/projects/shared/ProjectFormFields.tsx",
-        "src/features/projects/shared/ProjectFormPageView.tsx",
-        "src/features/projects/create/Create.tsx",
-        "src/features/projects/create/useCreateController.ts",
-        "src/features/projects/delete/DeleteModal.tsx",
-        "src/features/projects/edit/Edit.tsx",
-        "src/features/projects/edit/useEditController.ts"
+        "src/shared",
+        "src/features"
     ],
 
     "out": "docs",

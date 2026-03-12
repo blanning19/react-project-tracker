@@ -25,6 +25,7 @@ import Login from "./features/auth/Login";
 import Home from "./features/home/Home";
 import Create from "./features/projects/create/Create";
 import Edit from "./features/projects/edit/Edit";
+import DashboardPage from "./features/dashboard/DashboardPage";
 
 /**
  * Root component that owns the React Router route tree.
@@ -42,7 +43,7 @@ function App() {
             <Routes>
                 {/* Public standalone route — no Navbar */}
                 <Route path="/login" element={<Login />} />
-
+                <Route path="/dashboard" element={<DashboardPage />} />
                 {/* Shared application shell with Navbar */}
                 <Route element={<Navbar />}>
                     {/* Public route that still shows the Navbar */}

@@ -29,7 +29,7 @@ describe("Home", () => {
         vi.clearAllMocks();
     });
 
-    test("calls useHomeController and maps controller state into HomeView props", () => {
+    test("calls useHomeController and passes grouped props into HomeView", () => {
         const mockController: ReturnType<typeof useHomeController> = {
             rows: [],
             pagination: {
@@ -58,9 +58,13 @@ describe("Home", () => {
                 loading: false,
                 refreshing: false,
                 apiError: "",
+                successMessage: "",
+                deleteError: "",
+                deleteLoading: false,
             },
             actions: {
                 getData: vi.fn(),
+                onDeleteConfirm: vi.fn(),
             },
             navigation: {
                 onNavigateCreate: vi.fn(),
@@ -68,7 +72,6 @@ describe("Home", () => {
                 deleteTarget: null,
                 onDeleteRequest: vi.fn(),
                 onDeleteCancel: vi.fn(),
-                onDeleteConfirm: vi.fn(),
             },
         };
 
@@ -82,20 +85,36 @@ describe("Home", () => {
         const actualProps = JSON.parse(screen.getByTestId("home-view-props").textContent ?? "{}");
 
         expect(actualProps).toEqual({
-            projects: mockController.rows,
-            totalCount: mockController.pagination.total,
-            currentPage: mockController.pagination.page,
-            pageSize: mockController.pagination.pageSize,
-            loading: mockController.state.loading,
-            apiError: mockController.state.apiError,
-            successMessage: "",
-            search: mockController.filters.searchTerm,
-            statusFilter: mockController.filters.statusFilter,
-            sortKey: mockController.sort.key,
-            sortDesc: mockController.sort.dir === "desc",
-            deleteTarget: mockController.navigation.deleteTarget,
-            deleteError: "",
-            deleteLoading: false,
+            rows: mockController.rows,
+            pagination: {
+                page: 1,
+                pageSize: 10,
+                total: 0,
+                totalPages: 1,
+                displayStart: 0,
+                displayEnd: 0,
+            },
+            sort: {
+                key: "name",
+                dir: "asc",
+            },
+            filters: {
+                searchTerm: "",
+                statusFilter: "All",
+                hasActiveFilters: false,
+            },
+            state: {
+                loading: false,
+                refreshing: false,
+                apiError: "",
+                successMessage: "",
+                deleteError: "",
+                deleteLoading: false,
+            },
+            actions: {},
+            navigation: {
+                deleteTarget: null,
+            },
         });
     });
 });

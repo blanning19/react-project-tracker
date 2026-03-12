@@ -50,3 +50,15 @@ export const HOME_STATUS_FILTER_OPTIONS: HomeStatusFilter[] = [
  * Default status filter used when the page first loads.
  */
 export const HOME_DEFAULT_STATUS_FILTER: HomeStatusFilter = "All";
+
+/**
+ * Default sort labels used for sorts table
+ */
+export const HOME_SORT_LABELS: Record<HomeSortKey, string> = {
+    name: "Name",
+    status: "Status",
+    comments: "Comments",
+    start_date: "Start date",
+    end_date: "End date",
+    security_level: "Security level",
+};

@@ -7,37 +7,54 @@
 import { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { listProjects, projectKeys } from "../projects/models/project.api";
-import type { HomeSortKey } from "./home.types";
-import { HOME_DEFAULT_PAGE_SIZE } from "./home.constants";
+import { deleteProject, listProjects, projectKeys } from "../projects/models/project.api";
+import {
+    HOME_DEFAULT_PAGE_SIZE,
+    HOME_DEFAULT_SORT_DIRECTION,
+    HOME_DEFAULT_SORT_KEY,
+    HOME_DEFAULT_STATUS_FILTER,
+} from "./home.constants";
+import type {
+    DeleteTarget,
+    HomeSortDirection,
+    HomeSortKey,
+    HomeStatusFilter,
+    HomeViewProps,
+} from "./home.types";
 
-export type DeleteTarget = { id: number; name: string } | null;
-
-export function useHomeController() {
-    const navigate    = useNavigate();
-    const location    = useLocation();
+export function useHomeController(): HomeViewProps {
+    const navigate = useNavigate();
+    const location = useLocation();
     const queryClient = useQueryClient();
 
-    const [searchTerm, setSearchTerm]     = useState("");
-    const [statusFilter, setStatusFilter] = useState("All");
-    const [sortKey, setSortKey]           = useState<HomeSortKey>("name");
-    const [sortDir, setSortDir]           = useState<"asc" | "desc">("asc");
-    const [page, setPage]                 = useState(1);
-    const pageSize                        = HOME_DEFAULT_PAGE_SIZE;
+    const [searchTerm, setSearchTerm] = useState("");
+    const [statusFilter, setStatusFilter] =
+        useState<HomeStatusFilter>(HOME_DEFAULT_STATUS_FILTER);
+    const [sortKey, setSortKey] =
+        useState<HomeSortKey>(HOME_DEFAULT_SORT_KEY);
+    const [sortDir, setSortDir] =
+        useState<HomeSortDirection>(HOME_DEFAULT_SORT_DIRECTION);
+    const [page, setPage] = useState(1);
+    const pageSize = HOME_DEFAULT_PAGE_SIZE;
 
     const [deleteTarget, setDeleteTarget] = useState<DeleteTarget>(null);
+    const [deleteError, setDeleteError] = useState("");
+    const [deleteLoading, setDeleteLoading] = useState(false);
+
+    const successMessage =
+        (location.state as { successMessage?: string } | null)?.successMessage ?? "";
 
     const queryParams = {
-        search:    searchTerm === "" ? undefined : searchTerm,
-        status:    statusFilter === "All" ? undefined : statusFilter,
-        ordering:  sortDir === "desc" ? `-${sortKey}` : sortKey,
+        search: searchTerm === "" ? undefined : searchTerm,
+        status: statusFilter === "All" ? undefined : statusFilter,
+        ordering: sortDir === "desc" ? `-${sortKey}` : sortKey,
         page,
         page_size: pageSize,
     };
 
     const { data, isLoading, isFetching, isError } = useQuery({
-        queryKey:        projectKeys.list(queryParams),
-        queryFn:         () => listProjects(queryParams),
+        queryKey: projectKeys.list(queryParams),
+        queryFn: () => listProjects(queryParams),
         placeholderData: (prev) => prev,
     });
 
@@ -45,15 +62,27 @@ export function useHomeController() {
         await queryClient.invalidateQueries({ queryKey: projectKeys.lists() });
     };
 
-    const total        = data?.count ?? 0;
-    const totalPages   = Math.ceil(total / pageSize);
-    const displayStart = total === 0 ? 0 : (page - 1) * pageSize + 1;
-    const displayEnd   = Math.min(page * pageSize, total);
+    const onDeleteConfirm = async () => {
+        if (!deleteTarget) return;
 
-    // Read success message from router state for use by HomeView; not included
-    // in the returned `state` group so the Home.test.tsx fixture shape is met.
-    const _successMessage =
-        (location.state as { successMessage?: string } | null)?.successMessage ?? "";
+        setDeleteLoading(true);
+        setDeleteError("");
+
+        try {
+            await deleteProject(deleteTarget.id);
+            setDeleteTarget(null);
+            await queryClient.invalidateQueries({ queryKey: projectKeys.lists() });
+        } catch {
+            setDeleteError("Failed to delete project. Please try again.");
+        } finally {
+            setDeleteLoading(false);
+        }
+    };
+
+    const total = data?.count ?? 0;
+    const totalPages = Math.max(1, Math.ceil(total / pageSize));
+    const displayStart = total === 0 ? 0 : (page - 1) * pageSize + 1;
+    const displayEnd = Math.min(page * pageSize, total);
 
     const toggleSort = (key: HomeSortKey) => {
         if (key === sortKey) {
@@ -75,8 +104,10 @@ export function useHomeController() {
             totalPages,
             displayStart,
             displayEnd,
-            onPageChange:     (p: number) => setPage(p),
-            onPageSizeChange: (_: number) => { /* fixed page size */ },
+            onPageChange: (nextPage: number) => setPage(nextPage),
+            onPageSizeChange: (_: number) => {
+                /* fixed page size for now */
+            },
         },
 
         sort: {
@@ -88,30 +119,44 @@ export function useHomeController() {
         filters: {
             searchTerm,
             statusFilter,
-            hasActiveFilters: searchTerm !== "" || statusFilter !== "All",
-            onSearchChange:       (value: string) => { setSearchTerm(value);   setPage(1); },
-            onStatusFilterChange: (value: string) => { setStatusFilter(value); setPage(1); },
+            hasActiveFilters:
+                searchTerm !== "" || statusFilter !== HOME_DEFAULT_STATUS_FILTER,
+            onSearchChange: (value: string) => {
+                setSearchTerm(value);
+                setPage(1);
+            },
+            onStatusFilterChange: (value: HomeStatusFilter) => {
+                setStatusFilter(value);
+                setPage(1);
+            },
         },
 
-        // Shape must match Home.test.tsx fixture exactly.
         state: {
-            loading:    isLoading,
+            loading: isLoading,
             refreshing: isFetching && !isLoading,
-            apiError:   isError ? "Failed to load projects. Please retry." : "",
+            apiError: isError ? "Failed to load projects. Please retry." : "",
+            successMessage,
+            deleteError,
+            deleteLoading,
         },
 
-        // Shape must match Home.test.tsx fixture exactly.
         actions: {
             getData,
+            onDeleteConfirm,
         },
 
-        // Shape must match Home.test.tsx fixture exactly.
         navigation: {
-            onNavigateCreate: () => navigate("/projects/create"),
-            onNavigateEdit:   (id: number) => navigate(`/projects/${id}/edit`),
+            onNavigateCreate: () => navigate("/create"),
+            onNavigateEdit: (id: number) => navigate(`/edit/${id}`),
             deleteTarget,
-            onDeleteRequest:  (target: DeleteTarget) => setDeleteTarget(target),
-            onDeleteCancel:   () => setDeleteTarget(null),
+            onDeleteRequest: (target: DeleteTarget) => {
+                setDeleteError("");
+                setDeleteTarget(target);
+            },
+            onDeleteCancel: () => {
+                setDeleteError("");
+                setDeleteTarget(null);
+            },
         },
     };
 }

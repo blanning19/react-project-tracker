@@ -2,48 +2,10 @@
  * @file Pure presentational component for the Home (project list) page.
  *
  * @module home/HomeView
- *
- * Corrections applied from tsc errors:
- * - `../../shared/types` does not resolve → import ProjectRecord from
- *   the projects feature directly (shared barrel not yet on disk)
- * - `DeleteTarget` / `HomeNavigationProps` not in home.types → DeleteTarget
- *   imported from useHomeController; nav callbacks typed inline
- * - `HOME_SORT_LABELS` not in home.constants → removed; column labels inlined
- * - `"modified"` not in HomeSortKey → removed from SortTh usage; adjust once
- *   HomeSortKey values are confirmed from your real home.types
- * - `onCreateClick` / `onEditClick` not in HomeNavigationProps → typed inline
  */
 
-import type { ProjectRecord } from "../projects/models/project.types";
-import type { HomeSortKey } from "./home.types";
-import type { DeleteTarget } from "./useHomeController";
-
-export interface HomeViewProps {
-    projects: ProjectRecord[];
-    totalCount: number;
-    currentPage: number;
-    pageSize: number;
-    loading: boolean;
-    apiError: string;
-    successMessage: string;
-    search: string;
-    statusFilter: string;
-    sortKey: HomeSortKey;
-    sortDesc: boolean;
-    onSearchChange: (value: string) => void;
-    onStatusFilterChange: (value: string) => void;
-    onSortChange: (key: HomeSortKey) => void;
-    onPageChange: (page: number) => void;
-    onDeleteClick: (target: DeleteTarget) => void;
-    onRetry: () => Promise<void>;
-    deleteTarget: DeleteTarget;
-    onDeleteCancel: () => void;
-    onDeleteConfirm: () => void;
-    deleteError: string;
-    deleteLoading: boolean;
-    onCreateClick: () => void;
-    onEditClick: (id: number) => void;
-}
+import { HOME_STATUS_FILTER_OPTIONS, HOME_SORT_LABELS } from "./home.constants";
+import type { HomeSortKey, HomeViewProps } from "./home.types";
 
 function SortIndicator({
     columnKey,
@@ -60,73 +22,58 @@ function SortIndicator({
 
 function formatDate(value: string | null | undefined): string {
     if (!value) return "—";
-    const d = new Date(value);
-    return isNaN(d.getTime()) ? value : d.toLocaleDateString("en-US", { dateStyle: "medium" });
+
+    const dateValue = new Date(value);
+
+    return isNaN(dateValue.getTime())
+        ? value
+        : dateValue.toLocaleDateString("en-US", { dateStyle: "medium" });
 }
 
-// Inline column labels — HOME_SORT_LABELS is not exported by home.constants.
-// Replace these strings with your real labels or add HOME_SORT_LABELS to
-// home.constants and re-import it.
-const SORT_LABELS: Record<HomeSortKey, string> = {
-    name:           "Name",
-    status:         "Status",
-    comments:       "Comments",
-    start_date:     "Start date",
-    end_date:       "End date",
-    security_level: "Security level",
-};
-
 function HomeView({
-    projects,
-    totalCount,
-    currentPage,
-    pageSize,
-    loading,
-    apiError,
-    successMessage,
-    search,
-    statusFilter,
-    sortKey,
-    sortDesc,
-    onSearchChange,
-    onStatusFilterChange,
-    onSortChange,
-    onPageChange,
-    onDeleteClick,
-    onRetry,
-    deleteTarget,
-    onDeleteCancel,
-    onDeleteConfirm,
-    deleteError,
-    deleteLoading,
-    onCreateClick,
-    onEditClick,
+    rows,
+    pagination,
+    sort,
+    filters,
+    state,
+    actions,
+    navigation,
 }: HomeViewProps): JSX.Element {
-    const totalPages = Math.ceil(totalCount / pageSize);
+    const totalPages = pagination.totalPages;
 
-    const SortTh = ({ colKey, children }: { colKey: HomeSortKey; children: React.ReactNode }) => (
+    const SortTh = ({
+        colKey,
+        children,
+    }: {
+        colKey: HomeSortKey;
+        children: React.ReactNode;
+    }) => (
         <th
             role="button"
-            onClick={() => onSortChange(colKey)}
-            className={`sortable-header${sortKey === colKey ? " active-sort" : ""}`}
+            onClick={() => sort.toggleSort(colKey)}
+            className={`sortable-header${sort.key === colKey ? " active-sort" : ""}`}
         >
             {children}{" "}
-            <SortIndicator columnKey={colKey} activeSortKey={sortKey} sortDesc={sortDesc} />
+            <SortIndicator
+                columnKey={colKey}
+                activeSortKey={sort.key}
+                sortDesc={sort.dir === "desc"}
+            />
         </th>
     );
 
     return (
         <div className="home-page">
-            {successMessage && (
+            {state.successMessage && (
                 <div className="alert alert-success alert-dismissible">
-                    {successMessage}
+                    {state.successMessage}
                 </div>
             )}
 
-            {apiError && (
+            {state.apiError && (
                 <div className="alert alert-danger">
-                    {apiError}{" "}
-                    <button className="btn btn-link btn-sm" onClick={() => void onRetry()}>
+                    {state.apiError}{" "}
+                    <button className="btn btn-link btn-sm" onClick={() => void actions.getData()}>
                         Retry
                     </button>
                 </div>
@@ -137,26 +84,28 @@ function HomeView({
                     type="text"
                     className="form-control w-auto"
                     placeholder="Search…"
-                    value={search}
-                    onChange={(e) => onSearchChange(e.target.value)}
+                    value={filters.searchTerm}
+                    onChange={(e) => filters.onSearchChange(e.target.value)}
                 />
+
                 <select
                     className="form-select w-auto"
-                    value={statusFilter}
-                    onChange={(e) => onStatusFilterChange(e.target.value)}
+                    value={filters.statusFilter}
+                    onChange={(e) => filters.onStatusFilterChange(e.target.value as typeof filters.statusFilter)}
                 >
-                    <option value="">All statuses</option>
-                    <option value="Active">Active</option>
-                    <option value="On Hold">On Hold</option>
-                    <option value="Completed">Completed</option>
-                    <option value="Cancelled">Cancelled</option>
+                    {HOME_STATUS_FILTER_OPTIONS.map((option) => (
+                        <option key={option} value={option}>
+                            {option}
+                        </option>
+                    ))}
                 </select>
-                <button className="btn btn-primary ms-auto" onClick={onCreateClick}>
+
+                <button className="btn btn-primary ms-auto" onClick={navigation.onNavigateCreate}>
                     + New project
                 </button>
             </div>
 
-            {loading ? (
+            {state.loading ? (
                 <div className="d-flex justify-content-center py-5">
                     <div className="spinner-border" role="status">
                         <span className="visually-hidden">Loading…</span>
@@ -166,22 +115,27 @@ function HomeView({
                 <table className="table table-hover">
                     <thead>
                         <tr>
-                            {(Object.keys(SORT_LABELS) as HomeSortKey[]).map((key) => (
-                                <SortTh key={key} colKey={key}>{SORT_LABELS[key]}</SortTh>
+                            {(Object.keys(HOME_SORT_LABELS) as HomeSortKey[]).map((key) => (
+                                <SortTh key={key} colKey={key}>
+                                    {HOME_SORT_LABELS[key]}
+                                </SortTh>
                             ))}
                             <th>Actions</th>
                         </tr>
                     </thead>
+
                     <tbody>
-                        {projects.length === 0 ? (
+                        {rows.length === 0 ? (
                             <tr>
-                                <td colSpan={Object.keys(SORT_LABELS).length + 1}
-                                    className="text-center text-muted py-4">
+                                <td
+                                    colSpan={Object.keys(HOME_SORT_LABELS).length + 1}
+                                    className="text-center text-muted py-4"
+                                >
                                     No projects found.
                                 </td>
                             </tr>
                         ) : (
-                            projects.map((project) => (
+                            rows.map((project) => (
                                 <tr key={project.id}>
                                     <td>{project.name}</td>
                                     <td>{project.status ?? "—"}</td>
@@ -192,14 +146,18 @@ function HomeView({
                                     <td>
                                         <button
                                             className="btn btn-outline-secondary btn-sm me-1"
-                                            onClick={() => onEditClick(project.id)}
+                                            onClick={() => navigation.onNavigateEdit(project.id)}
                                         >
                                             Edit
                                         </button>
+
                                         <button
                                             className="btn btn-outline-danger btn-sm"
                                             onClick={() =>
-                                                onDeleteClick({ id: project.id, name: project.name })
+                                                navigation.onDeleteRequest({
+                                                    id: project.id,
+                                                    name: project.name,
+                                                })
                                             }
                                         >
                                             Delete
@@ -215,20 +173,38 @@ function HomeView({
             {totalPages > 1 && (
                 <nav>
                     <ul className="pagination justify-content-center">
-                        <li className={`page-item${currentPage === 1 ? " disabled" : ""}`}>
-                            <button className="page-link" onClick={() => onPageChange(currentPage - 1)}>
+                        <li
+                            className={`page-item${pagination.page === 1 ? " disabled" : ""}`}
+                        >
+                            <button
+                                className="page-link"
+                                onClick={() => pagination.onPageChange(pagination.page - 1)}
+                            >
                                 Previous
                             </button>
                         </li>
+
                         {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-                            <li key={page} className={`page-item${page === currentPage ? " active" : ""}`}>
-                                <button className="page-link" onClick={() => onPageChange(page)}>
+                            <li
+                                key={page}
+                                className={`page-item${page === pagination.page ? " active" : ""}`}
+                            >
+                                <button
+                                    className="page-link"
+                                    onClick={() => pagination.onPageChange(page)}
+                                >
                                     {page}
                                 </button>
                             </li>
                         ))}
-                        <li className={`page-item${currentPage === totalPages ? " disabled" : ""}`}>
-                            <button className="page-link" onClick={() => onPageChange(currentPage + 1)}>
+
+                        <li
+                            className={`page-item${pagination.page === totalPages ? " disabled" : ""}`}
+                        >
+                            <button
+                                className="page-link"
+                                onClick={() => pagination.onPageChange(pagination.page + 1)}
+                            >
                                 Next
                             </button>
                         </li>
@@ -236,37 +212,45 @@ function HomeView({
                 </nav>
             )}
 
-            {deleteTarget && (
+            {navigation.deleteTarget && (
                 <div className="modal show d-block" role="dialog" aria-modal="true">
                     <div className="modal-dialog">
                         <div className="modal-content">
                             <div className="modal-header">
                                 <h5 className="modal-title">Delete project</h5>
-                                <button type="button" className="btn-close" onClick={onDeleteCancel} />
+                                <button
+                                    type="button"
+                                    className="btn-close"
+                                    onClick={navigation.onDeleteCancel}
+                                />
                             </div>
+
                             <div className="modal-body">
-                                {deleteError && (
-                                    <div className="alert alert-danger">{deleteError}</div>
+                                {state.deleteError && (
+                                    <div className="alert alert-danger">{state.deleteError}</div>
                                 )}
+
                                 <p>
                                     Are you sure you want to delete{" "}
-                                    <strong>{deleteTarget.name}</strong>? This cannot be undone.
+                                    <strong>{navigation.deleteTarget.name}</strong>? This cannot be undone.
                                 </p>
                             </div>
+
                             <div className="modal-footer">
                                 <button
                                     className="btn btn-secondary"
-                                    onClick={onDeleteCancel}
-                                    disabled={deleteLoading}
+                                    onClick={navigation.onDeleteCancel}
+                                    disabled={state.deleteLoading}
                                 >
                                     Cancel
                                 </button>
+
                                 <button
                                     className="btn btn-danger"
-                                    onClick={onDeleteConfirm}
-                                    disabled={deleteLoading}
+                                    onClick={() => void actions.onDeleteConfirm()}
+                                    disabled={state.deleteLoading}
                                 >
-                                    {deleteLoading ? "Deleting…" : "Delete"}
+                                    {state.deleteLoading ? "Deleting…" : "Delete"}
                                 </button>
                             </div>
                         </div>

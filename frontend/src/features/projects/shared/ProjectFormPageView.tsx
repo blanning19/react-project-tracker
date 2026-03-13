@@ -59,72 +59,69 @@ function ProjectFormPageView({
     onRetry,
 }: ProjectFormPageViewProps): JSX.Element {
     return (
-        <div className={styles.page}>
-            <div className={styles.header}>
-                <div>
-                    <div className={styles.title}>{title}</div>
-                    <div className={styles.subtitle}>
-                        Fill out each section below, then save when ready.
-                    </div>
-                </div>
+        <div className="p-4">
+            <div className="mb-4">
+                <h1 className="mb-1">{title}</h1>
+                <p className="text-body-secondary mb-0 fst-italic">
+                    Fill out each section below, then save when ready.
+                </p>
             </div>
 
-            {loading ? (
-                <div className={styles.loading}>
-                    <div className={styles.spinner} />
-                    Loading form data…
-                </div>
-            ) : (
-                <>
-                    {apiError && (
-                        <div className={styles.errorBanner}>
-                            <span>{apiError}</span>
-                            {onRetry && (
-                                <button
-                                    type="button"
-                                    className={styles.retryBtn}
-                                    onClick={() => void onRetry()}
-                                >
-                                    Retry
-                                </button>
-                            )}
-                        </div>
-                    )}
-
-                    <form onSubmit={handleSubmit(submission)}>
-                        <div className={styles.card}>
-                            <ProjectFormFields
-                                control={control}
-                                errors={errors}
-                                // Cast from PersonOption[] to the concrete subtypes that
-                                // ProjectFormFields requires. The runtime values are correct —
-                                // getManagers() returns ManagerOption records and getEmployees()
-                                // returns EmployeeOption records; the API functions just type
-                                // their return as PersonOption[] (the union).
-                                managers={managers as ManagerOption[] | undefined}
-                                employees={employees as EmployeeOption[]}
-                                statusOptions={STATUS_OPTIONS}
-                            />
-                        </div>
-
-                        <div className={styles.footer}>
-                            <Link to="/" className={styles.cancelBtn}>
-                                Cancel
-                            </Link>
-                            <button
-                                type="submit"
-                                className={styles.submitBtn}
-                                disabled={isSubmitting}
-                            >
-                                {isSubmitting && (
-                                    <span className={styles.submitSpinner} />
+            <div
+                className="border rounded-4 p-4"
+                style={{ backgroundColor: "#f6f1e8" }}
+            >
+                {loading ? (
+                    <div className={styles.loading}>
+                        <div className={styles.spinner} />
+                        Loading form data…
+                    </div>
+                ) : (
+                    <>
+                        {apiError && (
+                            <div className={styles.errorBanner}>
+                                <span>{apiError}</span>
+                                {onRetry && (
+                                    <button
+                                        type="button"
+                                        className={styles.retryBtn}
+                                        onClick={() => void onRetry()}
+                                    >
+                                        Retry
+                                    </button>
                                 )}
-                                {isSubmitting ? submittingLabel : submitLabel}
-                            </button>
-                        </div>
-                    </form>
-                </>
-            )}
+                            </div>
+                        )}
+
+                        <form onSubmit={handleSubmit(submission)}>
+                            <div className={styles.card}>
+                                <ProjectFormFields
+                                    control={control}
+                                    errors={errors}
+                                    managers={managers as ManagerOption[] | undefined}
+                                    employees={employees as EmployeeOption[]}
+                                    statusOptions={STATUS_OPTIONS}
+                                />
+                            </div>
+
+                            <div className={`${styles.footer} mt-4`}>
+                                <Link to="/" className={styles.cancelBtn}>
+                                    Cancel
+                                </Link>
+
+                                <button
+                                    type="submit"
+                                    className={styles.submitBtn}
+                                    disabled={isSubmitting}
+                                >
+                                    {isSubmitting && <span className={styles.submitSpinner} />}
+                                    {isSubmitting ? submittingLabel : submitLabel}
+                                </button>
+                            </div>
+                        </form>
+                    </>
+                )}
+            </div>
         </div>
     );
 }

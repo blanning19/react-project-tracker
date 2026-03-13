@@ -13,7 +13,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Button, Offcanvas } from "react-bootstrap";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 
-import { useAuth } from "../auth/AuthProvider";
+import useAuth from "../auth/useAuth";
 import { tokenStore } from "../auth/tokens";
 import ThemeToggle from "../theme/ThemeToggle";
 

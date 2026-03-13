@@ -63,154 +63,166 @@ function HomeView({
     );
 
     return (
-        <div className="home-page">
-            {state.successMessage && (
-                <div className="alert alert-success alert-dismissible">
-                    {state.successMessage}
-                </div>
-            )}
-
-            {state.apiError && (
-                <div className="alert alert-danger">
-                    {state.apiError}{" "}
-                    <button className="btn btn-link btn-sm" onClick={() => void actions.getData()}>
-                        Retry
-                    </button>
-                </div>
-            )}
-
-            <div className="d-flex gap-2 mb-3 align-items-center flex-wrap">
-                <input
-                    type="text"
-                    className="form-control w-auto"
-                    placeholder="Search…"
-                    value={filters.searchTerm}
-                    onChange={(e) => filters.onSearchChange(e.target.value)}
-                />
-
-                <select
-                    className="form-select w-auto"
-                    value={filters.statusFilter}
-                    onChange={(e) => filters.onStatusFilterChange(e.target.value as HomeStatusFilter)}
-                >
-                    {HOME_STATUS_FILTER_OPTIONS.map((option) => (
-                        <option key={option} value={option}>
-                            {option}
-                        </option>
-                    ))}
-                </select>
-
-                <button className="btn btn-primary ms-auto" onClick={navigation.onNavigateCreate}>
-                    + New project
-                </button>
+        <div className="home-page p-4">
+            <div className="mb-4">
+                <h1 className="mb-1">Projects</h1>
+                <p className="text-body-secondary mb-0 fst-italic">
+                    View, search, sort, and manage your tracked projects.
+                </p>
             </div>
 
-            {state.loading ? (
-                <div className="d-flex justify-content-center py-5">
-                    <div className="spinner-border" role="status">
-                        <span className="visually-hidden">Loading…</span>
+            <div
+                className="border rounded-4 p-4"
+                style={{ backgroundColor: "#f6f1e8" }}
+            >
+                {state.successMessage && (
+                    <div className="alert alert-success alert-dismissible">
+                        {state.successMessage}
                     </div>
+                )}
+
+                {state.apiError && (
+                    <div className="alert alert-danger">
+                        {state.apiError}{" "}
+                        <button className="btn btn-link btn-sm" onClick={() => void actions.getData()}>
+                            Retry
+                        </button>
+                    </div>
+                )}
+
+                <div className="d-flex gap-2 mb-3 align-items-center flex-wrap">
+                    <input
+                        type="text"
+                        className="form-control w-auto"
+                        placeholder="Search…"
+                        value={filters.searchTerm}
+                        onChange={(e) => filters.onSearchChange(e.target.value)}
+                    />
+
+                    <select
+                        className="form-select w-auto"
+                        value={filters.statusFilter}
+                        onChange={(e) => filters.onStatusFilterChange(e.target.value as HomeStatusFilter)}
+                    >
+                        {HOME_STATUS_FILTER_OPTIONS.map((option) => (
+                            <option key={option} value={option}>
+                                {option}
+                            </option>
+                        ))}
+                    </select>
+
+                    <button className="btn btn-primary ms-auto" onClick={navigation.onNavigateCreate}>
+                        + New project
+                    </button>
                 </div>
-            ) : (
-                <table className="table table-hover">
-                    <thead>
-                        <tr>
-                            {(Object.keys(HOME_SORT_LABELS) as HomeSortKey[]).map((key) => (
-                                <SortTh key={key} colKey={key}>
-                                    {HOME_SORT_LABELS[key]}
-                                </SortTh>
-                            ))}
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
 
-                    <tbody>
-                        {rows.length === 0 ? (
-                            <tr>
-                                <td
-                                    colSpan={Object.keys(HOME_SORT_LABELS).length + 1}
-                                    className="text-center text-muted py-4"
-                                >
-                                    No projects found.
-                                </td>
-                            </tr>
-                        ) : (
-                            rows.map((project) => (
-                                <tr key={project.id}>
-                                    <td>{project.name}</td>
-                                    <td>{project.status ?? "—"}</td>
-                                    <td>{project.comments ?? "—"}</td>
-                                    <td>{formatDate(project.start_date)}</td>
-                                    <td>{formatDate(project.end_date)}</td>
-                                    <td>{project.security_level}</td>
-                                    <td>
-                                        <button
-                                            className="btn btn-outline-secondary btn-sm me-1"
-                                            onClick={() => navigation.onNavigateEdit(project.id)}
-                                        >
-                                            Edit
-                                        </button>
-
-                                        <button
-                                            className="btn btn-outline-danger btn-sm"
-                                            onClick={() =>
-                                                navigation.onDeleteRequest({
-                                                    id: project.id,
-                                                    name: project.name,
-                                                })
-                                            }
-                                        >
-                                            Delete
-                                        </button>
-                                    </td>
+                {state.loading ? (
+                    <div className="d-flex justify-content-center py-5">
+                        <div className="spinner-border" role="status">
+                            <span className="visually-hidden">Loading…</span>
+                        </div>
+                    </div>
+                ) : (
+                    <div className="table-responsive">
+                        <table className="table table-hover align-middle mb-0">
+                            <thead>
+                                <tr>
+                                    {(Object.keys(HOME_SORT_LABELS) as HomeSortKey[]).map((key) => (
+                                        <SortTh key={key} colKey={key}>
+                                            {HOME_SORT_LABELS[key]}
+                                        </SortTh>
+                                    ))}
+                                    <th>Actions</th>
                                 </tr>
-                            ))
-                        )}
-                    </tbody>
-                </table>
-            )}
+                            </thead>
 
-            {totalPages > 1 && (
-                <nav>
-                    <ul className="pagination justify-content-center">
-                        <li
-                            className={`page-item${pagination.page === 1 ? " disabled" : ""}`}
-                        >
-                            <button
-                                className="page-link"
-                                onClick={() => pagination.onPageChange(pagination.page - 1)}
-                            >
-                                Previous
-                            </button>
-                        </li>
+                            <tbody>
+                                {rows.length === 0 ? (
+                                    <tr>
+                                        <td
+                                            colSpan={Object.keys(HOME_SORT_LABELS).length + 1}
+                                            className="text-center text-muted py-4"
+                                        >
+                                            No projects found.
+                                        </td>
+                                    </tr>
+                                ) : (
+                                    rows.map((project) => (
+                                        <tr key={project.id}>
+                                            <td>{project.name}</td>
+                                            <td>{project.status ?? "—"}</td>
+                                            <td>{project.comments ?? "—"}</td>
+                                            <td>{formatDate(project.start_date)}</td>
+                                            <td>{formatDate(project.end_date)}</td>
+                                            <td>{project.security_level}</td>
+                                            <td>
+                                                <button
+                                                    className="btn btn-outline-secondary btn-sm me-1"
+                                                    onClick={() => navigation.onNavigateEdit(project.id)}
+                                                >
+                                                    Edit
+                                                </button>
 
-                        {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                                                <button
+                                                    className="btn btn-outline-danger btn-sm"
+                                                    onClick={() =>
+                                                        navigation.onDeleteRequest({
+                                                            id: project.id,
+                                                            name: project.name,
+                                                        })
+                                                    }
+                                                >
+                                                    Delete
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    ))
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                )}
+
+                {totalPages > 1 && (
+                    <nav className="mt-4">
+                        <ul className="pagination justify-content-center mb-0">
+                            <li className={`page-item${pagination.page === 1 ? " disabled" : ""}`}>
+                                <button
+                                    className="page-link"
+                                    onClick={() => pagination.onPageChange(pagination.page - 1)}
+                                >
+                                    Previous
+                                </button>
+                            </li>
+
+                            {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                                <li
+                                    key={page}
+                                    className={`page-item${page === pagination.page ? " active" : ""}`}
+                                >
+                                    <button
+                                        className="page-link"
+                                        onClick={() => pagination.onPageChange(page)}
+                                    >
+                                        {page}
+                                    </button>
+                                </li>
+                            ))}
+
                             <li
-                                key={page}
-                                className={`page-item${page === pagination.page ? " active" : ""}`}
+                                className={`page-item${pagination.page === totalPages ? " disabled" : ""}`}
                             >
                                 <button
                                     className="page-link"
-                                    onClick={() => pagination.onPageChange(page)}
+                                    onClick={() => pagination.onPageChange(pagination.page + 1)}
                                 >
-                                    {page}
+                                    Next
                                 </button>
                             </li>
-                        ))}
-
-                        <li
-                            className={`page-item${pagination.page === totalPages ? " disabled" : ""}`}
-                        >
-                            <button
-                                className="page-link"
-                                onClick={() => pagination.onPageChange(pagination.page + 1)}
-                            >
-                                Next
-                            </button>
-                        </li>
-                    </ul>
-                </nav>
-            )}
+                        </ul>
+                    </nav>
+                )}
+            </div>
 
             {navigation.deleteTarget && (
                 <div className="modal show d-block" role="dialog" aria-modal="true">

@@ -8,7 +8,7 @@ import { FormEvent, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 
 import { loginRequest } from "../../shared/auth/authApi";
-import { useAuth } from "../../shared/auth/AuthProvider";
+import useAuth from "../../shared/auth/useAuth";
 
 /**
  * Controller hook for the Login page.

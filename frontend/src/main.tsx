@@ -16,7 +16,7 @@ import { createRoot } from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
 
 import App from "./App";
-import { AuthProvider } from "./shared/auth/AuthProvider";
+import AuthProvider from "./shared/auth/AuthProvider";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "./index.css";
 

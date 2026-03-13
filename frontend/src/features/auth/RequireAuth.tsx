@@ -5,8 +5,7 @@
  */
 
 import { Navigate, Outlet, useLocation } from "react-router-dom";
-
-import { useAuth } from "../../shared/auth/AuthProvider";
+import useAuth from "../../shared/auth/useAuth";
 
 /**
  * Decodes the `exp` claim from a JWT without verifying the signature.

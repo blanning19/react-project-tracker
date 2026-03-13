@@ -4,10 +4,12 @@
  * @module home/useHomeController
  */
 
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+
 import { deleteProject, listProjects, projectKeys } from "../projects/models/project.api";
+
 import {
     HOME_DEFAULT_PAGE_SIZE,
     HOME_DEFAULT_SORT_DIRECTION,

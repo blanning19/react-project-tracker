@@ -1,13 +1,16 @@
 import { useEffect, type JSX } from "react";
+
+import { useStore } from "@/library/hooks/UseStore";
 import DateUtils from "@/library/utils/DateUtils";
-import SubjectAreaMixed from "./views/SubjectAreaMixed";
+import FormatUtils from "@/library/utils/FormatUtils";
+
+import TaskController from "../tasks/controllers/TaskController";
+import TaskViewModel from "../tasks/models/ViewModel";
+
+import IctCompletion from "./views/IctCompletion";
 import IctCountByWindow from "./views/IctCountByWindow";
 import PendingApprovals from "./views/PendingApprovals";
-import IctCompletion from "./views/IctCompletion";
-import TaskController from "../tasks/controllers/TaskController";
-import FormatUtils from "@/library/utils/FormatUtils";
-import TaskViewModel from "../tasks/models/ViewModel";
-import { useStore } from "@/library/hooks/UseStore";
+import SubjectAreaMixed from "./views/SubjectAreaMixed";
 
 /**
  * Renders the ICT readiness dashboard page.

@@ -8,10 +8,11 @@
  * @module projects/delete/DeleteModal
  */
 
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import Alert from "react-bootstrap/Alert";
 import Button from "react-bootstrap/Button";
 import Modal from "react-bootstrap/Modal";
-import Alert from "react-bootstrap/Alert";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+
 import { deleteProject, projectKeys } from "../models/project.api";
 import { getApiErrorMessage } from "../shared/getApiErrorMessage";
 

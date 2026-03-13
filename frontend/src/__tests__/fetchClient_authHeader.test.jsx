@@ -1,6 +1,7 @@
 import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
-import FetchInstance from '../shared/http/fetchClient';
+
 import { tokenStore } from '../shared/auth/tokens';
+import FetchInstance from '../shared/http/fetchClient';
 
 /**
  * Mock the auth mode module so these tests always run in bearer-token mode.

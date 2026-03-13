@@ -4,16 +4,18 @@
  * @module projects/shared/ProjectFormPageView
  */
 
-import { Link } from "react-router-dom";
 import type { Control, FieldErrors, UseFormHandleSubmit } from "react-hook-form";
-import ProjectFormFields from "../shared/ProjectFormFields";
-import { STATUS_OPTIONS } from "../shared/projectFormConfig";
+import { Link } from "react-router-dom";
+
 import type {
     EmployeeOption,
     ManagerOption,
     PersonOption,
     ProjectFormValues,
 } from "../models/project.types";
+import { STATUS_OPTIONS } from "../shared/projectFormConfig";
+import ProjectFormFields from "../shared/ProjectFormFields";
+
 import styles from "./ProjectFormPageView.module.css";
 
 /**

@@ -1,8 +1,9 @@
-import { renderHook, waitFor, act } from "@testing-library/react";
-import { describe, test, expect, beforeEach, vi } from "vitest";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { renderHook, waitFor, act } from "@testing-library/react";
 import { createElement } from "react";
+import { describe, test, expect, beforeEach, vi } from "vitest";
 import * as yup from "yup";
+
 import { useCreateController } from "../features/projects/create/useCreateController";
 import * as projectApi from "../features/projects/models/project.api";
 
@@ -66,8 +67,11 @@ function createWrapper() {
         },
     });
 
-    return ({ children }: { children: React.ReactNode }) =>
-        createElement(QueryClientProvider, { client: queryClient }, children);
+    function TestQueryClientWrapper({ children }: { children: React.ReactNode }) {
+        return createElement(QueryClientProvider, { client: queryClient }, children);
+    }
+
+    return TestQueryClientWrapper;
 }
 
 describe("useCreateController", () => {
@@ -163,10 +167,6 @@ describe("useCreateController", () => {
     });
 
     test("shows a status-based error when create fails without validation body", async () => {
-        // FIX: submission now suppresses the mutateAsync re-throw (the error is
-        // already handled by onError which sets apiError state). The test
-        // previously asserted `.rejects` on submission(), but submission no
-        // longer rejects — it resolves after setting apiError. Assert on state.
         const mockedGetManagers = projectApi.getManagers as ReturnType<typeof vi.fn>;
         const mockedGetEmployees = projectApi.getEmployees as ReturnType<typeof vi.fn>;
         const mockedCreateProject = projectApi.createProject as ReturnType<typeof vi.fn>;
@@ -198,7 +198,6 @@ describe("useCreateController", () => {
                 });
             });
 
-            // submission resolves (does not reject) — error is surfaced via state
             await waitFor(() => {
                 expect(result.current.apiError).toBe("Request failed (500).");
             });
@@ -236,8 +235,6 @@ describe("useCreateController", () => {
     });
 
     test("submits comments as empty string when field is left blank", async () => {
-        // Verifies the frontend side of the NOT NULL contract: an untouched
-        // comments textarea must send "" to the API, never undefined or null.
         const mockedGetManagers = projectApi.getManagers as ReturnType<typeof vi.fn>;
         const mockedGetEmployees = projectApi.getEmployees as ReturnType<typeof vi.fn>;
         const mockedCreateProject = projectApi.createProject as ReturnType<typeof vi.fn>;
@@ -270,8 +267,6 @@ describe("useCreateController", () => {
     });
 
     test("preserves non-empty comments through the submission payload", async () => {
-        // Guards against a regression where formToPayload could accidentally
-        // strip or coerce a user-entered comments value.
         const mockedGetManagers = projectApi.getManagers as ReturnType<typeof vi.fn>;
         const mockedGetEmployees = projectApi.getEmployees as ReturnType<typeof vi.fn>;
         const mockedCreateProject = projectApi.createProject as ReturnType<typeof vi.fn>;

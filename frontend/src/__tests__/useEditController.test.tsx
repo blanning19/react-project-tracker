@@ -15,25 +15,21 @@
  * in edit mode.
  */
 
-import { renderHook, waitFor, act } from "@testing-library/react";
-import { describe, test, expect, beforeEach, vi } from "vitest";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { renderHook, waitFor, act } from "@testing-library/react";
 import { createElement } from "react";
+import { describe, test, expect, beforeEach, vi } from "vitest";
 import * as yup from "yup";
+
 import { useEditController } from "../features/projects/edit/useEditController";
 import * as projectApi from "../features/projects/models/project.api";
 
-// ── Router mocks ─────────────────────────────────────────────────────────────
-
 const mockNavigate = vi.fn();
 
-// useParams is used by useEditController to extract the project ID from the route.
 vi.mock("react-router-dom", () => ({
     useNavigate: () => mockNavigate,
     useParams: () => ({ id: "7" }),
 }));
-
-// ── API mocks ─────────────────────────────────────────────────────────────────
 
 vi.mock("../features/projects/models/project.api", () => ({
     createProject: vi.fn(),
@@ -42,18 +38,16 @@ vi.mock("../features/projects/models/project.api", () => ({
     getProject: vi.fn(),
     updateProject: vi.fn(),
     projectKeys: {
-        all:    () => ["projects"],
-        lists:  () => ["projects", "list"],
-        list:   (p: unknown) => ["projects", "list", p],
+        all: () => ["projects"],
+        lists: () => ["projects", "list"],
+        list: (p: unknown) => ["projects", "list", p],
         detail: (id: unknown) => ["projects", "detail", String(id)],
     },
     lookupKeys: {
-        managers:  () => ["lookups", "managers"],
+        managers: () => ["lookups", "managers"],
         employees: () => ["lookups", "employees"],
     },
 }));
-
-// ── Form config mock ──────────────────────────────────────────────────────────
 
 vi.mock("../features/projects/shared/projectFormConfig", () => ({
     DEFAULT_VALUES: {
@@ -67,68 +61,64 @@ vi.mock("../features/projects/shared/projectFormConfig", () => ({
         security_level: "Internal",
     },
     PROJECT_SCHEMA: yup.object({
-        name:           yup.string().required(),
-        comments:       yup.string().default(""),
-        status:         yup.string().required(),
-        managerId:      yup.mixed().required(),
-        employees:      yup.array().default([]),
-        start_date:     yup.string().default(""),
-        end_date:       yup.string().default(""),
+        name: yup.string().required(),
+        comments: yup.string().default(""),
+        status: yup.string().required(),
+        managerId: yup.mixed().required(),
+        employees: yup.array().default([]),
+        start_date: yup.string().default(""),
+        end_date: yup.string().default(""),
         security_level: yup.string().required(),
     }),
     formToPayload: vi.fn((data) => ({ ...data, transformed: true })),
     projectToFormValues: vi.fn((project) => ({
-        name:           project.name        ?? "",
-        comments:       project.comments    ?? "",
-        status:         project.status      ?? "",
-        managerId:      project.manager     ? String(project.manager.id) : "",
-        employees:      (project.employees  ?? []).map((e: { id: number }) => String(e.id)),
-        start_date:     project.start_date  ?? "",
-        end_date:       project.end_date    ?? "",
+        name: project.name ?? "",
+        comments: project.comments ?? "",
+        status: project.status ?? "",
+        managerId: project.manager ? String(project.manager.id) : "",
+        employees: (project.employees ?? []).map((e: { id: number }) => String(e.id)),
+        start_date: project.start_date ?? "",
+        end_date: project.end_date ?? "",
         security_level: project.security_level ?? "Internal",
     })),
 }));
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-/** Minimal project record returned by getProject for id=7. */
 const EXISTING_PROJECT = {
-    id:             7,
-    name:           "Existing Project",
-    comments:       "Pre-existing comments",
-    status:         "Active",
-    manager:        { id: 3, name: "Alice Manager" },
-    employees:      [{ id: 10, first_name: "Bob", last_name: "Employee" }],
-    start_date:     "2025-01-01",
-    end_date:       "2025-12-31",
+    id: 7,
+    name: "Existing Project",
+    comments: "Pre-existing comments",
+    status: "Active",
+    manager: { id: 3, name: "Alice Manager" },
+    employees: [{ id: 10, first_name: "Bob", last_name: "Employee" }],
+    start_date: "2025-01-01",
+    end_date: "2025-12-31",
     security_level: "Internal" as const,
 };
 
 function createWrapper() {
     const queryClient = new QueryClient({
         defaultOptions: {
-            queries:   { retry: false },
+            queries: { retry: false },
             mutations: { retry: false },
         },
     });
 
-    return ({ children }: { children: React.ReactNode }) =>
-        createElement(QueryClientProvider, { client: queryClient }, children);
-}
+    function TestQueryClientWrapper({ children }: { children: React.ReactNode }) {
+        return createElement(QueryClientProvider, { client: queryClient }, children);
+    }
 
-// ── Tests ─────────────────────────────────────────────────────────────────────
+    return TestQueryClientWrapper;
+}
 
 describe("useEditController", () => {
     beforeEach(() => {
         vi.clearAllMocks();
     });
 
-    // ── Project pre-population ────────────────────────────────────────────────
-
     test("fetches the existing project by id on mount", async () => {
-        const mockedGetManagers  = projectApi.getManagers  as ReturnType<typeof vi.fn>;
+        const mockedGetManagers = projectApi.getManagers as ReturnType<typeof vi.fn>;
         const mockedGetEmployees = projectApi.getEmployees as ReturnType<typeof vi.fn>;
-        const mockedGetProject   = projectApi.getProject   as ReturnType<typeof vi.fn>;
+        const mockedGetProject = projectApi.getProject as ReturnType<typeof vi.fn>;
 
         mockedGetManagers.mockResolvedValue([]);
         mockedGetEmployees.mockResolvedValue([]);
@@ -145,9 +135,9 @@ describe("useEditController", () => {
     });
 
     test("pre-populates the form with the fetched project values", async () => {
-        const mockedGetManagers  = projectApi.getManagers  as ReturnType<typeof vi.fn>;
+        const mockedGetManagers = projectApi.getManagers as ReturnType<typeof vi.fn>;
         const mockedGetEmployees = projectApi.getEmployees as ReturnType<typeof vi.fn>;
-        const mockedGetProject   = projectApi.getProject   as ReturnType<typeof vi.fn>;
+        const mockedGetProject = projectApi.getProject as ReturnType<typeof vi.fn>;
 
         mockedGetManagers.mockResolvedValue([]);
         mockedGetEmployees.mockResolvedValue([]);
@@ -159,7 +149,6 @@ describe("useEditController", () => {
             expect(result.current.loading).toBe(false);
         });
 
-        // getValues() returns the current RHF field values after reset()
         const values = result.current.getValues();
         expect(values.name).toBe("Existing Project");
         expect(values.status).toBe("Active");
@@ -167,12 +156,10 @@ describe("useEditController", () => {
         expect(values.employees).toEqual(["10"]);
     });
 
-    // ── Submit calls updateProject ────────────────────────────────────────────
-
     test("calls updateProject with the project id on submission", async () => {
-        const mockedGetManagers   = projectApi.getManagers   as ReturnType<typeof vi.fn>;
-        const mockedGetEmployees  = projectApi.getEmployees  as ReturnType<typeof vi.fn>;
-        const mockedGetProject    = projectApi.getProject    as ReturnType<typeof vi.fn>;
+        const mockedGetManagers = projectApi.getManagers as ReturnType<typeof vi.fn>;
+        const mockedGetEmployees = projectApi.getEmployees as ReturnType<typeof vi.fn>;
+        const mockedGetProject = projectApi.getProject as ReturnType<typeof vi.fn>;
         const mockedUpdateProject = projectApi.updateProject as ReturnType<typeof vi.fn>;
 
         mockedGetManagers.mockResolvedValue([]);
@@ -188,18 +175,17 @@ describe("useEditController", () => {
 
         await act(async () => {
             await result.current.submission({
-                name:           "Updated Name",
-                comments:       "Updated comments",
-                status:         "On Hold",
-                managerId:      "3",
-                employees:      ["10"],
-                start_date:     "2025-01-01",
-                end_date:       "2025-12-31",
+                name: "Updated Name",
+                comments: "Updated comments",
+                status: "On Hold",
+                managerId: "3",
+                employees: ["10"],
+                start_date: "2025-01-01",
+                end_date: "2025-12-31",
                 security_level: "Confidential",
             });
         });
 
-        // Must call updateProject, not createProject
         expect(mockedUpdateProject).toHaveBeenCalledTimes(1);
         expect(mockedUpdateProject).toHaveBeenCalledWith(
             "7",
@@ -209,9 +195,9 @@ describe("useEditController", () => {
     });
 
     test("navigates to / with 'Project updated successfully.' on success", async () => {
-        const mockedGetManagers   = projectApi.getManagers   as ReturnType<typeof vi.fn>;
-        const mockedGetEmployees  = projectApi.getEmployees  as ReturnType<typeof vi.fn>;
-        const mockedGetProject    = projectApi.getProject    as ReturnType<typeof vi.fn>;
+        const mockedGetManagers = projectApi.getManagers as ReturnType<typeof vi.fn>;
+        const mockedGetEmployees = projectApi.getEmployees as ReturnType<typeof vi.fn>;
+        const mockedGetProject = projectApi.getProject as ReturnType<typeof vi.fn>;
         const mockedUpdateProject = projectApi.updateProject as ReturnType<typeof vi.fn>;
 
         mockedGetManagers.mockResolvedValue([]);
@@ -227,13 +213,13 @@ describe("useEditController", () => {
 
         await act(async () => {
             await result.current.submission({
-                name:           "Existing Project",
-                comments:       "",
-                status:         "Active",
-                managerId:      "3",
-                employees:      ["10"],
-                start_date:     "2025-01-01",
-                end_date:       "2025-12-31",
+                name: "Existing Project",
+                comments: "",
+                status: "Active",
+                managerId: "3",
+                employees: ["10"],
+                start_date: "2025-01-01",
+                end_date: "2025-12-31",
                 security_level: "Internal",
             });
         });
@@ -243,13 +229,11 @@ describe("useEditController", () => {
         });
     });
 
-    // ── Project fetch error ───────────────────────────────────────────────────
-
     test("sets an api error when the project fetch fails", async () => {
-        const mockedGetManagers  = projectApi.getManagers  as ReturnType<typeof vi.fn>;
+        const mockedGetManagers = projectApi.getManagers as ReturnType<typeof vi.fn>;
         const mockedGetEmployees = projectApi.getEmployees as ReturnType<typeof vi.fn>;
-        const mockedGetProject   = projectApi.getProject   as ReturnType<typeof vi.fn>;
-        const consoleErrorSpy    = vi.spyOn(console, "error").mockImplementation(() => {});
+        const mockedGetProject = projectApi.getProject as ReturnType<typeof vi.fn>;
+        const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
         try {
             mockedGetManagers.mockResolvedValue([]);
@@ -268,14 +252,12 @@ describe("useEditController", () => {
         }
     });
 
-    // ── Update failure ────────────────────────────────────────────────────────
-
     test("shows a status-based error when the update fails without a validation body", async () => {
-        const mockedGetManagers   = projectApi.getManagers   as ReturnType<typeof vi.fn>;
-        const mockedGetEmployees  = projectApi.getEmployees  as ReturnType<typeof vi.fn>;
-        const mockedGetProject    = projectApi.getProject    as ReturnType<typeof vi.fn>;
+        const mockedGetManagers = projectApi.getManagers as ReturnType<typeof vi.fn>;
+        const mockedGetEmployees = projectApi.getEmployees as ReturnType<typeof vi.fn>;
+        const mockedGetProject = projectApi.getProject as ReturnType<typeof vi.fn>;
         const mockedUpdateProject = projectApi.updateProject as ReturnType<typeof vi.fn>;
-        const consoleErrorSpy     = vi.spyOn(console, "error").mockImplementation(() => {});
+        const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
         try {
             mockedGetManagers.mockResolvedValue([]);
@@ -291,13 +273,13 @@ describe("useEditController", () => {
 
             await act(async () => {
                 await result.current.submission({
-                    name:           "Existing Project",
-                    comments:       "",
-                    status:         "Active",
-                    managerId:      "3",
-                    employees:      ["10"],
-                    start_date:     "2025-01-01",
-                    end_date:       "2025-12-31",
+                    name: "Existing Project",
+                    comments: "",
+                    status: "Active",
+                    managerId: "3",
+                    employees: ["10"],
+                    start_date: "2025-01-01",
+                    end_date: "2025-12-31",
                     security_level: "Internal",
                 });
             });
@@ -313,11 +295,11 @@ describe("useEditController", () => {
     });
 
     test("shows field-level validation errors from the backend on update failure", async () => {
-        const mockedGetManagers   = projectApi.getManagers   as ReturnType<typeof vi.fn>;
-        const mockedGetEmployees  = projectApi.getEmployees  as ReturnType<typeof vi.fn>;
-        const mockedGetProject    = projectApi.getProject    as ReturnType<typeof vi.fn>;
+        const mockedGetManagers = projectApi.getManagers as ReturnType<typeof vi.fn>;
+        const mockedGetEmployees = projectApi.getEmployees as ReturnType<typeof vi.fn>;
+        const mockedGetProject = projectApi.getProject as ReturnType<typeof vi.fn>;
         const mockedUpdateProject = projectApi.updateProject as ReturnType<typeof vi.fn>;
-        const consoleErrorSpy     = vi.spyOn(console, "error").mockImplementation(() => {});
+        const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
         try {
             mockedGetManagers.mockResolvedValue([]);
@@ -338,13 +320,13 @@ describe("useEditController", () => {
 
             await act(async () => {
                 await result.current.submission({
-                    name:           "Duplicate Name",
-                    comments:       "",
-                    status:         "Active",
-                    managerId:      "3",
-                    employees:      ["10"],
-                    start_date:     "2025-01-01",
-                    end_date:       "2025-12-31",
+                    name: "Duplicate Name",
+                    comments: "",
+                    status: "Active",
+                    managerId: "3",
+                    employees: ["10"],
+                    start_date: "2025-01-01",
+                    end_date: "2025-12-31",
                     security_level: "Internal",
                 });
             });
@@ -359,12 +341,10 @@ describe("useEditController", () => {
         }
     });
 
-    // ── reloadData in edit mode ───────────────────────────────────────────────
-
     test("reloadData refetches lookup queries AND the project detail query", async () => {
-        const mockedGetManagers  = projectApi.getManagers  as ReturnType<typeof vi.fn>;
+        const mockedGetManagers = projectApi.getManagers as ReturnType<typeof vi.fn>;
         const mockedGetEmployees = projectApi.getEmployees as ReturnType<typeof vi.fn>;
-        const mockedGetProject   = projectApi.getProject   as ReturnType<typeof vi.fn>;
+        const mockedGetProject = projectApi.getProject as ReturnType<typeof vi.fn>;
 
         mockedGetManagers.mockResolvedValue([]);
         mockedGetEmployees.mockResolvedValue([]);
@@ -376,7 +356,6 @@ describe("useEditController", () => {
             expect(result.current.loading).toBe(false);
         });
 
-        // Baseline — each query fetched once on mount
         expect(mockedGetManagers).toHaveBeenCalledTimes(1);
         expect(mockedGetEmployees).toHaveBeenCalledTimes(1);
         expect(mockedGetProject).toHaveBeenCalledTimes(1);
@@ -385,7 +364,6 @@ describe("useEditController", () => {
             await result.current.reloadData();
         });
 
-        // All three must be refetched — this is the key difference from create mode
         await waitFor(() => {
             expect(mockedGetManagers).toHaveBeenCalledTimes(2);
             expect(mockedGetEmployees).toHaveBeenCalledTimes(2);

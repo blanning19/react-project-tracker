@@ -6,7 +6,9 @@
 
 import { useMemo, useState } from "react";
 import { Controller, type Control, type FieldErrors } from "react-hook-form";
+
 import type { ManagerOption, EmployeeOption, ProjectFormValues } from "../models/project.types";
+
 import { SECURITY_LEVEL_OPTIONS } from "./projectFormConfig";
 import styles from "./ProjectFormFields.module.css";
 

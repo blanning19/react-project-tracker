@@ -8,55 +8,22 @@
  */
 
 import {
-    createContext,
     useCallback,
-    useContext,
     useEffect,
     useMemo,
     useState,
     type ReactNode,
 } from "react";
 import { useNavigate } from "react-router-dom";
-import { logoutRequest, type LoginResponse } from "./authApi";
-import { isCookieAuth } from "./mode";
-import { tokenStore } from "./tokens";
+
 import { registerSessionExpiredHandler } from "../http/fetchClient";
 
-/**
- * Shape of the value provided by `AuthContext`.
- *
- * Consumers access this via {@link useAuth}.
- */
-export interface AuthContextValue {
-    /** The current access token, or `null` when logged out. */
-    accessToken: string | null;
-    /** Convenience boolean derived from `accessToken`. `true` when logged in. */
-    isAuthenticated: boolean;
-    /**
-     * Persists the token pair received after a successful login and marks the
-     * user as authenticated.
-     * @param tokens - The `LoginResponse` returned by `loginRequest`.
-     */
-    login: (tokens: LoginResponse) => void;
-    /**
-     * Logs the user out: calls the backend logout endpoint (best-effort),
-     * clears all local token state, and redirects to `/login`.
-     */
-    logout: () => Promise<void>;
-    /**
-     * Called by the HTTP client when the access-token refresh flow fails.
-     * Clears local auth state and redirects to `/login` without attempting
-     * another server call.
-     */
-    handleSessionExpired: () => void;
-}
+import { logoutRequest, type LoginResponse } from "./authApi";
+import { AuthContext, type AuthContextValue } from "./authContext";
+import { isCookieAuth } from "./mode";
+import { tokenStore } from "./tokens";
 
-const AuthContext = createContext<AuthContextValue | null>(null);
-
-/**
- * Props for {@link AuthProvider}.
- */
-export interface AuthProviderProps {
+interface AuthProviderProps {
     children: ReactNode;
 }
 
@@ -83,20 +50,15 @@ export interface AuthProviderProps {
  * </BrowserRouter>
  * ```
  */
-export function AuthProvider({ children }: AuthProviderProps): JSX.Element {
+export default function AuthProvider({ children }: AuthProviderProps): JSX.Element {
     const navigate = useNavigate();
     const [accessToken, setAccessToken] = useState<string | null>(() => tokenStore.getAccess());
 
-    /** Clears all local token state and resets the in-React access token. */
     const clearLocalAuth = useCallback(() => {
         tokenStore.clear();
         setAccessToken(null);
     }, []);
 
-    /**
-     * Stores tokens after a successful login and syncs the React access token state.
-     * In cookie mode, only the access token is stored client-side.
-     */
     const login = useCallback((tokens: LoginResponse) => {
         tokenStore.setAccess(tokens.access ?? null);
 
@@ -107,19 +69,11 @@ export function AuthProvider({ children }: AuthProviderProps): JSX.Element {
         setAccessToken(tokens.access ?? null);
     }, []);
 
-    /**
-     * Clears local auth state and redirects to `/login`.
-     * Called by the HTTP client via the registered session-expiry handler.
-     */
     const handleSessionExpired = useCallback(() => {
         clearLocalAuth();
         navigate("/login", { replace: true });
     }, [clearLocalAuth, navigate]);
 
-    /**
-     * Calls the backend logout endpoint (best-effort), then clears local state
-     * and redirects to `/login` regardless of the server response.
-     */
     const logout = useCallback(async () => {
         try {
             await logoutRequest();
@@ -150,24 +104,4 @@ export function AuthProvider({ children }: AuthProviderProps): JSX.Element {
     }, [accessToken, login, logout, handleSessionExpired]);
 
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
-}
-
-/**
- * Returns the current authentication context value.
- *
- * @throws An error if called outside of an {@link AuthProvider} tree.
- *
- * @example
- * ```tsx
- * const { isAuthenticated, logout } = useAuth();
- * ```
- */
-export function useAuth(): AuthContextValue {
-    const context = useContext(AuthContext);
-
-    if (!context) {
-        throw new Error("useAuth must be used within an AuthProvider.");
-    }
-
-    return context;
 }

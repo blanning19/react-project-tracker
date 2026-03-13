@@ -18,14 +18,15 @@
 
 import "./App.css";
 import { Route, Routes } from "react-router-dom";
-import Navbar from "./shared/layout/Navbar";
-import RequireAuth from "./features/auth/RequireAuth";
+
 import About from "./features/about/About";
 import Login from "./features/auth/Login";
+import RequireAuth from "./features/auth/RequireAuth";
+import DashboardPage from "./features/dashboard/DashboardPage";
 import Home from "./features/home/Home";
 import Create from "./features/projects/create/Create";
 import Edit from "./features/projects/edit/Edit";
-import DashboardPage from "./features/dashboard/DashboardPage";
+import Navbar from "./shared/layout/Navbar";
 
 /**
  * Root component that owns the React Router route tree.

@@ -8,6 +8,7 @@
  */
 
 import FetchInstance from "../http/fetchClient";
+
 import { isCookieAuth } from "./mode";
 import { tokenStore } from "./tokens";
 

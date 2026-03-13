@@ -1,5 +1,6 @@
-import { describe, test, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
+import { describe, test, expect, vi, beforeEach } from "vitest";
+
 import Home from "../features/home/Home";
 import { useHomeController } from "../features/home/useHomeController";
 

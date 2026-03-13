@@ -1,6 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { vi, describe, it, expect, beforeEach } from "vitest";
+
 import RequireAuth from "../features/auth/RequireAuth";
 
 const mockUseAuth = vi.fn();

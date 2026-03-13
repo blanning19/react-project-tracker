@@ -1,6 +1,7 @@
 import { act, renderHook } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+
 import { useLoginController } from "../features/auth/useLoginController";
 
 const navigateMock = vi.fn();

@@ -16,8 +16,8 @@ vi.mock("../shared/auth/mode", () => ({
     isCookieAuth: true,
 }));
 
-import FetchInstance, { registerSessionExpiredHandler } from "../shared/http/fetchClient";
 import { tokenStore } from "../shared/auth/tokens";
+import FetchInstance, { registerSessionExpiredHandler } from "../shared/http/fetchClient";
 
 function makeResponse({
     status = 200,

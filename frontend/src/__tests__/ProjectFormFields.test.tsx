@@ -1,9 +1,10 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { useForm } from "react-hook-form";
 import { describe, expect, test } from "vitest";
-import ProjectFormFields from "../features/projects/shared/ProjectFormFields";
-import { DEFAULT_VALUES, STATUS_OPTIONS } from "../features/projects/shared/projectFormConfig";
+
 import type { EmployeeOption, ProjectFormValues } from "../features/projects/models/project.types";
+import { DEFAULT_VALUES, STATUS_OPTIONS } from "../features/projects/shared/projectFormConfig";
+import ProjectFormFields from "../features/projects/shared/ProjectFormFields";
 
 // Typed as EmployeeOption[] (not the PersonOption union) so the type satisfies
 // the employees prop on ProjectFormFields which expects EmployeeOption[].

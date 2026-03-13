@@ -8,8 +8,9 @@
  * @module projects/models/project.api
  */
 
-import FetchInstance from "../../../shared/http/fetchClient";
 import { API } from "../../../shared/api/routes";
+import FetchInstance from "../../../shared/http/fetchClient";
+
 import type {
     PaginatedResponse,
     PersonOption,

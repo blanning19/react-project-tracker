@@ -5,9 +5,11 @@
  */
 
 import type { Control, UseFormHandleSubmit } from "react-hook-form";
-import ProjectFormPageView from "../shared/ProjectFormPageView";
-import { useEditController } from "./useEditController";
+
 import type { ProjectFormValues } from "../models/project.types";
+import ProjectFormPageView from "../shared/ProjectFormPageView";
+
+import { useEditController } from "./useEditController";
 
 /**
  * Wires {@link useEditController} to {@link ProjectFormPageView}.

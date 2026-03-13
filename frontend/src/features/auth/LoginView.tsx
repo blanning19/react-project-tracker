@@ -77,7 +77,6 @@ export default function LoginView({
                                 value={username}
                                 onChange={(e) => onUsernameChange(e.target.value)}
                                 autoComplete="username"
-                                autoFocus
                                 disabled={isSubmitting}
                             />
                         </Form.Group>

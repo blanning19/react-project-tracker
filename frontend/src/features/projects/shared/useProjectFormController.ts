@@ -4,12 +4,13 @@
  * @module projects/shared/useProjectFormController
  */
 
+import { yupResolver } from "@hookform/resolvers/yup";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
-import { yupResolver } from "@hookform/resolvers/yup";
 import type { Resolver } from "react-hook-form";
 import { useNavigate } from "react-router-dom";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+
 import {
     createProject,
     getEmployees,
@@ -20,13 +21,14 @@ import {
     updateProject,
 } from "../models/project.api";
 import type { ProjectFormValues, ProjectRecord } from "../models/project.types";
+
+import { getApiErrorMessage } from "./getApiErrorMessage";
 import {
     DEFAULT_VALUES,
     formToPayload,
     PROJECT_SCHEMA,
     projectToFormValues,
 } from "./projectFormConfig";
-import { getApiErrorMessage } from "./getApiErrorMessage";
 
 export type ProjectFormMode = "create" | "edit";
 
@@ -129,19 +131,24 @@ export function useProjectFormController({ mode, projectId = "" }: UseProjectFor
     const hasLookupError = managersQuery.isError || employeesQuery.isError;
     const hasProjectError = mode === "edit" && projectQuery.isError;
 
-    useEffect(() => {
-        if (hasLookupError) {
-            setApiError(
-                mode === "edit"
-                    ? "Failed to load form data. Please retry."
-                    : "Failed to load dropdown data. Please retry."
-            );
-        } else if (hasProjectError) {
-            setApiError("Failed to load project data. Please retry.");
-        } else {
-            setApiError("");
-        }
-    }, [hasLookupError, hasProjectError, mode]);
+    /**
+     * Query-load errors are derived from current query state rather than copied
+     * into local state through an effect. This avoids redundant state syncing
+     * and the extra render triggered by calling setState inside useEffect.
+     *
+     * `apiError` state remains reserved for user-triggered flows such as
+     * submit failures or explicit reload attempts.
+     */
+    const derivedLoadError =
+        hasLookupError
+            ? mode === "edit"
+                ? "Failed to load form data. Please retry."
+                : "Failed to load dropdown data. Please retry."
+            : hasProjectError
+                ? "Failed to load project data. Please retry."
+                : "";
+
+    const effectiveApiError = apiError || derivedLoadError;
 
     // ── Retry / refetch support ───────────────────────────────────────────────
 
@@ -221,7 +228,7 @@ export function useProjectFormController({ mode, projectId = "" }: UseProjectFor
         managers,
         employees,
         loading,
-        apiError,
+        apiError: effectiveApiError,
         isSubmitting: submitMutation.isPending,
     };
 }

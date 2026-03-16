@@ -1,0 +1,1706 @@
+{
+  "generatedAt": "2026-03-16T19:24:20.587Z",
+  "totalFiles": 60,
+  "totalComponents": 31,
+  "components": {
+    "Login": {
+      "name": "Login",
+      "isComponent": true,
+      "isHook": false,
+      "isDefault": true,
+      "jsDoc": {
+        "description": "Wires {@link useLoginController} to {@link LoginView}. Stays intentionally thin: no logic, no state — just controller → view composition following the same pattern as every other feature page.",
+        "tags": {
+          "returns": [
+            "The rendered Login page."
+          ]
+        }
+      },
+      "internalHelpers": [],
+      "effects": [],
+      "viewPanels": [],
+      "jsxRootElements": [
+        "LoginView"
+      ],
+      "hooksUsed": [
+        "useLoginController"
+      ],
+      "file": "src/features/auth/Login.tsx",
+      "fileName": "Login.tsx",
+      "imports": [
+        {
+          "source": "./LoginView",
+          "specifiers": [
+            "LoginView"
+          ]
+        },
+        {
+          "source": "./useLoginController",
+          "specifiers": [
+            "useLoginController"
+          ]
+        }
+      ]
+    },
+    "LoginView": {
+      "name": "LoginView",
+      "isComponent": true,
+      "isHook": false,
+      "isDefault": true,
+      "jsDoc": {
+        "description": "Presentational (view) component for the Login page. Renders a centred card with username, password, and submit controls. All state and submission logic lives in `useLoginController` — this component is intentionally free of side effects. Accessibility notes: - Error message rendered as a Bootstrap `Alert` with `role=\"alert\"` semantics. - Inputs are disabled during submission to prevent double-submit. - `autoFocus` on the username field for keyboard users.",
+        "tags": {}
+      },
+      "internalHelpers": [],
+      "effects": [],
+      "viewPanels": [],
+      "jsxRootElements": [
+        "Container",
+        "Card",
+        "Alert",
+        "Form",
+        "Button",
+        "Spinner"
+      ],
+      "hooksUsed": [],
+      "file": "src/features/auth/LoginView.tsx",
+      "fileName": "LoginView.tsx",
+      "imports": [
+        {
+          "source": "react",
+          "specifiers": [
+            "FormEvent"
+          ]
+        },
+        {
+          "source": "react-bootstrap",
+          "specifiers": [
+            "Alert",
+            "Button",
+            "Card",
+            "Container",
+            "Form",
+            "Spinner"
+          ]
+        }
+      ]
+    },
+    "RequireAuth": {
+      "name": "RequireAuth",
+      "isComponent": true,
+      "isHook": false,
+      "isDefault": true,
+      "jsDoc": {
+        "description": "Route guard component for protected routes. Renders the child route via `<Outlet />` when the user has a valid, non-expired access token. Otherwise redirects to `/login`, passing the current pathname in `location.state.from` so the login page can redirect back after a successful login. ### Usage Wrap protected routes with this component in the React Router tree: ```tsx <Route element={<RequireAuth />}> <Route path=\"/\" element={<Home />} /> <Route path=\"/create\" element={<Create />} /> <Route path=\"/edit/:id\" element={<Edit />} /> </Route> ```",
+        "tags": {}
+      },
+      "internalHelpers": [],
+      "effects": [],
+      "viewPanels": [],
+      "jsxRootElements": [
+        "Outlet"
+      ],
+      "hooksUsed": [
+        "useAuth",
+        "useLocation"
+      ],
+      "file": "src/features/auth/RequireAuth.tsx",
+      "fileName": "RequireAuth.tsx",
+      "imports": [
+        {
+          "source": "react-router-dom",
+          "specifiers": [
+            "Navigate",
+            "Outlet",
+            "useLocation"
+          ]
+        },
+        {
+          "source": "../../shared/auth/useAuth",
+          "specifiers": [
+            "useAuth"
+          ]
+        }
+      ]
+    },
+    "useLoginController": {
+      "name": "useLoginController",
+      "isComponent": false,
+      "isHook": true,
+      "isDefault": false,
+      "jsDoc": {
+        "description": "Controller hook for the Login page. Manages the form field values, submission state, and error message for the login flow. On success, stores the received tokens via `AuthProvider.login` and redirects to the page the user was trying to reach (or `/` by default). ### Return shape The hook returns controlled field values, change handlers, and a submit handler — all that `LoginView` needs with no direct dependency on the controller's internal state type.",
+        "tags": {
+          "returns": [
+            "Controlled form state and handlers for `LoginView`."
+          ],
+          "example": [
+            "```tsx",
+            "function Login() {",
+            "const controller = useLoginController();",
+            "return <LoginView {...controller} />;",
+            "}",
+            "```"
+          ]
+        }
+      },
+      "internalHelpers": [
+        {
+          "name": "onSubmit",
+          "returnType": "unknown",
+          "jsDoc": {
+            "description": "Handles form submission: calls the login endpoint, stores the tokens, and redirects. Sets a user-facing error message on failure. Error mapping: - `401` → \"Invalid username or password.\" - Any other error → \"Could not connect. Please try again.\"",
+            "tags": {
+              "param": [
+                "event - The native form submission event. `preventDefault` is",
+                "called automatically."
+              ]
+            }
+          }
+        }
+      ],
+      "effects": [],
+      "viewPanels": [],
+      "jsxRootElements": [],
+      "hooksUsed": [
+        "useState",
+        "useAuth",
+        "useNavigate",
+        "useLocation"
+      ],
+      "file": "src/features/auth/useLoginController.ts",
+      "fileName": "useLoginController.ts",
+      "imports": [
+        {
+          "source": "react",
+          "specifiers": [
+            "FormEvent",
+            "useState"
+          ]
+        },
+        {
+          "source": "react-router-dom",
+          "specifiers": [
+            "useLocation",
+            "useNavigate"
+          ]
+        },
+        {
+          "source": "../../shared/auth/authApi",
+          "specifiers": [
+            "loginRequest"
+          ]
+        },
+        {
+          "source": "../../shared/auth/useAuth",
+          "specifiers": [
+            "useAuth"
+          ]
+        }
+      ]
+    },
+    "DashboardPage": {
+      "name": "DashboardPage",
+      "isComponent": true,
+      "isHook": false,
+      "isDefault": false,
+      "jsDoc": {
+        "description": "Renders the ICT readiness dashboard page. This page serves as the main dashboard surface for the feature and presents a high-level readiness snapshot for the current day. Data behavior: - Requests the latest task list once when the page mounts - Re-renders when the timeline task list changes in the shared store",
+        "tags": {
+          "returns": [
+            "The rendered dashboard page."
+          ]
+        }
+      },
+      "internalHelpers": [
+        {
+          "name": "getViewWrapperStyles",
+          "returnType": "CallExpression",
+          "jsDoc": null
+        }
+      ],
+      "effects": [
+        {
+          "deps": [],
+          "isMount": true
+        }
+      ],
+      "viewPanels": [
+        {
+          "marker": "ViewPanel (auto-detected)",
+          "line": 81,
+          "autoDetected": true,
+          "children": [
+            {
+              "name": "IctCompletion",
+              "importPath": "./views/IctCompletion"
+            },
+            {
+              "name": "PendingApprovals",
+              "importPath": "./views/PendingApprovals"
+            },
+            {
+              "name": "IctCountByWindow",
+              "importPath": "./views/IctCountByWindow"
+            },
+            {
+              "name": "SubjectAreaMixed",
+              "importPath": "./views/SubjectAreaMixed"
+            }
+          ]
+        }
+      ],
+      "jsxRootElements": [
+        "IctCompletion",
+        "PendingApprovals",
+        "IctCountByWindow",
+        "SubjectAreaMixed"
+      ],
+      "hooksUsed": [
+        "useStore",
+        "useEffect"
+      ],
+      "file": "src/features/dashboard/DashboardPage.tsx",
+      "fileName": "DashboardPage.tsx",
+      "imports": [
+        {
+          "source": "react",
+          "specifiers": [
+            "useEffect",
+            "JSX"
+          ]
+        },
+        {
+          "source": "@/library/hooks/UseStore",
+          "specifiers": [
+            "useStore"
+          ]
+        },
+        {
+          "source": "@/library/utils/DateUtils",
+          "specifiers": [
+            "DateUtils"
+          ]
+        },
+        {
+          "source": "@/library/utils/FormatUtils",
+          "specifiers": [
+            "FormatUtils"
+          ]
+        },
+        {
+          "source": "../tasks/controllers/TaskController",
+          "specifiers": [
+            "TaskController"
+          ]
+        },
+        {
+          "source": "../tasks/models/ViewModel",
+          "specifiers": [
+            "TaskViewModel"
+          ]
+        },
+        {
+          "source": "./views/IctCompletion",
+          "specifiers": [
+            "IctCompletion"
+          ]
+        },
+        {
+          "source": "./views/IctCountByWindow",
+          "specifiers": [
+            "IctCountByWindow"
+          ]
+        },
+        {
+          "source": "./views/PendingApprovals",
+          "specifiers": [
+            "PendingApprovals"
+          ]
+        },
+        {
+          "source": "./views/SubjectAreaMixed",
+          "specifiers": [
+            "SubjectAreaMixed"
+          ]
+        }
+      ]
+    },
+    "IctCompletion": {
+      "name": "IctCompletion",
+      "isComponent": true,
+      "isHook": false,
+      "isDefault": false,
+      "jsDoc": {
+        "description": "Displays ICT completion metrics for the dashboard.",
+        "tags": {
+          "returns": [
+            "The ICT completion dashboard panel."
+          ]
+        }
+      },
+      "internalHelpers": [],
+      "effects": [],
+      "viewPanels": [],
+      "jsxRootElements": [],
+      "hooksUsed": [],
+      "file": "src/features/dashboard/views/IctCompletion.tsx",
+      "fileName": "IctCompletion.tsx",
+      "imports": [
+        {
+          "source": "react",
+          "specifiers": [
+            "JSX"
+          ]
+        }
+      ]
+    },
+    "IctCountByWindow": {
+      "name": "IctCountByWindow",
+      "isComponent": true,
+      "isHook": false,
+      "isDefault": false,
+      "jsDoc": {
+        "description": "Displays ICT readiness counts grouped by window.",
+        "tags": {
+          "returns": [
+            "The readiness-by-window dashboard panel."
+          ]
+        }
+      },
+      "internalHelpers": [],
+      "effects": [],
+      "viewPanels": [],
+      "jsxRootElements": [],
+      "hooksUsed": [],
+      "file": "src/features/dashboard/views/IctCountByWindow.tsx",
+      "fileName": "IctCountByWindow.tsx",
+      "imports": [
+        {
+          "source": "react",
+          "specifiers": [
+            "JSX"
+          ]
+        }
+      ]
+    },
+    "PendingApprovals": {
+      "name": "PendingApprovals",
+      "isComponent": true,
+      "isHook": false,
+      "isDefault": false,
+      "jsDoc": {
+        "description": "Displays pending approval counts for the dashboard.",
+        "tags": {
+          "returns": [
+            "The pending approvals dashboard panel."
+          ]
+        }
+      },
+      "internalHelpers": [],
+      "effects": [],
+      "viewPanels": [],
+      "jsxRootElements": [],
+      "hooksUsed": [],
+      "file": "src/features/dashboard/views/PendingApprovals.tsx",
+      "fileName": "PendingApprovals.tsx",
+      "imports": [
+        {
+          "source": "react",
+          "specifiers": [
+            "JSX"
+          ]
+        }
+      ]
+    },
+    "SubjectAreaMixed": {
+      "name": "SubjectAreaMixed",
+      "isComponent": true,
+      "isHook": false,
+      "isDefault": false,
+      "jsDoc": {
+        "description": "Displays subject-area readiness details for the dashboard.",
+        "tags": {
+          "returns": [
+            "The subject-area dashboard panel."
+          ]
+        }
+      },
+      "internalHelpers": [],
+      "effects": [],
+      "viewPanels": [],
+      "jsxRootElements": [],
+      "hooksUsed": [],
+      "file": "src/features/dashboard/views/SubjectAreaMixed.tsx",
+      "fileName": "SubjectAreaMixed.tsx",
+      "imports": [
+        {
+          "source": "react",
+          "specifiers": [
+            "JSX"
+          ]
+        }
+      ]
+    },
+    "useHomeController": {
+      "name": "useHomeController",
+      "isComponent": false,
+      "isHook": true,
+      "isDefault": false,
+      "jsDoc": null,
+      "internalHelpers": [
+        {
+          "name": "getData",
+          "returnType": "unknown",
+          "jsDoc": null
+        },
+        {
+          "name": "onDeleteConfirm",
+          "returnType": "void",
+          "jsDoc": null
+        },
+        {
+          "name": "toggleSort",
+          "returnType": "unknown",
+          "jsDoc": null
+        }
+      ],
+      "effects": [],
+      "viewPanels": [],
+      "jsxRootElements": [],
+      "hooksUsed": [
+        "useNavigate",
+        "useLocation",
+        "useQueryClient",
+        "useState",
+        "useQuery"
+      ],
+      "file": "src/features/home/useHomeController.ts",
+      "fileName": "useHomeController.ts",
+      "imports": [
+        {
+          "source": "@tanstack/react-query",
+          "specifiers": [
+            "useQuery",
+            "useQueryClient"
+          ]
+        },
+        {
+          "source": "react",
+          "specifiers": [
+            "useState"
+          ]
+        },
+        {
+          "source": "react-router-dom",
+          "specifiers": [
+            "useNavigate",
+            "useLocation"
+          ]
+        },
+        {
+          "source": "../projects/models/project.api",
+          "specifiers": [
+            "deleteProject",
+            "listProjects",
+            "projectKeys"
+          ]
+        },
+        {
+          "source": "./home.constants",
+          "specifiers": [
+            "HOME_DEFAULT_PAGE_SIZE",
+            "HOME_DEFAULT_SORT_DIRECTION",
+            "HOME_DEFAULT_SORT_KEY",
+            "HOME_DEFAULT_STATUS_FILTER"
+          ]
+        },
+        {
+          "source": "./home.types",
+          "specifiers": [
+            "DeleteTarget",
+            "HomeSortDirection",
+            "HomeSortKey",
+            "HomeStatusFilter",
+            "HomeViewProps"
+          ]
+        }
+      ]
+    },
+    "useCreateController": {
+      "name": "useCreateController",
+      "isComponent": false,
+      "isHook": true,
+      "isDefault": false,
+      "jsDoc": {
+        "description": "Controller hook for the Create Project feature. Create and Edit share all form behaviour via {@link useProjectFormController}. This wrapper exists to: - Keep the Create feature boundary explicit (clean import path for `Create.tsx`). - Ensure the `mode` is always `\"create\"` without the caller having to pass it.",
+        "tags": {
+          "returns": [
+            "The full form controller shape from {@link useProjectFormController}."
+          ],
+          "example": [
+            "```tsx",
+            "function Create() {",
+            "const controller = useCreateController();",
+            "return (",
+            "<ProjectFormPageView",
+            "title=\"Create project\"",
+            "submitLabel=\"Save\"",
+            "submittingLabel=\"Saving…\"",
+            "{...controller}",
+            "/>",
+            ");",
+            "}",
+            "```"
+          ]
+        }
+      },
+      "internalHelpers": [],
+      "effects": [],
+      "viewPanels": [],
+      "jsxRootElements": [],
+      "hooksUsed": [
+        "useProjectFormController"
+      ],
+      "file": "src/features/projects/create/useCreateController.ts",
+      "fileName": "useCreateController.ts",
+      "imports": [
+        {
+          "source": "../shared/useProjectFormController",
+          "specifiers": [
+            "useProjectFormController"
+          ]
+        }
+      ]
+    },
+    "useEditController": {
+      "name": "useEditController",
+      "isComponent": false,
+      "isHook": true,
+      "isDefault": false,
+      "jsDoc": {
+        "description": "Controller hook for the Edit Project feature. Extracts the project ID from the route (`/edit/:id`) and passes it to {@link useProjectFormController} in `\"edit\"` mode. All form behaviour and API interaction is handled by the shared controller.",
+        "tags": {
+          "returns": [
+            "The full form controller shape from {@link useProjectFormController},",
+            "with the project pre-populated from the API."
+          ],
+          "example": [
+            "```tsx",
+            "function Edit() {",
+            "const controller = useEditController();",
+            "return (",
+            "<ProjectFormPageView",
+            "title=\"Edit project\"",
+            "submitLabel=\"Update\"",
+            "submittingLabel=\"Updating…\"",
+            "{...controller}",
+            "/>",
+            ");",
+            "}",
+            "```"
+          ]
+        }
+      },
+      "internalHelpers": [],
+      "effects": [],
+      "viewPanels": [],
+      "jsxRootElements": [],
+      "hooksUsed": [
+        "useParams",
+        "useProjectFormController"
+      ],
+      "file": "src/features/projects/edit/useEditController.ts",
+      "fileName": "useEditController.ts",
+      "imports": [
+        {
+          "source": "react-router-dom",
+          "specifiers": [
+            "useParams"
+          ]
+        },
+        {
+          "source": "../shared/useProjectFormController",
+          "specifiers": [
+            "useProjectFormController"
+          ]
+        }
+      ]
+    },
+    "listProjects": {
+      "name": "listProjects",
+      "isComponent": false,
+      "isHook": false,
+      "isDefault": false,
+      "jsDoc": {
+        "description": "Fetches a paginated list of projects from the backend. All filtering, searching, ordering, and pagination is handled server-side. Pass a {@link ProjectListParams} object to control which page, filter, and sort the API applies.",
+        "tags": {
+          "param": [
+            "params - Optional query parameters forwarded to `GET /api/projects/`."
+          ],
+          "returns": [
+            "A paginated envelope containing the matching project records."
+          ],
+          "example": [
+            "```ts",
+            "const page = await listProjects({ page: 2, status: \"Active\", ordering: \"-name\" });",
+            "console.log(page.count, page.results);",
+            "```"
+          ]
+        }
+      },
+      "internalHelpers": [],
+      "effects": [],
+      "viewPanels": [],
+      "jsxRootElements": [],
+      "hooksUsed": [],
+      "file": "src/features/projects/models/project.api.ts",
+      "fileName": "project.api.ts",
+      "imports": [
+        {
+          "source": "../../../shared/api/routes",
+          "specifiers": [
+            "API"
+          ]
+        },
+        {
+          "source": "../../../shared/http/fetchClient",
+          "specifiers": [
+            "FetchInstance"
+          ]
+        },
+        {
+          "source": "./project.types",
+          "specifiers": [
+            "PaginatedResponse",
+            "PersonOption",
+            "ProjectListParams",
+            "ProjectRecord",
+            "ProjectWritePayload"
+          ]
+        }
+      ]
+    },
+    "getProject": {
+      "name": "getProject",
+      "isComponent": false,
+      "isHook": false,
+      "isDefault": false,
+      "jsDoc": {
+        "description": "Fetches a single project record by ID.",
+        "tags": {
+          "param": [
+            "id - The numeric or string project ID."
+          ],
+          "returns": [
+            "The full project record from the read serialiser."
+          ],
+          "throws": [
+            "`ApiError` with `status: 404` if the project does not exist."
+          ]
+        }
+      },
+      "internalHelpers": [],
+      "effects": [],
+      "viewPanels": [],
+      "jsxRootElements": [],
+      "hooksUsed": [],
+      "file": "src/features/projects/models/project.api.ts",
+      "fileName": "project.api.ts",
+      "imports": [
+        {
+          "source": "../../../shared/api/routes",
+          "specifiers": [
+            "API"
+          ]
+        },
+        {
+          "source": "../../../shared/http/fetchClient",
+          "specifiers": [
+            "FetchInstance"
+          ]
+        },
+        {
+          "source": "./project.types",
+          "specifiers": [
+            "PaginatedResponse",
+            "PersonOption",
+            "ProjectListParams",
+            "ProjectRecord",
+            "ProjectWritePayload"
+          ]
+        }
+      ]
+    },
+    "createProject": {
+      "name": "createProject",
+      "isComponent": false,
+      "isHook": false,
+      "isDefault": false,
+      "jsDoc": {
+        "description": "Creates a new project via `POST /api/projects/`. The payload is strongly typed so accidental drift between the form mapper and the API contract is caught at compile time.",
+        "tags": {
+          "param": [
+            "payload - The validated write payload produced by `formToPayload`."
+          ],
+          "returns": [
+            "The newly created project record, including its server-assigned ID."
+          ],
+          "throws": [
+            "`ApiError` with `status: 400` and field-level messages on validation failure."
+          ]
+        }
+      },
+      "internalHelpers": [],
+      "effects": [],
+      "viewPanels": [],
+      "jsxRootElements": [],
+      "hooksUsed": [],
+      "file": "src/features/projects/models/project.api.ts",
+      "fileName": "project.api.ts",
+      "imports": [
+        {
+          "source": "../../../shared/api/routes",
+          "specifiers": [
+            "API"
+          ]
+        },
+        {
+          "source": "../../../shared/http/fetchClient",
+          "specifiers": [
+            "FetchInstance"
+          ]
+        },
+        {
+          "source": "./project.types",
+          "specifiers": [
+            "PaginatedResponse",
+            "PersonOption",
+            "ProjectListParams",
+            "ProjectRecord",
+            "ProjectWritePayload"
+          ]
+        }
+      ]
+    },
+    "updateProject": {
+      "name": "updateProject",
+      "isComponent": false,
+      "isHook": false,
+      "isDefault": false,
+      "jsDoc": {
+        "description": "Replaces an existing project via `PUT /api/projects/:id/`. Uses a full `PUT` (not `PATCH`) — all required fields must be present.",
+        "tags": {
+          "param": [
+            "id - The project ID to update.",
+            "payload - The complete write payload produced by `formToPayload`."
+          ],
+          "returns": [
+            "The updated project record."
+          ],
+          "throws": [
+            "`ApiError` with `status: 400` and field-level messages on validation failure.",
+            "`ApiError` with `status: 404` if the project does not exist."
+          ]
+        }
+      },
+      "internalHelpers": [],
+      "effects": [],
+      "viewPanels": [],
+      "jsxRootElements": [],
+      "hooksUsed": [],
+      "file": "src/features/projects/models/project.api.ts",
+      "fileName": "project.api.ts",
+      "imports": [
+        {
+          "source": "../../../shared/api/routes",
+          "specifiers": [
+            "API"
+          ]
+        },
+        {
+          "source": "../../../shared/http/fetchClient",
+          "specifiers": [
+            "FetchInstance"
+          ]
+        },
+        {
+          "source": "./project.types",
+          "specifiers": [
+            "PaginatedResponse",
+            "PersonOption",
+            "ProjectListParams",
+            "ProjectRecord",
+            "ProjectWritePayload"
+          ]
+        }
+      ]
+    },
+    "getManagers": {
+      "name": "getManagers",
+      "isComponent": false,
+      "isHook": false,
+      "isDefault": false,
+      "jsDoc": {
+        "description": "Fetches all available project managers. The `ManagerViewset` uses `NoPagination`, so this always returns a flat array rather than a paginated envelope.",
+        "tags": {
+          "returns": [
+            "A flat array of {@link PersonOption} records."
+          ]
+        }
+      },
+      "internalHelpers": [],
+      "effects": [],
+      "viewPanels": [],
+      "jsxRootElements": [],
+      "hooksUsed": [],
+      "file": "src/features/projects/models/project.api.ts",
+      "fileName": "project.api.ts",
+      "imports": [
+        {
+          "source": "../../../shared/api/routes",
+          "specifiers": [
+            "API"
+          ]
+        },
+        {
+          "source": "../../../shared/http/fetchClient",
+          "specifiers": [
+            "FetchInstance"
+          ]
+        },
+        {
+          "source": "./project.types",
+          "specifiers": [
+            "PaginatedResponse",
+            "PersonOption",
+            "ProjectListParams",
+            "ProjectRecord",
+            "ProjectWritePayload"
+          ]
+        }
+      ]
+    },
+    "getEmployees": {
+      "name": "getEmployees",
+      "isComponent": false,
+      "isHook": false,
+      "isDefault": false,
+      "jsDoc": {
+        "description": "Fetches all available employees. The `EmployeeViewset` uses `NoPagination`, so this always returns a flat array rather than a paginated envelope.",
+        "tags": {
+          "returns": [
+            "A flat array of {@link PersonOption} records."
+          ]
+        }
+      },
+      "internalHelpers": [],
+      "effects": [],
+      "viewPanels": [],
+      "jsxRootElements": [],
+      "hooksUsed": [],
+      "file": "src/features/projects/models/project.api.ts",
+      "fileName": "project.api.ts",
+      "imports": [
+        {
+          "source": "../../../shared/api/routes",
+          "specifiers": [
+            "API"
+          ]
+        },
+        {
+          "source": "../../../shared/http/fetchClient",
+          "specifiers": [
+            "FetchInstance"
+          ]
+        },
+        {
+          "source": "./project.types",
+          "specifiers": [
+            "PaginatedResponse",
+            "PersonOption",
+            "ProjectListParams",
+            "ProjectRecord",
+            "ProjectWritePayload"
+          ]
+        }
+      ]
+    },
+    "getApiErrorMessage": {
+      "name": "getApiErrorMessage",
+      "isComponent": false,
+      "isHook": false,
+      "isDefault": false,
+      "jsDoc": {
+        "description": "Converts an unknown API error into a user-friendly message string. ### Resolution order 1. **Field-level validation messages** — if the backend returned a validation object (e.g. `{ name: [\"This field is required.\"] }`), all values are flattened into one readable string. 2. **HTTP status fallback** — if an HTTP status is present but no field messages are available, the fallback message is returned with the status code appended. 3. **Plain fallback** — if the error contains nothing recognisable, the `fallbackMessage` is returned as-is. ### Backend error shapes handled - Field validation: `{ name: [\"Too long.\"], employees: [\"Pick one.\"] }` - Detail string:    `{ detail: \"Not found.\" }` (404, 400 without fields) - Plain string:     `{ detail: \"No refresh token provided.\" }` (logout 400)",
+        "tags": {
+          "param": [
+            "err - The unknown error thrown by the API layer.",
+            "fallbackMessage - The default message to show if the error cannot",
+            "be parsed into something more specific."
+          ],
+          "returns": [
+            "A user-facing error message string."
+          ],
+          "example": [
+            "```ts",
+            "// Field-level errors from DRF validation",
+            "getApiErrorMessage(",
+            "{ response: { data: { name: [\"This field is required.\"], employees: [\"Pick at least one.\"] } } },",
+            "\"Request failed\"",
+            ");",
+            "// → \"This field is required. Pick at least one.\"",
+            "// HTTP status without a body",
+            "getApiErrorMessage({ status: 500 }, \"Request failed\");",
+            "// → \"Request failed (500).\"",
+            "// Unknown / network error",
+            "getApiErrorMessage(new Error(\"Network failure\"), \"Request failed\");",
+            "// → \"Request failed\"",
+            "```"
+          ]
+        }
+      },
+      "internalHelpers": [],
+      "effects": [],
+      "viewPanels": [],
+      "jsxRootElements": [],
+      "hooksUsed": [],
+      "file": "src/features/projects/shared/getApiErrorMessage.ts",
+      "fileName": "getApiErrorMessage.ts",
+      "imports": [
+        {
+          "source": "../../../shared/types/http",
+          "specifiers": [
+            "ApiError"
+          ]
+        }
+      ]
+    },
+    "projectToFormValues": {
+      "name": "projectToFormValues",
+      "isComponent": false,
+      "isHook": false,
+      "isDefault": false,
+      "jsDoc": {
+        "description": "Converts an API project record into form values.",
+        "tags": {
+          "param": [
+            "project - Project record returned by the API."
+          ],
+          "returns": [
+            "Form values ready for React Hook Form."
+          ]
+        }
+      },
+      "internalHelpers": [],
+      "effects": [],
+      "viewPanels": [],
+      "jsxRootElements": [],
+      "hooksUsed": [],
+      "file": "src/features/projects/shared/projectFormConfig.ts",
+      "fileName": "projectFormConfig.ts",
+      "imports": [
+        {
+          "source": "yup",
+          "specifiers": [
+            "yup"
+          ]
+        },
+        {
+          "source": "../models/project.types",
+          "specifiers": [
+            "ManagerOption",
+            "EmployeeOption",
+            "ProjectFormValues",
+            "ProjectRecord",
+            "ProjectWritePayload",
+            "SecurityLevel"
+          ]
+        }
+      ]
+    },
+    "formToPayload": {
+      "name": "formToPayload",
+      "isComponent": false,
+      "isHook": false,
+      "isDefault": false,
+      "jsDoc": {
+        "description": "Converts validated form values into the backend write payload.",
+        "tags": {
+          "param": [
+            "data - Validated form values."
+          ],
+          "returns": [
+            "Payload expected by the backend create/update endpoints."
+          ]
+        }
+      },
+      "internalHelpers": [],
+      "effects": [],
+      "viewPanels": [],
+      "jsxRootElements": [],
+      "hooksUsed": [],
+      "file": "src/features/projects/shared/projectFormConfig.ts",
+      "fileName": "projectFormConfig.ts",
+      "imports": [
+        {
+          "source": "yup",
+          "specifiers": [
+            "yup"
+          ]
+        },
+        {
+          "source": "../models/project.types",
+          "specifiers": [
+            "ManagerOption",
+            "EmployeeOption",
+            "ProjectFormValues",
+            "ProjectRecord",
+            "ProjectWritePayload",
+            "SecurityLevel"
+          ]
+        }
+      ]
+    },
+    "useProjectFormController": {
+      "name": "useProjectFormController",
+      "isComponent": false,
+      "isHook": true,
+      "isDefault": false,
+      "jsDoc": {
+        "description": "Shared controller hook for the Create and Edit project form pages. Encapsulates all data-fetching, form wiring, and submit logic so that `useCreateController` and `useEditController` remain thin wrappers that only differ in the `mode` argument they pass down. ### Data fetching Lookup data (managers, employees) and the edit record are fetched with React Query so they can be cached, deduplicated, and explicitly refetched when the user clicks Retry. ### Submit behaviour Create and Edit share one mutation wrapper. The mutation function chooses `createProject` vs `updateProject` based on `mode`. On success the project list cache is invalidated and the user is navigated to `/` with a router-state success message for the Home page banner. ### Why the `yupResolver` cast `yupResolver` infers a broader generic than React Hook Form expects. Casting through `unknown as Resolver<ProjectFormValues>` is safe at runtime and avoids propagating the mismatch into call sites.",
+        "tags": {
+          "param": [
+            "args - See {@link UseProjectFormControllerArgs}."
+          ],
+          "returns": [
+            "React Hook Form fields, lookup data, submission handler, loading",
+            "state, and a `reloadData` callback for the Retry button."
+          ]
+        }
+      },
+      "internalHelpers": [
+        {
+          "name": "reloadData",
+          "returnType": "unknown",
+          "jsDoc": null
+        },
+        {
+          "name": "submission",
+          "returnType": "unknown",
+          "jsDoc": null
+        }
+      ],
+      "effects": [
+        {
+          "deps": [
+            "existingProject",
+            "reset"
+          ],
+          "isMount": false
+        }
+      ],
+      "viewPanels": [],
+      "jsxRootElements": [],
+      "hooksUsed": [
+        "useState",
+        "useNavigate",
+        "useQueryClient",
+        "useForm",
+        "useQuery",
+        "useEffect",
+        "useMutation"
+      ],
+      "file": "src/features/projects/shared/useProjectFormController.ts",
+      "fileName": "useProjectFormController.ts",
+      "imports": [
+        {
+          "source": "@hookform/resolvers/yup",
+          "specifiers": [
+            "yupResolver"
+          ]
+        },
+        {
+          "source": "@tanstack/react-query",
+          "specifiers": [
+            "useMutation",
+            "useQuery",
+            "useQueryClient"
+          ]
+        },
+        {
+          "source": "react",
+          "specifiers": [
+            "useEffect",
+            "useState"
+          ]
+        },
+        {
+          "source": "react-hook-form",
+          "specifiers": [
+            "useForm"
+          ]
+        },
+        {
+          "source": "react-hook-form",
+          "specifiers": [
+            "Resolver"
+          ]
+        },
+        {
+          "source": "react-router-dom",
+          "specifiers": [
+            "useNavigate"
+          ]
+        },
+        {
+          "source": "../models/project.api",
+          "specifiers": [
+            "createProject",
+            "getEmployees",
+            "getProject",
+            "getManagers",
+            "lookupKeys",
+            "projectKeys",
+            "updateProject"
+          ]
+        },
+        {
+          "source": "../models/project.types",
+          "specifiers": [
+            "ProjectFormValues",
+            "ProjectRecord"
+          ]
+        },
+        {
+          "source": "./getApiErrorMessage",
+          "specifiers": [
+            "getApiErrorMessage"
+          ]
+        },
+        {
+          "source": "./projectFormConfig",
+          "specifiers": [
+            "DEFAULT_VALUES",
+            "formToPayload",
+            "PROJECT_SCHEMA",
+            "projectToFormValues"
+          ]
+        }
+      ]
+    },
+    "useStore": {
+      "name": "useStore",
+      "isComponent": false,
+      "isHook": true,
+      "isDefault": false,
+      "jsDoc": null,
+      "internalHelpers": [],
+      "effects": [],
+      "viewPanels": [],
+      "jsxRootElements": [],
+      "hooksUsed": [],
+      "file": "src/library/hooks/UseStore.ts",
+      "fileName": "UseStore.ts",
+      "imports": []
+    },
+    "loginRequest": {
+      "name": "loginRequest",
+      "isComponent": false,
+      "isHook": false,
+      "isDefault": false,
+      "jsDoc": {
+        "description": "Sends username and password to the login endpoint and returns the token pair. The caller is responsible for persisting the returned tokens via {@link tokenStore} or the `AuthProvider` login handler.",
+        "tags": {
+          "param": [
+            "username - The user's login name.",
+            "password - The user's password (sent over HTTPS only)."
+          ],
+          "returns": [
+            "A promise that resolves to a {@link LoginResponse} containing the",
+            "access and/or refresh tokens."
+          ],
+          "throws": [
+            "An `ApiError` with `status: 401` when credentials are invalid."
+          ],
+          "example": [
+            "```ts",
+            "const tokens = await loginRequest(\"alice\", \"s3cr3t\");",
+            "tokenStore.setAccess(tokens.access ?? null);",
+            "```"
+          ]
+        }
+      },
+      "internalHelpers": [],
+      "effects": [],
+      "viewPanels": [],
+      "jsxRootElements": [],
+      "hooksUsed": [],
+      "file": "src/shared/auth/authApi.ts",
+      "fileName": "authApi.ts",
+      "imports": [
+        {
+          "source": "../http/fetchClient",
+          "specifiers": [
+            "FetchInstance"
+          ]
+        },
+        {
+          "source": "./mode",
+          "specifiers": [
+            "isCookieAuth"
+          ]
+        },
+        {
+          "source": "./tokens",
+          "specifiers": [
+            "tokenStore"
+          ]
+        }
+      ]
+    },
+    "logoutRequest": {
+      "name": "logoutRequest",
+      "isComponent": false,
+      "isHook": false,
+      "isDefault": false,
+      "jsDoc": {
+        "description": "Sends a logout request to the backend to blacklist the current refresh token. - In **local mode**: the refresh token is sent in the request body so the server can blacklist it. - In **cookie mode**: the server reads the refresh token from the HttpOnly cookie automatically; no body is needed. This call is best-effort — callers should always clear local auth state regardless of whether this request succeeds.",
+        "tags": {
+          "returns": [
+            "A promise that resolves when the server has processed the logout."
+          ],
+          "example": [
+            "```ts",
+            "try {",
+            "await logoutRequest();",
+            "} catch {",
+            "// best-effort — proceed with local logout anyway",
+            "}",
+            "tokenStore.clear();",
+            "```"
+          ]
+        }
+      },
+      "internalHelpers": [],
+      "effects": [],
+      "viewPanels": [],
+      "jsxRootElements": [],
+      "hooksUsed": [],
+      "file": "src/shared/auth/authApi.ts",
+      "fileName": "authApi.ts",
+      "imports": [
+        {
+          "source": "../http/fetchClient",
+          "specifiers": [
+            "FetchInstance"
+          ]
+        },
+        {
+          "source": "./mode",
+          "specifiers": [
+            "isCookieAuth"
+          ]
+        },
+        {
+          "source": "./tokens",
+          "specifiers": [
+            "tokenStore"
+          ]
+        }
+      ]
+    },
+    "AuthProvider": {
+      "name": "AuthProvider",
+      "isComponent": true,
+      "isHook": false,
+      "isDefault": true,
+      "jsDoc": {
+        "description": "Provides authentication state and actions to the component tree. ### What it manages - Reads the initial access token from `tokenStore` on mount. - Registers a `handleSessionExpired` callback with the HTTP client so that the client can trigger a redirect without importing React APIs directly. - Exposes `login`, `logout`, and `handleSessionExpired` as stable callbacks (all wrapped in `useCallback`) so they can safely appear in dependency arrays. ### Placement Must be rendered inside `BrowserRouter` (needs `useNavigate`) and outside any routes that require authentication.",
+        "tags": {
+          "example": [
+            "```tsx",
+            "<BrowserRouter>",
+            "<AuthProvider>",
+            "<App />",
+            "</AuthProvider>",
+            "</BrowserRouter>",
+            "```"
+          ]
+        }
+      },
+      "internalHelpers": [],
+      "effects": [
+        {
+          "deps": [
+            "handleSessionExpired"
+          ],
+          "isMount": false
+        }
+      ],
+      "viewPanels": [],
+      "jsxRootElements": [],
+      "hooksUsed": [
+        "useNavigate",
+        "useState",
+        "useCallback",
+        "useEffect",
+        "useMemo"
+      ],
+      "file": "src/shared/auth/AuthProvider.tsx",
+      "fileName": "AuthProvider.tsx",
+      "imports": [
+        {
+          "source": "react",
+          "specifiers": [
+            "useCallback",
+            "useEffect",
+            "useMemo",
+            "useState",
+            "ReactNode"
+          ]
+        },
+        {
+          "source": "react-router-dom",
+          "specifiers": [
+            "useNavigate"
+          ]
+        },
+        {
+          "source": "../http/fetchClient",
+          "specifiers": [
+            "registerSessionExpiredHandler"
+          ]
+        },
+        {
+          "source": "./authApi",
+          "specifiers": [
+            "logoutRequest",
+            "LoginResponse"
+          ]
+        },
+        {
+          "source": "./authContext",
+          "specifiers": [
+            "AuthContext",
+            "AuthContextValue"
+          ]
+        },
+        {
+          "source": "./mode",
+          "specifiers": [
+            "isCookieAuth"
+          ]
+        },
+        {
+          "source": "./tokens",
+          "specifiers": [
+            "tokenStore"
+          ]
+        }
+      ]
+    },
+    "useAuth": {
+      "name": "useAuth",
+      "isComponent": false,
+      "isHook": true,
+      "isDefault": false,
+      "jsDoc": {
+        "description": "Returns the current authentication context value.",
+        "tags": {
+          "throws": [
+            "An error if called outside of an `AuthProvider` tree."
+          ],
+          "example": [
+            "```tsx",
+            "const { isAuthenticated, logout } = useAuth();",
+            "```"
+          ]
+        }
+      },
+      "internalHelpers": [],
+      "effects": [],
+      "viewPanels": [],
+      "jsxRootElements": [],
+      "hooksUsed": [
+        "useContext"
+      ],
+      "file": "src/shared/auth/useAuth.ts",
+      "fileName": "useAuth.ts",
+      "imports": [
+        {
+          "source": "react",
+          "specifiers": [
+            "useContext"
+          ]
+        },
+        {
+          "source": "./authContext",
+          "specifiers": [
+            "AuthContext"
+          ]
+        },
+        {
+          "source": "./authContext",
+          "specifiers": [
+            "AuthContextValue"
+          ]
+        }
+      ]
+    },
+    "setSessionExpiredHandler": {
+      "name": "setSessionExpiredHandler",
+      "isComponent": false,
+      "isHook": false,
+      "isDefault": false,
+      "jsDoc": {
+        "description": "Registers a callback that is invoked when the user's session has expired and cannot be silently renewed. Call this once from `AuthProvider` on mount so the HTTP layer can trigger a React-side logout and redirect to `/login` without coupling this module to React hooks or the router. The callback is called after `tokenStore.clear()` has already run, so the handler only needs to update React state (e.g. clear `accessToken`) and navigate — it does not need to clear tokens itself.",
+        "tags": {
+          "param": [
+            "handler - Zero-argument function to invoke on session expiry,",
+            "or `null` to deregister the current handler."
+          ],
+          "example": [
+            "```ts",
+            "// Inside AuthProvider useEffect:",
+            "setSessionExpiredHandler(handleSessionExpired);",
+            "return () => setSessionExpiredHandler(null);",
+            "```"
+          ]
+        }
+      },
+      "internalHelpers": [],
+      "effects": [],
+      "viewPanels": [],
+      "jsxRootElements": [],
+      "hooksUsed": [],
+      "file": "src/shared/http/fetchClient.ts",
+      "fileName": "fetchClient.ts",
+      "imports": [
+        {
+          "source": "../auth/mode",
+          "specifiers": [
+            "isCookieAuth"
+          ]
+        },
+        {
+          "source": "../auth/tokens",
+          "specifiers": [
+            "tokenStore"
+          ]
+        },
+        {
+          "source": "../types/http",
+          "specifiers": [
+            "ApiError",
+            "FetchResponse"
+          ]
+        }
+      ]
+    },
+    "registerSessionExpiredHandler": {
+      "name": "registerSessionExpiredHandler",
+      "isComponent": false,
+      "isHook": false,
+      "isDefault": false,
+      "jsDoc": {
+        "description": "Alias for {@link setSessionExpiredHandler}. Kept for compatibility with existing imports that use the older name. Prefer `setSessionExpiredHandler` in new code.",
+        "tags": {
+          "param": [
+            "handler - Zero-argument function to invoke on session expiry,",
+            "or `null` to deregister."
+          ]
+        }
+      },
+      "internalHelpers": [],
+      "effects": [],
+      "viewPanels": [],
+      "jsxRootElements": [],
+      "hooksUsed": [],
+      "file": "src/shared/http/fetchClient.ts",
+      "fileName": "fetchClient.ts",
+      "imports": [
+        {
+          "source": "../auth/mode",
+          "specifiers": [
+            "isCookieAuth"
+          ]
+        },
+        {
+          "source": "../auth/tokens",
+          "specifiers": [
+            "tokenStore"
+          ]
+        },
+        {
+          "source": "../types/http",
+          "specifiers": [
+            "ApiError",
+            "FetchResponse"
+          ]
+        }
+      ]
+    },
+    "Navbar": {
+      "name": "Navbar",
+      "isComponent": true,
+      "isHook": false,
+      "isDefault": true,
+      "jsDoc": {
+        "description": "Application shell layout component. Renders a sticky desktop sidebar and a mobile `Offcanvas` drawer. The active child route is rendered in the `<main>` area via React Router's `<Outlet />`. ### Sidebar behaviour - Expand/collapse is toggled with the chevron button and persisted to `localStorage` so the preference survives page reloads. - In collapsed mode, icon-only links use the `title` attribute for accessibility tooltip text. - Auth state is read from `tokenStore` directly (not `useAuth`) so the login/logout button reflects the current token without depending on a re-render from context. ### Logout Delegates entirely to `useAuth().logout()` which handles the backend blacklist call, clears local token state, and redirects to `/login`. Navbar must not call `tokenStore.clear()` directly.",
+        "tags": {
+          "returns": [
+            "The full application shell with sidebar and page content area."
+          ]
+        }
+      },
+      "internalHelpers": [
+        {
+          "name": "handleLogout",
+          "returnType": "unknown",
+          "jsDoc": null
+        },
+        {
+          "name": "renderNav",
+          "returnType": "unknown",
+          "jsDoc": null
+        },
+        {
+          "name": "renderAuthButton",
+          "returnType": "unknown",
+          "jsDoc": null
+        }
+      ],
+      "effects": [
+        {
+          "deps": [
+            "collapsed"
+          ],
+          "isMount": false
+        }
+      ],
+      "viewPanels": [],
+      "jsxRootElements": [
+        "Button",
+        "Menu",
+        "ThemeToggle",
+        "NavLink",
+        "PanelLeftOpen",
+        "PanelLeftClose",
+        "Outlet",
+        "Offcanvas"
+      ],
+      "hooksUsed": [
+        "useNavigate",
+        "useAuth",
+        "useState",
+        "useEffect",
+        "useMemo"
+      ],
+      "file": "src/shared/layout/Navbar.tsx",
+      "fileName": "Navbar.tsx",
+      "imports": [
+        {
+          "source": "lucide-react",
+          "specifiers": [
+            "Home",
+            "Info",
+            "Plus",
+            "Menu",
+            "PanelLeftClose",
+            "PanelLeftOpen",
+            "LogIn",
+            "LogOut"
+          ]
+        },
+        {
+          "source": "react",
+          "specifiers": [
+            "useEffect",
+            "useMemo",
+            "useState"
+          ]
+        },
+        {
+          "source": "react-bootstrap",
+          "specifiers": [
+            "Button",
+            "Offcanvas"
+          ]
+        },
+        {
+          "source": "react-router-dom",
+          "specifiers": [
+            "NavLink",
+            "Outlet",
+            "useNavigate"
+          ]
+        },
+        {
+          "source": "../auth/useAuth",
+          "specifiers": [
+            "useAuth"
+          ]
+        },
+        {
+          "source": "../auth/tokens",
+          "specifiers": [
+            "tokenStore"
+          ]
+        },
+        {
+          "source": "../theme/ThemeToggle",
+          "specifiers": [
+            "ThemeToggle"
+          ]
+        }
+      ]
+    },
+    "ThemeToggle": {
+      "name": "ThemeToggle",
+      "isComponent": true,
+      "isHook": false,
+      "isDefault": true,
+      "jsDoc": {
+        "description": "Toggles the application's Bootstrap light/dark theme. On each render the selected theme is written to `localStorage` and applied to `document.documentElement` via the `data-bs-theme` attribute so Bootstrap picks up the correct color tokens globally.",
+        "tags": {
+          "returns": [
+            "A button that switches between light and dark mode."
+          ]
+        }
+      },
+      "internalHelpers": [
+        {
+          "name": "handleToggleTheme",
+          "returnType": "unknown",
+          "jsDoc": null
+        }
+      ],
+      "effects": [
+        {
+          "deps": [
+            "theme"
+          ],
+          "isMount": false
+        }
+      ],
+      "viewPanels": [],
+      "jsxRootElements": [],
+      "hooksUsed": [
+        "useState",
+        "useEffect"
+      ],
+      "file": "src/shared/theme/ThemeToggle.tsx",
+      "fileName": "ThemeToggle.tsx",
+      "imports": [
+        {
+          "source": "react",
+          "specifiers": [
+            "useEffect",
+            "useState"
+          ]
+        }
+      ]
+    }
+  }
+}

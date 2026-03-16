@@ -1,0 +1,2712 @@
+﻿===== manage.py =====
+#!/usr/bin/env python
+"""Django's command-line utility for administrative tasks."""
+import os
+import sys
+
+
+def main():
+    """Run administrative tasks."""
+    os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")
+    try:
+        from django.core.management import execute_from_command_line
+    except ImportError as exc:
+        raise ImportError(
+            "Couldn't import Django. Are you sure it's installed and "
+            "available on your PYTHONPATH environment variable? Did you "
+            "forget to activate a virtual environment?"
+        ) from exc
+    execute_from_command_line(sys.argv)
+
+
+if __name__ == "__main__":
+    main()
+
+
+===== api\admin.py =====
+from django.contrib import admin
+from .models import Employee, Manager, Project
+
+
+@admin.register(Project)
+class ProjectAdmin(admin.ModelAdmin):
+    list_display = ("name", "status", "security_level", "manager", "start_date", "end_date", "modified")
+    list_filter = ("status", "security_level")
+    search_fields = ("name", "comments")
+    ordering = ("-modified",)
+    filter_horizontal = ("employees",)
+
+
+@admin.register(Manager)
+class ManagerAdmin(admin.ModelAdmin):
+    list_display = ("name", "created", "modified")
+    search_fields = ("name",)
+    ordering = ("name",)
+
+
+@admin.register(Employee)
+class EmployeeAdmin(admin.ModelAdmin):
+    list_display = ("last_name", "first_name", "email", "created")
+    search_fields = ("first_name", "last_name", "email")
+    ordering = ("last_name", "first_name")
+
+
+===== api\apps.py =====
+from django.apps import AppConfig
+
+
+class ApiConfig(AppConfig):
+    default_auto_field = 'django.db.models.BigAutoField'
+    name = 'api'
+
+
+===== api\auth_views.py =====
+import os
+
+from django.conf import settings
+from rest_framework import status
+from rest_framework.permissions import AllowAny
+from rest_framework.response import Response
+from rest_framework.views import APIView
+from rest_framework_simplejwt.exceptions import TokenError
+from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
+
+
+def _cookie_settings():
+    return {
+        "httponly": True,
+        "secure": not settings.DEBUG,
+        "samesite": os.getenv("JWT_COOKIE_SAMESITE", "Lax"),
+        "path": "/api/auth/",
+    }
+
+
+class HybridTokenObtainPairView(TokenObtainPairView):
+    """Login endpoint.
+
+    Always returns {access, refresh} in the JSON response.
+    If DJANGO_AUTH_REFRESH_COOKIE=1, also sets the refresh token as an HttpOnly cookie.
+    """
+
+    def finalize_response(self, request, response, *args, **kwargs):
+        response = super().finalize_response(request, response, *args, **kwargs)
+
+        if getattr(settings, "AUTH_REFRESH_COOKIE_ENABLED", False) and isinstance(response.data, dict):
+            refresh = response.data.get("refresh")
+            if refresh:
+                response.set_cookie(
+                    "refresh_token",
+                    refresh,
+                    **_cookie_settings(),
+                )
+                # In cookie mode, you may choose NOT to return refresh in the body.
+                # Keeping it for backward compatibility; frontend can ignore it.
+        return response
+
+
+class HybridTokenRefreshView(TokenRefreshView):
+    """Refresh endpoint.
+
+    Supports two modes:
+      - Body mode (default): expects {"refresh": "..."} in the request body.
+      - Cookie mode: if "refresh" is missing, uses HttpOnly cookie "refresh_token".
+    """
+
+    def post(self, request, *args, **kwargs):
+        if getattr(settings, "AUTH_REFRESH_COOKIE_ENABLED", False) and "refresh" not in request.data:
+            cookie_refresh = request.COOKIES.get("refresh_token")
+            if cookie_refresh:
+                request.data["refresh"] = cookie_refresh
+
+        response = super().post(request, *args, **kwargs)
+
+        # If rotation is enabled and the response contains a new refresh token, update the cookie.
+        if getattr(settings, "AUTH_REFRESH_COOKIE_ENABLED", False) and isinstance(response.data, dict):
+            new_refresh = response.data.get("refresh")
+            if new_refresh:
+                response.set_cookie("refresh_token", new_refresh, **_cookie_settings())
+
+        return response
+
+
+class HybridLogoutView(APIView):
+    """Logout endpoint.
+
+    Blacklists the refresh token so it cannot be reused after logout,
+    then clears the refresh cookie (cookie mode) and returns a success response.
+
+    FIX: The previous implementation extended TokenRefreshView and only cleared
+    the cookie without blacklisting the token. This meant a stolen refresh token
+    remained valid until it naturally expired, even after the user logged out.
+
+    Now:
+    - Accepts the refresh token from the cookie (cookie mode) or request body (local mode).
+    - Blacklists the token via SimpleJWT's token_blacklist app.
+    - Clears the refresh cookie regardless of mode.
+    - Returns 200 on success, 400 if no token was provided, 401 if the token
+      is already invalid or expired.
+
+    Requirements:
+    - rest_framework_simplejwt.token_blacklist must be in INSTALLED_APPS.
+    - ROTATE_REFRESH_TOKENS and BLACKLIST_AFTER_ROTATION should be True in SIMPLE_JWT.
+      Both are already set in settings.py.
+    """
+
+    permission_classes = [AllowAny]
+
+    def post(self, request, *args, **kwargs):
+        # Resolve the refresh token from cookie (cookie mode) or request body (local mode).
+        refresh_token = (
+            request.COOKIES.get("refresh_token")
+            or request.data.get("refresh")
+        )
+
+        if not refresh_token:
+            return Response(
+                {"detail": "No refresh token provided."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            # Blacklist the token so it cannot be reused.
+            # This works because token_blacklist is in INSTALLED_APPS and
+            # BLACKLIST_AFTER_ROTATION=True is set in SIMPLE_JWT.
+            token = RefreshToken(refresh_token)
+            token.blacklist()
+        except TokenError:
+            # Token is already expired or invalid — still clear the cookie
+            # so the client ends up in a clean logged-out state.
+            pass
+
+        res = Response({"ok": True}, status=status.HTTP_200_OK)
+        res.delete_cookie("refresh_token", path="/api/auth/")
+        return res
+
+
+===== api\models.py =====
+from django.db import models
+
+
+class Manager(models.Model):
+    """
+    Renamed from ProjectManager to avoid collision with Django's Model Manager
+    convention (e.g. MyModel.objects is a Manager instance). Having a *model*
+    named ProjectManager confused Django tooling and every developer reading
+    the code expecting a custom queryset manager, not a data model.
+
+    SAFETY NOTE — "Manager" vs Django's built-in manager class:
+    Django's built-in manager is never imported by name in application code.
+    It is always accessed as an attribute (e.g. Project.objects, which is a
+    Manager instance). Naming this model "Manager" is therefore safe — there
+    is no import-level collision. If a future developer is concerned, the
+    alternative names are ProjectLead or ProjectOwner, but renaming would
+    require a new migration and API contract change for no practical benefit.
+    """
+    name = models.CharField(unique=True, max_length=100)
+    created = models.DateTimeField(auto_now_add=True)
+    modified = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return self.name
+
+
+class Employee(models.Model):
+    """
+    Renamed from Employees to follow Django's singular model name convention.
+    Django derives table names, reverse relations, and verbose names from the
+    model class name — plural model names produce awkward results like
+    'Employeess' in some contexts and confusing reverse relation names.
+    """
+    first_name = models.CharField(max_length=100)
+    last_name = models.CharField(max_length=100)
+    email = models.EmailField(unique=True)
+    created = models.DateTimeField(auto_now_add=True)
+    modified = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.first_name} {self.last_name}"
+
+
+class Project(models.Model):
+    class SecurityLevel(models.TextChoices):
+        PUBLIC = "Public", "Public"
+        INTERNAL = "Internal", "Internal"
+        CONFIDENTIAL = "Confidential", "Confidential"
+        RESTRICTED = "Restricted", "Restricted"
+
+    class Status(models.TextChoices):
+        """
+        Enforced status choices prevent free-text values from breaking
+        frontend filters and keeps the data consistent across the app.
+
+        To add a new status: add it here and create a migration.
+        Do not store raw strings in the database directly.
+        """
+        ACTIVE = "Active", "Active"
+        ON_HOLD = "On Hold", "On Hold"
+        COMPLETED = "Completed", "Completed"
+        CANCELLED = "Cancelled", "Cancelled"
+
+    security_level = models.CharField(
+        max_length=20,
+        choices=SecurityLevel.choices,
+        default=SecurityLevel.INTERNAL,
+    )
+    name = models.CharField(unique=True, max_length=100)
+    employees = models.ManyToManyField(
+        Employee,
+        blank=True,
+        related_name="projects",
+    )
+
+    # REMARK: Renamed database/ORM field from `projectmanager` to `manager`
+    # for a cleaner domain model and API contract.
+    manager = models.ForeignKey(
+        Manager,
+        on_delete=models.SET_NULL,
+        blank=True,
+        null=True,
+    )
+
+    start_date = models.DateField()
+    end_date = models.DateField()
+    comments = models.CharField(max_length=500, blank=True, null=True)
+    status = models.CharField(
+        max_length=20,
+        choices=Status.choices,
+        default=Status.ACTIVE,
+    )
+    created = models.DateTimeField(auto_now_add=True)
+    modified = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return self.name
+
+===== api\pagination.py =====
+"""
+Custom DRF pagination classes.
+
+Kept in a dedicated module so settings.py can reference them via
+DEFAULT_PAGINATION_CLASS without importing api.views, which would
+cause a circular import at Django startup.
+"""
+
+from rest_framework.pagination import PageNumberPagination
+
+
+class ProjectPagination(PageNumberPagination):
+    """
+    Pagination for the project list endpoint.
+
+    - Default page size comes from settings (DRF_PAGE_SIZE env var, default 50).
+    - Clients can override per-request via ?page_size=N.
+    - Hard cap of 200 prevents runaway queries from large page_size values.
+
+    page_size_query_param must be set explicitly — the DRF base class leaves it
+    as None by design, which means ?page_size is silently ignored without this.
+    """
+    page_size_query_param = "page_size"
+    max_page_size = 200
+
+
+class NoPagination(PageNumberPagination):
+    """
+    Disables pagination for lookup endpoints (managers, employees).
+
+    These are used to populate form dropdowns and always need the full list.
+    Paginating them would mean the dropdown silently shows only the first page.
+    """
+    page_size = None
+
+===== api\serializers.py =====
+from rest_framework import serializers
+from .models import Employee, Manager, Project
+
+
+class ManagerSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Manager
+        fields = ("id", "name")
+
+
+class EmployeeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Employee
+        fields = ("id", "first_name", "last_name", "email")
+
+
+# ---------------------------------------------------------------------------
+# Split read / write serializers for Project
+# ---------------------------------------------------------------------------
+#
+# Why split:
+# - Read (GET): the frontend needs human-readable names for display in the
+#   Home table and Edit form pre-population. Returning raw IDs forces the
+#   frontend to do a second lookup or maintain its own ID→name map.
+# - Write (POST/PUT/PATCH): the frontend submits IDs from select dropdowns,
+#   so PrimaryKeyRelatedField is still the correct write representation.
+#
+# The viewset uses get_serializer_class() to select the right one per action.
+# ---------------------------------------------------------------------------
+
+class ProjectReadSerializer(serializers.ModelSerializer):
+    """
+    Used for GET (list + detail).
+    Returns nested objects for manager and employees so the frontend
+    gets names directly without additional lookups.
+    """
+    employees = EmployeeSerializer(many=True, read_only=True)
+
+    # REMARK: Renamed serializer field from `projectmanager` to `manager`.
+    manager = ManagerSerializer(read_only=True)
+
+    class Meta:
+        model = Project
+        fields = (
+            "id",
+            "name",
+            "manager",
+            "start_date",
+            "employees",
+            "end_date",
+            "comments",
+            "status",
+            "security_level",
+        )
+
+
+class ProjectWriteSerializer(serializers.ModelSerializer):
+    """
+    Used for POST, PUT, PATCH.
+    Accepts IDs for manager and employees, matching what the frontend
+    dropdowns submit.
+    """
+    employees = serializers.PrimaryKeyRelatedField(
+        many=True,
+        queryset=Employee.objects.all(),
+    )
+
+    # REMARK: Renamed write field from `projectmanager` to `manager`.
+    manager = serializers.PrimaryKeyRelatedField(
+        queryset=Manager.objects.all(),
+        required=False,
+        allow_null=True,
+    )
+
+    # Declared explicitly so that omitting `comments` from the payload never
+    # produces NULL at the DB level — the field default ensures an empty string
+    # is used when the key is absent entirely.
+    comments = serializers.CharField(required=False, default="", allow_blank=True)
+
+    class Meta:
+        model = Project
+        fields = (
+            "id",
+            "name",
+            "manager",
+            "start_date",
+            "employees",
+            "end_date",
+            "comments",
+            "status",
+            "security_level",
+        )
+
+    def validate_name(self, value):
+        """
+        Normalize the project name so the API does not accept whitespace-only
+        values or store accidental leading/trailing spaces.
+        """
+        normalized = value.strip()
+
+        if not normalized:
+            raise serializers.ValidationError("Project name cannot be blank.")
+
+        return normalized
+
+    def validate_comments(self, value):
+        """
+        Normalize comments so whitespace-only input does not get stored as
+        meaningful text. Returns empty string instead of None now that the
+        field no longer allows NULL at the database level.
+        """
+        if value is None:
+            return ""
+
+        return value.strip()
+
+    def validate(self, attrs):
+        """
+        Enforce cross-field business rules for both create and update flows,
+        including PATCH requests where some values may come from the instance.
+        """
+        start_date = attrs.get("start_date", getattr(self.instance, "start_date", None))
+        end_date = attrs.get("end_date", getattr(self.instance, "end_date", None))
+
+        if start_date and end_date and end_date < start_date:
+            raise serializers.ValidationError({
+                "end_date": "End date cannot be before start date."
+            })
+
+        return attrs
+
+    def create(self, validated_data):
+        employees = validated_data.pop("employees", [])
+        project = super().create(validated_data)
+        project.employees.set(employees)
+        return project
+
+    def update(self, instance, validated_data):
+        employees = validated_data.pop("employees", None)
+        instance = super().update(instance, validated_data)
+
+        if employees is not None:
+            instance.employees.set(employees)
+
+        return instance
+
+===== api\tests.py =====
+from django.test import TestCase
+
+# Create your tests here.
+
+
+===== api\urls.py =====
+from django.urls import path
+from rest_framework.routers import DefaultRouter
+from .views import EmployeeViewset, ManagerViewset, ProjectViewset, me
+
+router = DefaultRouter()
+router.register("projects", ProjectViewset, basename="project")
+router.register("managers", ManagerViewset, basename="manager")
+router.register("employees", EmployeeViewset, basename="employee")
+
+urlpatterns = [
+    path("me/", me, name="me"),
+]
+
+urlpatterns += router.urls
+
+
+===== api\views.py =====
+from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework import filters, permissions, viewsets
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+
+from .models import Employee, Manager, Project
+from .pagination import NoPagination, ProjectPagination
+from .serializers import (
+    EmployeeSerializer,
+    ManagerSerializer,
+    ProjectReadSerializer,
+    ProjectWriteSerializer,
+)
+
+
+class ManagerViewset(viewsets.ReadOnlyModelViewSet):
+    permission_classes = [permissions.IsAuthenticated]
+    queryset = Manager.objects.all().order_by("name")
+    serializer_class = ManagerSerializer
+    pagination_class = NoPagination
+    # Explicitly opt out of global filter backends — these are simple lookup
+    # endpoints that return all records and do not support filtering or search.
+    filter_backends = []
+
+
+class EmployeeViewset(viewsets.ReadOnlyModelViewSet):
+    permission_classes = [permissions.IsAuthenticated]
+    queryset = (
+        Employee.objects
+        .all()
+        .order_by("last_name", "first_name")
+    )
+    serializer_class = EmployeeSerializer
+    pagination_class = NoPagination
+    # Explicitly opt out of global filter backends — same reasoning as
+    # ManagerViewset above.
+    filter_backends = []
+
+
+class ProjectViewset(viewsets.ModelViewSet):
+    """
+    Full CRUD viewset for projects.
+
+    List behavior:
+    - Pagination:  DRF PageNumberPagination via settings (PAGE_SIZE=50).
+                   Use ?page=N and ?page_size=N query params.
+    - Filtering:   ?status=Active  ?security_level=Confidential
+    - Search:      ?search=keyword  (searches name and comments)
+    - Ordering:    ?ordering=name  ?ordering=-start_date
+                   Allowed fields: name, status, start_date, end_date,
+                   security_level, modified
+
+    Serializers:
+    - GET  (list, retrieve): ProjectReadSerializer — nested objects for
+      manager and employees so the frontend gets names directly.
+    - POST/PUT/PATCH/DELETE: ProjectWriteSerializer — accepts IDs from
+      the frontend dropdowns.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+    pagination_class = ProjectPagination
+    queryset = (
+        Project.objects
+        .select_related("manager")
+        .prefetch_related("employees")
+        .order_by("-modified")
+    )
+
+    filter_backends = [
+        DjangoFilterBackend,
+        filters.SearchFilter,
+        filters.OrderingFilter,
+    ]
+    filterset_fields = ["status", "security_level"]
+    search_fields = ["name", "comments"]
+    ordering_fields = ["name", "status", "start_date", "end_date", "security_level", "modified"]
+    ordering = ["-modified"]
+
+    def get_serializer_class(self):
+        """
+        Returns the appropriate serializer based on the HTTP action.
+
+        Read actions (list, retrieve) → ProjectReadSerializer
+        Write actions (create, update, partial_update, destroy) → ProjectWriteSerializer
+        """
+        if self.action in ("list", "retrieve"):
+            return ProjectReadSerializer
+        return ProjectWriteSerializer
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def me(request):
+    return Response({
+        "id": request.user.id,
+        "username": request.user.username,
+        "email": request.user.email,
+    })
+
+===== api\__init__.py =====
+
+
+===== api\management\__init__.py =====
+
+
+===== api\management\commands\seed_projects.py =====
+"""
+Management command to seed the database with 50 sample projects.
+
+Usage:
+    python manage.py seed_projects
+
+Options:
+    --count N     Number of projects to create (default: 50)
+    --clear       Delete all existing projects first
+
+Requires at least one Manager and one Employee to already exist.
+If none exist, the command creates placeholder records automatically.
+"""
+
+import random
+from datetime import date, timedelta
+
+from django.core.management.base import BaseCommand
+
+from api.models import Employee, Manager, Project
+
+
+PROJECT_NAMES = [
+    "Cloud Migration Initiative", "Customer Portal Redesign", "Data Warehouse Upgrade",
+    "Mobile App Launch", "ERP System Integration", "Security Audit 2025",
+    "API Gateway Rollout", "HR Self-Service Platform", "Compliance Dashboard",
+    "DevOps Pipeline Modernisation", "Legacy System Decommission", "SSO Implementation",
+    "Real-Time Analytics Platform", "Supply Chain Optimisation", "Partner Integration Hub",
+    "Internal Wiki Migration", "Disaster Recovery Overhaul", "Payment Gateway Upgrade",
+    "Onboarding Automation", "Network Infrastructure Refresh", "AI Document Processing",
+    "Customer Success Tooling", "Multi-Region Deployment", "Zero-Trust Security Rollout",
+    "Performance Monitoring Stack", "Data Privacy Compliance", "Product Catalogue Service",
+    "Reporting Engine Rebuild", "Identity Provider Migration", "Secrets Management Overhaul",
+    "Microservices Decomposition", "Load Balancer Upgrade", "Database Sharding Project",
+    "Frontend Design System", "Search Infrastructure", "Message Queue Migration",
+    "Container Orchestration", "Cost Optimisation Initiative", "SLA Dashboard",
+    "Vendor Management Portal", "Internal Hackathon Platform", "Documentation Overhaul",
+    "Automated Testing Framework", "Feature Flag Service", "Audit Log Pipeline",
+    "Rate Limiting Service", "Notification Service Rebuild", "Billing System Migration",
+    "Observability Platform", "Release Automation Tooling",
+]
+
+COMMENTS = [
+    "Stakeholder review scheduled for next quarter.",
+    "Pending approval from the infrastructure team.",
+    "Cross-functional team — coordinate with DevOps and Security.",
+    "Budget confirmed. Kickoff meeting booked.",
+    "Dependencies on the SSO project must be resolved first.",
+    "Third-party vendor assessment in progress.",
+    "Phase 1 complete. Phase 2 scoping underway.",
+    "Blocked pending legal sign-off on data handling.",
+    "High priority — executive sponsor assigned.",
+    None,  # some projects have no comments
+    None,
+    None,
+]
+
+STATUSES = ["Active", "On Hold", "Completed", "Cancelled"]
+STATUS_WEIGHTS = [0.45, 0.25, 0.20, 0.10]  # realistic distribution
+
+SECURITY_LEVELS = ["Public", "Internal", "Confidential", "Restricted"]
+SECURITY_WEIGHTS = [0.10, 0.50, 0.30, 0.10]
+
+
+def random_date(start: date, end: date) -> date:
+    delta = (end - start).days
+    return start + timedelta(days=random.randint(0, max(delta, 0)))
+
+
+class Command(BaseCommand):
+    help = "Seed the database with sample projects for development and testing."
+
+    def add_arguments(self, parser):
+        parser.add_argument(
+            "--count",
+            type=int,
+            default=50,
+            help="Number of projects to create (default: 50)",
+        )
+        parser.add_argument(
+            "--clear",
+            action="store_true",
+            help="Delete all existing projects before seeding (managers and employees are kept)",
+        )
+        parser.add_argument(
+            "--clear-all",
+            action="store_true",
+            help="Delete all existing projects, managers, and employees before seeding",
+        )
+
+    def handle(self, *args, **options):
+        count = options["count"]
+
+        if options["clear_all"]:
+            p, _ = Project.objects.all().delete()
+            m, _ = Manager.objects.all().delete()
+            e, _ = Employee.objects.all().delete()
+            self.stdout.write(self.style.WARNING(
+                f"Deleted {p} projects, {m} managers, {e} employees."
+            ))
+        elif options["clear"]:
+            deleted, _ = Project.objects.all().delete()
+            self.stdout.write(self.style.WARNING(f"Deleted {deleted} existing projects."))
+
+        # Ensure we have at least one manager and one employee to assign
+        managers = list(Manager.objects.all())
+        if not managers:
+            self.stdout.write("No managers found — creating seed managers.")
+            seed_managers = [
+                "Alice Johnson", "Bob Martinez", "Carol Stevens",
+                "David Okafor", "Elena Rossi", "Frank Nguyen",
+            ]
+            managers = [Manager.objects.create(name=name) for name in seed_managers]
+            self.stdout.write(f"  Created {len(managers)} managers.")
+
+        employees = list(Employee.objects.all())
+        if not employees:
+            self.stdout.write("No employees found — creating seed employees.")
+            seed_employees = [
+                ("Dan",     "Hughes",   "dan.hughes@example.com"),
+                ("Eva",     "Clark",    "eva.clark@example.com"),
+                ("Frank",   "Nguyen",   "frank.nguyen@example.com"),
+                ("Grace",   "Lee",      "grace.lee@example.com"),
+                ("Henry",   "Patel",    "henry.patel@example.com"),
+                ("Isabel",  "Torres",   "isabel.torres@example.com"),
+                ("James",   "Wu",       "james.wu@example.com"),
+                ("Karen",   "Osei",     "karen.osei@example.com"),
+                ("Liam",    "Brennan",  "liam.brennan@example.com"),
+                ("Maya",    "Singh",    "maya.singh@example.com"),
+                ("Nathan",  "Brooks",   "nathan.brooks@example.com"),
+                ("Olivia",  "Ferreira", "olivia.ferreira@example.com"),
+                ("Paul",    "Yamamoto", "paul.yamamoto@example.com"),
+                ("Quinn",   "Adeyemi",  "quinn.adeyemi@example.com"),
+                ("Rachel",  "Kim",      "rachel.kim@example.com"),
+            ]
+            employees = [
+                Employee.objects.create(first_name=f, last_name=l, email=e)
+                for f, l, e in seed_employees
+            ]
+            self.stdout.write(f"  Created {len(employees)} employees.")
+
+        # Shuffle names so repeated runs produce different orderings
+        available_names = PROJECT_NAMES.copy()
+        random.shuffle(available_names)
+
+        # If count > 50, append numbered extras
+        while len(available_names) < count:
+            available_names.append(f"Project Initiative {len(available_names) + 1}")
+
+        created = 0
+        skipped = 0
+
+        for i in range(count):
+            name = available_names[i]
+
+            # Skip if a project with this name already exists
+            if Project.objects.filter(name=name).exists():
+                skipped += 1
+                continue
+
+            status = random.choices(STATUSES, weights=STATUS_WEIGHTS)[0]
+            security_level = random.choices(SECURITY_LEVELS, weights=SECURITY_WEIGHTS)[0]
+
+            # Generate plausible start/end date pairs
+            today = date.today()
+            if status == "Completed":
+                start = random_date(today - timedelta(days=730), today - timedelta(days=90))
+                end = random_date(start + timedelta(days=30), start + timedelta(days=365))
+            elif status == "Cancelled":
+                start = random_date(today - timedelta(days=365), today)
+                end = random_date(start + timedelta(days=30), start + timedelta(days=180))
+            elif status == "Active":
+                start = random_date(today - timedelta(days=180), today)
+                end = random_date(today + timedelta(days=30), today + timedelta(days=365))
+            else:  # On Hold
+                start = random_date(today - timedelta(days=365), today)
+                end = random_date(today + timedelta(days=30), today + timedelta(days=540))
+
+            # FIX: renamed field from `projectmanager` to `manager` to match
+            # the updated Project model in api/models.py.
+            project = Project.objects.create(
+                name=name,
+                status=status,
+                security_level=security_level,
+                start_date=start,
+                end_date=end,
+                comments=random.choice(COMMENTS),
+                manager=random.choice(managers),
+            )
+            # Assign 1–4 random employees
+            project.employees.set(random.sample(employees, k=min(random.randint(1, 4), len(employees))))
+
+            created += 1
+
+        self.stdout.write(
+            self.style.SUCCESS(
+                f"Done. Created {created} projects" +
+                (f", skipped {skipped} (name already exists)." if skipped else ".")
+            )
+        )
+
+===== api\management\commands\__init__.py =====
+
+
+===== api\tests\conftest.py =====
+import pytest
+from django.contrib.auth import get_user_model
+from django.core.cache import cache
+from rest_framework.test import APIClient
+
+TEST_USERNAME = "User1"
+TEST_PASSWORD = "password1"
+
+
+@pytest.fixture
+def creds():
+    return {"username": TEST_USERNAME, "password": TEST_PASSWORD}
+
+
+@pytest.fixture
+def user(db, creds):
+    User = get_user_model()
+    return User.objects.create_user(username=creds["username"], password=creds["password"])
+
+
+@pytest.fixture
+def api_client():
+    return APIClient()
+
+
+@pytest.fixture
+def auth_client(api_client, user, creds):
+    r = api_client.post("/api/auth/login/", creds, format="json")
+    assert r.status_code == 200, r.data
+    api_client.credentials(HTTP_AUTHORIZATION=f"Bearer {r.data['access']}")
+    return api_client
+
+
+@pytest.fixture(autouse=True)
+def disable_throttling(request, settings):
+    """
+    Disables DRF throttling for all tests except those marked with
+    @pytest.mark.throttle_test.
+
+    Also clears the cache before each non-throttle test so that any
+    throttle counts accumulated by a previous throttle_test run do not
+    bleed through and cause spurious 429s.
+    """
+    if request.node.get_closest_marker("throttle_test"):
+        return
+
+    # Clear any throttle counts left by a previous test
+    cache.clear()
+
+    # Disable throttling via settings
+    settings.REST_FRAMEWORK["DEFAULT_THROTTLE_CLASSES"] = []
+
+    # Also reset the view-level patch in case a throttle test left it set.
+    # Import here to avoid circular imports at module load time.
+    from rest_framework_simplejwt.views import TokenObtainPairView
+    TokenObtainPairView.throttle_classes = []
+
+===== api\tests\test_auth.py =====
+import pytest
+from django.contrib.auth import get_user_model
+from rest_framework.test import APIClient
+
+@pytest.mark.django_db
+def test_login_and_me_ok():
+    User = get_user_model()
+    User.objects.create_user(username="User1", password="password1")
+
+    client = APIClient()
+
+    # Force JSON by setting content_type explicitly (works even if format is ignored)
+    r = client.post(
+        "/api/auth/login/",
+        {"username": "User1", "password": "password1"},
+        format="json",
+    )
+
+    assert r.status_code == 200, r.data  # show response details if it fails
+    access = r.data["access"]
+
+    client.credentials(HTTP_AUTHORIZATION=f"Bearer {access}")
+    r2 = client.get("/api/me/")
+    assert r2.status_code == 200
+    assert r2.data["username"] == "User1"
+
+===== api\tests\test_auth_throttle.py =====
+import pytest
+from django.core.cache import cache
+from rest_framework.throttling import AnonRateThrottle
+from rest_framework_simplejwt.views import TokenObtainPairView
+
+
+@pytest.mark.throttle_test
+@pytest.mark.django_db
+class TestLoginThrottle:
+    """
+    Verifies that the login endpoint rate-limits excessive requests.
+
+    Marked with @pytest.mark.throttle_test so the global disable_throttling
+    fixture in conftest.py skips this class.
+
+    DRF reads throttle_classes from the view instance rather than from
+    settings at request time, so we patch the view directly rather than
+    relying on settings overrides which DRF may not pick up dynamically.
+    """
+
+    LOGIN_URL = "/api/auth/login/"
+    BAD_CREDS = {"username": "nobody", "password": "wrongpassword"}
+
+    def _post(self, api_client):
+        return api_client.post(self.LOGIN_URL, self.BAD_CREDS, format="json")
+
+    @pytest.fixture(autouse=True)
+    def override_throttle(self, settings):
+        """
+        Patches the login view's throttle_classes directly and uses a real
+        in-memory cache so throttle counts actually accumulate.
+
+        Clears the cache before and after each test, and fully restores
+        CACHES so the locmem backend does not bleed into subsequent tests
+        that rely on the default dummy cache.
+        """
+        # Snapshot the original cache config so we can restore it exactly
+        import copy
+        original_caches = copy.deepcopy(settings.CACHES)
+
+        # Use a real cache backend so throttle counts are tracked
+        settings.CACHES = {
+            "default": {
+                "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+            }
+        }
+
+        # Set a low rate so we only need 5 requests to trigger throttling
+        settings.REST_FRAMEWORK["DEFAULT_THROTTLE_RATES"]["anon"] = "5/min"
+
+        # Patch the throttle class directly onto the view so DRF sees it
+        # immediately without relying on settings being re-read at request time
+        original_throttle_classes = TokenObtainPairView.throttle_classes
+        TokenObtainPairView.throttle_classes = [AnonRateThrottle]
+
+        # Clear any leftover throttle counts from previous tests
+        cache.clear()
+
+        yield
+
+        # Restore original state after the test — including CACHES so the
+        # locmem backend does not bleed throttle counts into other test files
+        TokenObtainPairView.throttle_classes = original_throttle_classes
+        cache.clear()
+        settings.CACHES = original_caches
+
+    def test_requests_below_limit_are_allowed(self, api_client):
+        """First 5 requests should get through (401 = bad creds, not throttled)."""
+        for _ in range(5):
+            response = self._post(api_client)
+            assert response.status_code == 401, (
+                f"Expected 401 (bad credentials), got {response.status_code}"
+            )
+
+    def test_request_over_limit_is_throttled(self, api_client):
+        """The 6th request should be blocked with 429."""
+        for _ in range(5):
+            self._post(api_client)
+
+        response = self._post(api_client)
+        assert response.status_code == 429, (
+            f"Expected 429 (throttled), got {response.status_code}"
+        )
+
+    def test_throttle_response_has_retry_after_header(self, api_client):
+        """429 response should include Retry-After so clients know when to retry."""
+        for _ in range(5):
+            self._post(api_client)
+
+        response = self._post(api_client)
+        assert response.status_code == 429
+        assert "Retry-After" in response, (
+            "Throttled response should include a Retry-After header"
+        )
+
+===== api\tests\test_jwt_refresh.py =====
+# api/tests/test_jwt_refresh.py
+import pytest
+from rest_framework.test import APIClient
+
+
+@pytest.mark.django_db
+def test_refresh_returns_new_access(user, creds):
+    client = APIClient()
+    login = client.post("/api/auth/login/", creds, format="json")
+    assert login.status_code == 200, getattr(login, "data", None)
+
+    refresh = login.data["refresh"]
+    r = client.post("/api/auth/refresh/", {"refresh": refresh}, format="json")
+    assert r.status_code == 200, getattr(r, "data", None)
+    assert "access" in r.data
+
+
+@pytest.mark.django_db
+def test_refresh_rejects_bad_token():
+    client = APIClient()
+    r = client.post("/api/auth/refresh/", {"refresh": "not-a-real-token"}, format="json")
+    assert r.status_code in (400, 401)
+
+===== api\tests\test_logout.py =====
+import pytest
+from rest_framework.test import APIClient
+
+"""
+Tests for HybridLogoutView.
+
+Covers:
+  - Logout blacklists the refresh token so it cannot be reused (the main fix)
+  - Logout with no token returns 400
+  - Logout with an already-expired/invalid token still returns 200 (best-effort)
+  - Logout clears the refresh cookie in cookie mode
+
+These tests specifically validate the fix to the Navbar logout bug where
+local mode bypassed the backend entirely, leaving the refresh token live
+on the server even after the user logged out.
+"""
+
+LOGOUT_URL = "/api/auth/logout/"
+LOGIN_URL = "/api/auth/login/"
+REFRESH_URL = "/api/auth/refresh/"
+
+
+@pytest.fixture
+def tokens(user, creds, api_client):
+    """Log in and return both access and refresh tokens."""
+    r = api_client.post(LOGIN_URL, creds, format="json")
+    assert r.status_code == 200, r.data
+    return {"access": r.data["access"], "refresh": r.data["refresh"]}
+
+
+@pytest.mark.django_db
+def test_logout_blacklists_refresh_token(tokens, api_client):
+    """
+    Core fix test: after logout the refresh token must be unusable.
+
+    This is the exact scenario the Navbar bug allowed to slip through —
+    the frontend cleared local state but the token stayed valid server-side,
+    meaning anyone with a copy of the refresh token could still obtain new
+    access tokens.
+    """
+    refresh = tokens["refresh"]
+
+    # Logout — send the refresh token in the body (local mode)
+    r = api_client.post(LOGOUT_URL, {"refresh": refresh}, format="json")
+    assert r.status_code == 200, r.data
+
+    # Attempting to use the same refresh token must now fail
+    r2 = api_client.post(REFRESH_URL, {"refresh": refresh}, format="json")
+    assert r2.status_code in (400, 401), (
+        f"Blacklisted refresh token should be rejected, got {r2.status_code}: {r2.data}"
+    )
+
+
+@pytest.mark.django_db
+def test_logout_returns_200_on_success(tokens, api_client):
+    """Successful logout returns 200 with ok: true."""
+    r = api_client.post(LOGOUT_URL, {"refresh": tokens["refresh"]}, format="json")
+    assert r.status_code == 200
+    assert r.data.get("ok") is True
+
+
+@pytest.mark.django_db
+def test_logout_with_no_token_returns_400(api_client, user):
+    """
+    Logout with no token in body and no cookie must return 400.
+    The endpoint should not silently succeed when there is nothing to blacklist.
+    """
+    r = api_client.post(LOGOUT_URL, {}, format="json")
+    assert r.status_code == 400
+
+
+@pytest.mark.django_db
+def test_logout_with_invalid_token_still_returns_200(api_client, user):
+    """
+    Logout with an already-expired or garbage token returns 200.
+
+    The backend catches TokenError and proceeds — the goal is to always
+    leave the client in a clean logged-out state even if the token is stale.
+    This matches the best-effort design in HybridLogoutView.
+    """
+    r = api_client.post(LOGOUT_URL, {"refresh": "not-a-real-token"}, format="json")
+    assert r.status_code == 200
+
+
+@pytest.mark.django_db
+def test_logout_refresh_token_cannot_get_new_access_after_rotation(tokens, api_client):
+    """
+    Verify that token rotation + blacklisting work together correctly.
+
+    Flow:
+      1. Login → get refresh_A
+      2. Refresh → get access_B + refresh_B (refresh_A is now blacklisted by rotation)
+      3. Logout with refresh_B → refresh_B is blacklisted
+      4. refresh_A must also be rejected (it was already blacklisted in step 2)
+      5. refresh_B must be rejected (blacklisted in step 3)
+    """
+    refresh_a = tokens["refresh"]
+
+    # Step 2: rotate — refresh_A becomes blacklisted, we get refresh_B
+    r = api_client.post(REFRESH_URL, {"refresh": refresh_a}, format="json")
+    assert r.status_code == 200, r.data
+    refresh_b = r.data["refresh"]
+
+    # Step 3: logout with refresh_B
+    r = api_client.post(LOGOUT_URL, {"refresh": refresh_b}, format="json")
+    assert r.status_code == 200
+
+    # Step 4: refresh_A already blacklisted by rotation
+    r = api_client.post(REFRESH_URL, {"refresh": refresh_a}, format="json")
+    assert r.status_code in (400, 401), f"refresh_A should be rejected, got {r.status_code}"
+
+    # Step 5: refresh_B blacklisted by logout
+    r = api_client.post(REFRESH_URL, {"refresh": refresh_b}, format="json")
+    assert r.status_code in (400, 401), f"refresh_B should be rejected, got {r.status_code}"
+
+===== api\tests\test_projects_crud.py =====
+"""
+End-to-end CRUD tests for the Project API.
+
+Covers: create, list, retrieve, full update (PUT), partial update (PATCH),
+and delete. Each operation is tested independently so a failure is localised
+to the specific action.
+"""
+
+import pytest
+from api.models import Employee, Manager
+
+
+@pytest.fixture
+def project_payload(db):
+    pm = Manager.objects.create(name="PM One")
+    e1 = Employee.objects.create(
+        first_name="EmpOne", last_name="One", email="empone@example.com"
+    )
+    e2 = Employee.objects.create(
+        first_name="EmpTwo", last_name="Two", email="emptwo@example.com"
+    )
+    return {
+        "name": "Test Project",
+        "start_date": "2025-01-01",
+        "end_date": "2026-02-25",
+        "status": "Active",
+        "security_level": "Internal",
+        "manager": pm.id,
+        "employees": [e1.id, e2.id],
+        "comments": "",
+    }
+
+
+@pytest.mark.django_db
+def test_project_crud(auth_client, project_payload):
+    create = auth_client.post("/api/projects/", project_payload, format="json")
+    assert create.status_code in (200, 201), getattr(create, "data", None)
+    project_id = create.data["id"]
+
+    lst = auth_client.get("/api/projects/")
+    assert lst.status_code == 200
+    assert "results" in lst.data
+    assert any(p["id"] == project_id for p in lst.data["results"])
+
+    update = auth_client.put(
+        f"/api/projects/{project_id}/",
+        {**project_payload, "status": "Completed"},
+        format="json",
+    )
+    assert update.status_code in (200, 202), getattr(update, "data", None)
+    assert update.data["status"] == "Completed"
+
+    delete = auth_client.delete(f"/api/projects/{project_id}/")
+    assert delete.status_code in (200, 202, 204)
+
+    get_deleted = auth_client.get(f"/api/projects/{project_id}/")
+    assert get_deleted.status_code == 404
+
+
+@pytest.mark.django_db
+def test_create_returns_201_and_id(auth_client, project_payload):
+    r = auth_client.post("/api/projects/", project_payload, format="json")
+    assert r.status_code in (200, 201)
+    assert "id" in r.data
+
+
+@pytest.mark.django_db
+def test_retrieve_returns_nested_objects(auth_client, project_payload):
+    create = auth_client.post("/api/projects/", project_payload, format="json")
+    project_id = create.data["id"]
+
+    r = auth_client.get(f"/api/projects/{project_id}/")
+    assert r.status_code == 200
+
+    pm = r.data.get("manager")
+    assert isinstance(pm, dict), (
+        f"Expected manager to be a nested object, got: {type(pm).__name__}"
+    )
+    assert "id" in pm
+
+    employees = r.data.get("employees", [])
+    assert isinstance(employees, list)
+    if employees:
+        assert isinstance(employees[0], dict)
+
+@pytest.mark.django_db
+def test_list_response_has_paginated_envelope(auth_client, project_payload):
+    auth_client.post("/api/projects/", project_payload, format="json")
+    r = auth_client.get("/api/projects/")
+    assert r.status_code == 200
+    for key in ("count", "next", "previous", "results"):
+        assert key in r.data
+
+@pytest.mark.django_db
+def test_put_updates_all_fields(auth_client, project_payload):
+    create = auth_client.post("/api/projects/", project_payload, format="json")
+    project_id = create.data["id"]
+
+    updated_payload = {**project_payload, "name": "Updated Name", "status": "On Hold"}
+    r = auth_client.put(f"/api/projects/{project_id}/", updated_payload, format="json")
+    assert r.status_code in (200, 202)
+    assert r.data["status"] == "On Hold"
+
+    get = auth_client.get(f"/api/projects/{project_id}/")
+    assert get.data["status"] == "On Hold"
+
+@pytest.mark.django_db
+def test_patch_updates_single_field(auth_client, project_payload):
+    create = auth_client.post("/api/projects/", project_payload, format="json")
+    project_id = create.data["id"]
+
+    r = auth_client.patch(
+        f"/api/projects/{project_id}/",
+        {"status": "Completed"},
+        format="json",
+    )
+    assert r.status_code in (200, 202), getattr(r, "data", None)
+    assert r.data["status"] == "Completed"
+
+    get = auth_client.get(f"/api/projects/{project_id}/")
+    assert get.data["name"] == project_payload["name"]
+    assert get.data["security_level"] == project_payload["security_level"]
+
+@pytest.mark.django_db
+def test_patch_invalid_status_rejected(auth_client, project_payload):
+    create = auth_client.post("/api/projects/", project_payload, format="json")
+    project_id = create.data["id"]
+
+    r = auth_client.patch(
+        f"/api/projects/{project_id}/",
+        {"status": "NotAStatus"},
+        format="json",
+    )
+    assert r.status_code == 400
+    assert "status" in r.data
+
+@pytest.mark.django_db
+def test_delete_removes_project(auth_client, project_payload):
+    create = auth_client.post("/api/projects/", project_payload, format="json")
+    project_id = create.data["id"]
+
+    delete = auth_client.delete(f"/api/projects/{project_id}/")
+    assert delete.status_code in (200, 202, 204)
+
+    get = auth_client.get(f"/api/projects/{project_id}/")
+    assert get.status_code == 404
+
+@pytest.mark.django_db
+def test_retrieve_nonexistent_project_returns_404(auth_client):
+    r = auth_client.get("/api/projects/99999/")
+    assert r.status_code == 404
+
+===== api\tests\test_project_auth.py =====
+"""
+Authentication and authorisation tests for project-related endpoints.
+
+Covers:
+- /api/projects/         — requires auth
+- /api/managers/  — requires auth
+- /api/employees/       — requires auth
+- /api/me/              — requires auth, returns correct user data
+- /api/auth/logout/     — blacklists the refresh token
+
+Intentionally kept to auth concerns only. Filter/search/ordering/pagination
+tests live in test_project_filtering.py.
+"""
+
+import pytest
+from django.contrib.auth import get_user_model
+from rest_framework.test import APIClient
+
+
+@pytest.mark.django_db
+def test_projects_requires_auth():
+    """Unauthenticated GET /api/projects/ must return 401."""
+    client = APIClient()
+    r = client.get("/api/projects/")
+    assert r.status_code == 401
+
+
+@pytest.mark.django_db
+def test_managers_requires_auth():
+    """Unauthenticated GET /api/managers/ must return 401."""
+    client = APIClient()
+    r = client.get("/api/managers/")
+    assert r.status_code == 401
+
+
+@pytest.mark.django_db
+def test_employees_requires_auth():
+    """Unauthenticated GET /api/employees/ must return 401."""
+    client = APIClient()
+    r = client.get("/api/employees/")
+    assert r.status_code == 401
+
+
+@pytest.mark.django_db
+def test_me_requires_auth():
+    """Unauthenticated GET /api/me/ must return 401."""
+    client = APIClient()
+    r = client.get("/api/me/")
+    assert r.status_code == 401
+
+
+@pytest.mark.django_db
+def test_me_returns_correct_user(auth_client, user):
+    """
+    Authenticated GET /api/me/ must return the logged-in user's data.
+
+    Verifies that the me endpoint returns id, username, and email — the three
+    fields documented in views.py — and that they match the test user.
+    """
+    r = auth_client.get("/api/me/")
+    assert r.status_code == 200
+    assert r.data["username"] == user.username
+    assert r.data["id"] == user.id
+    assert "email" in r.data
+
+
+@pytest.mark.django_db
+def test_me_does_not_expose_password(auth_client):
+    """The me endpoint must never include the password field."""
+    r = auth_client.get("/api/me/")
+    assert r.status_code == 200
+    assert "password" not in r.data
+
+
+@pytest.mark.django_db
+def test_logout_blacklists_refresh_token(creds, user):
+    """
+    POST /api/auth/logout/ with a valid refresh token must:
+    1. Return 200 (or 204)
+    2. Cause the refresh token to be rejected on subsequent use (401/400)
+
+    This verifies that HybridLogoutView is wired to the token blacklist.
+    """
+    client = APIClient()
+    login = client.post("/api/auth/login/", creds, format="json")
+    assert login.status_code == 200
+
+    refresh = login.data["refresh"]
+    access = login.data["access"]
+
+    client.credentials(HTTP_AUTHORIZATION=f"Bearer {access}")
+    logout = client.post("/api/auth/logout/", {"refresh": refresh}, format="json")
+    assert logout.status_code in (200, 204)
+
+    # The blacklisted token should now be rejected
+    client.credentials()  # clear auth header
+    retry = client.post("/api/auth/refresh/", {"refresh": refresh}, format="json")
+    assert retry.status_code in (400, 401), (
+        f"Expected refresh to be rejected after logout, got {retry.status_code}. "
+        "Check that HybridLogoutView calls token.blacklist() and that "
+        "rest_framework_simplejwt.token_blacklist is in INSTALLED_APPS."
+    )
+
+
+@pytest.mark.django_db
+def test_logout_requires_refresh_token(auth_client):
+    """POST /api/auth/logout/ without a refresh token should return 400."""
+    r = auth_client.post("/api/auth/logout/", {}, format="json")
+    assert r.status_code == 400
+
+
+@pytest.mark.django_db
+def test_invalid_token_is_rejected():
+    """A request with a malformed Bearer token should return 401."""
+    client = APIClient()
+    client.credentials(HTTP_AUTHORIZATION="Bearer this.is.not.a.real.token")
+    r = client.get("/api/projects/")
+    assert r.status_code == 401
+
+
+@pytest.mark.django_db
+def test_expired_or_wrong_user_cannot_see_other_users_projects(creds):
+    """
+    Two distinct users each see only their own data returned by the API.
+
+    This test creates a second user, logs in as them, and confirms
+    the project list endpoint returns 200 (not 403 or 500) — a basic
+    sanity check that auth is per-user and not globally broken.
+    """
+    User = get_user_model()
+    User.objects.create_user(username=creds["username"], password=creds["password"])
+    User.objects.create_user(username="other_user", password="other_pass")
+
+    other_client = APIClient()
+    r = other_client.post(
+        "/api/auth/login/",
+        {"username": "other_user", "password": "other_pass"},
+        format="json",
+    )
+    assert r.status_code == 200
+    other_client.credentials(HTTP_AUTHORIZATION=f"Bearer {r.data['access']}")
+
+    r2 = other_client.get("/api/projects/")
+    assert r2.status_code == 200
+
+
+===== api\tests\test_project_filtering.py =====
+"""
+Tests for server-side filtering, searching, ordering, and pagination.
+
+These tests verify the ProjectViewset query parameter behaviour added in
+Phase 2 (django-filter + SearchFilter + OrderingFilter + PageNumberPagination).
+
+All tests use the auth_client fixture from conftest.py and create their own
+data so they are fully isolated from other test modules.
+"""
+
+import pytest
+from api.models import Employee, Manager, Project
+
+
+@pytest.fixture
+def project_set(db):
+    """
+    Creates a controlled set of projects used across all tests in this module.
+
+    Projects:
+        Alpha   — Active,    Confidential,  2025-01-01 → 2025-06-30
+        Beta    — On Hold,   Internal,      2025-03-01 → 2025-09-30
+        Gamma   — Completed, Public,        2024-06-01 → 2024-12-31
+        Delta   — Cancelled, Restricted,    2026-01-01 → 2026-12-31
+
+    Comments on Alpha contain "budget review" so search tests can target it
+    specifically without matching any other project's name or comments.
+    """
+    pm = Manager.objects.create(name="PM Fixture")
+    emp = Employee.objects.create(
+        first_name="Fixture", last_name="Employee", email="fixture@example.com"
+    )
+
+    alpha = Project.objects.create(
+        name="Alpha",
+        status="Active",
+        security_level="Confidential",
+        start_date="2025-01-01",
+        end_date="2025-06-30",
+        comments="Includes budget review for Q1.",
+        manager=pm,
+    )
+    alpha.employees.add(emp)
+
+    beta = Project.objects.create(
+        name="Beta",
+        status="On Hold",
+        security_level="Internal",
+        start_date="2025-03-01",
+        end_date="2025-09-30",
+        comments="",
+        manager=pm,
+    )
+
+    gamma = Project.objects.create(
+        name="Gamma",
+        status="Completed",
+        security_level="Public",
+        start_date="2024-06-01",
+        end_date="2024-12-31",
+        comments="",
+        manager=pm,
+    )
+
+    delta = Project.objects.create(
+        name="Delta",
+        status="Cancelled",
+        security_level="Restricted",
+        start_date="2026-01-01",
+        end_date="2026-12-31",
+        comments="",
+        manager=pm,
+    )
+
+    return {"alpha": alpha, "beta": beta, "gamma": gamma, "delta": delta}
+
+
+@pytest.mark.django_db
+class TestPagination:
+    def test_list_returns_paginated_envelope(self, auth_client, project_set):
+        r = auth_client.get("/api/projects/")
+        assert r.status_code == 200
+        assert "count" in r.data
+        assert "results" in r.data
+        assert isinstance(r.data["results"], list)
+
+    def test_count_reflects_total_records(self, auth_client, project_set):
+        r = auth_client.get("/api/projects/")
+        assert r.data["count"] == 4
+
+    def test_page_size_limits_results(self, auth_client, project_set):
+        r = auth_client.get("/api/projects/?page_size=2")
+        assert r.status_code == 200
+        assert len(r.data["results"]) == 2
+        assert r.data["count"] == 4
+        assert r.data["next"] is not None
+
+    def test_second_page_returns_remaining_results(self, auth_client, project_set):
+        r = auth_client.get("/api/projects/?page=2&page_size=2")
+        assert r.status_code == 200
+        assert len(r.data["results"]) == 2
+        assert r.data["previous"] is not None
+        assert r.data["next"] is None
+
+    def test_page_beyond_last_returns_404(self, auth_client, project_set):
+        r = auth_client.get("/api/projects/?page=999")
+        assert r.status_code == 404
+
+    def test_previous_is_null_on_first_page(self, auth_client, project_set):
+        r = auth_client.get("/api/projects/")
+        assert r.data["previous"] is None
+
+    def test_next_is_null_on_last_page(self, auth_client, project_set):
+        r = auth_client.get("/api/projects/?page_size=10")
+        assert r.data["next"] is None
+
+
+@pytest.mark.django_db
+class TestStatusFilter:
+    def test_filter_active(self, auth_client, project_set):
+        r = auth_client.get("/api/projects/?status=Active")
+        assert r.status_code == 200
+        names = [p["name"] for p in r.data["results"]]
+        assert names == ["Alpha"]
+
+    def test_filter_on_hold(self, auth_client, project_set):
+        r = auth_client.get("/api/projects/?status=On+Hold")
+        assert r.status_code == 200
+        names = [p["name"] for p in r.data["results"]]
+        assert names == ["Beta"]
+
+    def test_filter_completed(self, auth_client, project_set):
+        r = auth_client.get("/api/projects/?status=Completed")
+        assert r.status_code == 200
+        assert r.data["count"] == 1
+        assert r.data["results"][0]["name"] == "Gamma"
+
+    def test_filter_cancelled(self, auth_client, project_set):
+        r = auth_client.get("/api/projects/?status=Cancelled")
+        assert r.status_code == 200
+        assert r.data["results"][0]["name"] == "Delta"
+
+    def test_filter_no_match_returns_empty(self, auth_client, project_set):
+        r = auth_client.get("/api/projects/?status=Active")
+        assert r.data["count"] == 1
+
+    def test_filter_invalid_status_returns_400(self, auth_client, project_set):
+        r = auth_client.get("/api/projects/?status=Nonsense")
+        assert r.status_code == 400
+
+    def test_count_reflects_filtered_total(self, auth_client, project_set):
+        r = auth_client.get("/api/projects/?status=Active")
+        assert r.data["count"] == 1
+
+
+@pytest.mark.django_db
+class TestSecurityLevelFilter:
+    def test_filter_confidential(self, auth_client, project_set):
+        r = auth_client.get("/api/projects/?security_level=Confidential")
+        assert r.status_code == 200
+        assert r.data["count"] == 1
+        assert r.data["results"][0]["name"] == "Alpha"
+
+    def test_filter_internal(self, auth_client, project_set):
+        r = auth_client.get("/api/projects/?security_level=Internal")
+        assert r.status_code == 200
+        assert r.data["count"] == 1
+        assert r.data["results"][0]["name"] == "Beta"
+
+    def test_filter_public(self, auth_client, project_set):
+        r = auth_client.get("/api/projects/?security_level=Public")
+        assert r.status_code == 200
+        assert r.data["count"] == 1
+        assert r.data["results"][0]["name"] == "Gamma"
+
+    def test_combined_status_and_security_level(self, auth_client, project_set):
+        r = auth_client.get("/api/projects/?status=Active&security_level=Confidential")
+        assert r.status_code == 200
+        assert r.data["count"] == 1
+        assert r.data["results"][0]["name"] == "Alpha"
+
+    def test_combined_filters_no_match(self, auth_client, project_set):
+        r = auth_client.get("/api/projects/?status=Active&security_level=Public")
+        assert r.status_code == 200
+        assert r.data["count"] == 0
+
+
+@pytest.mark.django_db
+class TestSearch:
+    def test_search_by_name(self, auth_client, project_set):
+        r = auth_client.get("/api/projects/?search=Alpha")
+        assert r.status_code == 200
+        assert r.data["count"] == 1
+        assert r.data["results"][0]["name"] == "Alpha"
+
+    def test_search_is_case_insensitive(self, auth_client, project_set):
+        r = auth_client.get("/api/projects/?search=alpha")
+        assert r.status_code == 200
+        assert r.data["count"] == 1
+
+    def test_search_by_comments(self, auth_client, project_set):
+        r = auth_client.get("/api/projects/?search=budget+review")
+        assert r.status_code == 200
+        assert r.data["count"] == 1
+        assert r.data["results"][0]["name"] == "Alpha"
+
+    def test_search_partial_match(self, auth_client, project_set):
+        r = auth_client.get("/api/projects/?search=amm")
+        assert r.status_code == 200
+        assert r.data["count"] == 1
+        assert r.data["results"][0]["name"] == "Gamma"
+
+    def test_search_no_match_returns_empty(self, auth_client, project_set):
+        r = auth_client.get("/api/projects/?search=zzznomatch")
+        assert r.status_code == 200
+        assert r.data["count"] == 0
+
+    def test_search_combined_with_status_filter(self, auth_client, project_set):
+        r = auth_client.get("/api/projects/?search=a&status=Active")
+        assert r.status_code == 200
+        assert r.data["count"] == 1
+        assert r.data["results"][0]["name"] == "Alpha"
+
+
+@pytest.mark.django_db
+class TestOrdering:
+    def _names(self, response):
+        return [p["name"] for p in response.data["results"]]
+
+    def test_order_by_name_asc(self, auth_client, project_set):
+        r = auth_client.get("/api/projects/?ordering=name&page_size=10")
+        assert r.status_code == 200
+        assert self._names(r) == ["Alpha", "Beta", "Delta", "Gamma"]
+
+    def test_order_by_name_desc(self, auth_client, project_set):
+        r = auth_client.get("/api/projects/?ordering=-name&page_size=10")
+        assert r.status_code == 200
+        assert self._names(r) == ["Gamma", "Delta", "Beta", "Alpha"]
+
+    def test_order_by_start_date_asc(self, auth_client, project_set):
+        r = auth_client.get("/api/projects/?ordering=start_date&page_size=10")
+        assert r.status_code == 200
+        assert self._names(r) == ["Gamma", "Alpha", "Beta", "Delta"]
+
+    def test_order_by_start_date_desc(self, auth_client, project_set):
+        r = auth_client.get("/api/projects/?ordering=-start_date&page_size=10")
+        assert r.status_code == 200
+        assert self._names(r) == ["Delta", "Beta", "Alpha", "Gamma"]
+
+    def test_order_by_status(self, auth_client, project_set):
+        r = auth_client.get("/api/projects/?ordering=status&page_size=10")
+        assert r.status_code == 200
+        names = self._names(r)
+        assert names.index("Alpha") < names.index("Beta")
+
+    def test_order_by_end_date_asc(self, auth_client, project_set):
+        r = auth_client.get("/api/projects/?ordering=end_date&page_size=10")
+        assert r.status_code == 200
+        assert self._names(r) == ["Gamma", "Alpha", "Beta", "Delta"]
+
+    def test_disallowed_ordering_field_is_ignored(self, auth_client, project_set):
+        r = auth_client.get("/api/projects/?ordering=comments")
+        assert r.status_code == 200
+
+
+@pytest.mark.django_db
+class TestLookupEndpoints:
+    @pytest.fixture
+    def lookup_data(self, db):
+        managers = [Manager.objects.create(name=f"Manager {i}") for i in range(3)]
+        employees = [
+            Employee.objects.create(
+                first_name=f"First{i}",
+                last_name=f"Last{i}",
+                email=f"lookup{i}@example.com",
+            )
+            for i in range(5)
+        ]
+        return {"managers": managers, "employees": employees}
+
+    def test_managers_requires_auth(self, api_client):
+        r = api_client.get("/api/managers/")
+        assert r.status_code == 401
+
+    def test_employees_requires_auth(self, api_client):
+        r = api_client.get("/api/employees/")
+        assert r.status_code == 401
+
+    def test_managers_returns_flat_list(self, auth_client, lookup_data):
+        r = auth_client.get("/api/managers/")
+        assert r.status_code == 200
+        assert isinstance(r.data, list)
+
+    def test_employees_returns_flat_list(self, auth_client, lookup_data):
+        r = auth_client.get("/api/employees/")
+        assert r.status_code == 200
+        assert isinstance(r.data, list)
+
+    def test_managers_returns_all_records(self, auth_client, lookup_data):
+        r = auth_client.get("/api/managers/")
+        assert r.status_code == 200
+        assert len(r.data) == 3
+
+    def test_employees_returns_all_records(self, auth_client, lookup_data):
+        r = auth_client.get("/api/employees/")
+        assert r.status_code == 200
+        assert len(r.data) == 5
+
+===== api\tests\test_project_queries.py =====
+"""
+Query count tests for the ProjectViewset list endpoint.
+
+Verifies that select_related/prefetch_related prevents N+1 queries and that
+the total query count stays bounded as the number of projects grows.
+"""
+
+import pytest
+from django.db import connection
+from django.test.utils import CaptureQueriesContext
+
+from api.models import Employee, Manager, Project
+
+
+@pytest.mark.django_db
+class TestProjectListQueryCount:
+    """
+    Verifies that the ProjectViewset list endpoint does not produce N+1 queries.
+    """
+
+    @pytest.fixture
+    def projects_with_relations(self, db):
+        employees = [
+            Employee.objects.create(
+                first_name=f"First{i}",
+                last_name=f"Last{i}",
+                email=f"emp{i}@example.com",
+            )
+            for i in range(10)
+        ]
+
+        projects = []
+        for i in range(5):
+            pm = Manager.objects.create(name=f"Manager {i}")
+            project = Project.objects.create(
+                name=f"Project {i}",
+                manager=pm,
+                start_date="2025-01-01",
+                end_date="2025-12-31",
+                status="Active",
+                comments="",
+            )
+            project.employees.set(employees[i * 2: i * 2 + 2])
+            projects.append(project)
+
+        return projects
+
+    def test_list_uses_fixed_query_count(self, auth_client, projects_with_relations):
+        with CaptureQueriesContext(connection) as ctx:
+            response = auth_client.get("/api/projects/")
+
+        assert response.status_code == 200
+
+        query_count = len(ctx.captured_queries)
+        assert query_count <= 5, (
+            f"Expected at most 5 queries for project list, got {query_count}.\n"
+            + "\n".join(f"  {i+1}. {q['sql'][:120]}" for i, q in enumerate(ctx.captured_queries))
+        )
+
+    def test_query_count_does_not_grow_with_more_projects(self, auth_client, db):
+        pm = Manager.objects.create(name="Scale PM")
+        employees = [
+            Employee.objects.create(
+                first_name=f"S{i}", last_name="Scale", email=f"scale{i}@example.com"
+            )
+            for i in range(4)
+        ]
+
+        for i in range(10):
+            p = Project.objects.create(
+                name=f"Scale Project {i}",
+                manager=pm,
+                start_date="2025-01-01",
+                end_date="2025-12-31",
+                status="Active",
+                comments="",
+            )
+            p.employees.set(employees[:2])
+
+        with CaptureQueriesContext(connection) as ctx:
+            response = auth_client.get("/api/projects/?page_size=10")
+
+        assert response.status_code == 200
+        assert len(ctx.captured_queries) <= 5
+
+    def test_list_returns_all_projects(self, auth_client, projects_with_relations):
+        response = auth_client.get("/api/projects/")
+        assert response.status_code == 200
+
+        rows = (
+            response.data.get("results", response.data)
+            if isinstance(response.data, dict)
+            else response.data
+        )
+        assert len(rows) == 5
+
+    def test_retrieve_uses_fixed_query_count(self, auth_client, projects_with_relations):
+        project_id = projects_with_relations[0].id
+
+        with CaptureQueriesContext(connection) as ctx:
+            response = auth_client.get(f"/api/projects/{project_id}/")
+
+        assert response.status_code == 200
+        assert len(ctx.captured_queries) <= 3
+
+===== api\tests\test_project_validation.py =====
+import pytest
+from api.models import Employee, Manager
+
+
+@pytest.mark.django_db
+class TestProjectValidation:
+    @pytest.fixture
+    def base_payload(self, db):
+        pm = Manager.objects.create(name="Test PM")
+        emp = Employee.objects.create(
+            first_name="Test",
+            last_name="Employee",
+            email="test.employee@example.com",
+        )
+
+        return {
+            "name": "Valid Project",
+            "start_date": "2025-01-01",
+            "end_date": "2025-12-31",
+            "status": "Active",
+            "security_level": "Internal",
+
+            # REMARK: API payload field renamed from `projectmanager` to `manager`.
+            "manager": pm.id,
+
+            "employees": [emp.id],
+        }
+
+    def test_name_required(self, auth_client, base_payload):
+        payload = {**base_payload}
+        del payload["name"]
+
+        r = auth_client.post("/api/projects/", payload, format="json")
+        assert r.status_code == 400
+        assert "name" in r.data
+
+    def test_start_date_required(self, auth_client, base_payload):
+        payload = {**base_payload}
+        del payload["start_date"]
+
+        r = auth_client.post("/api/projects/", payload, format="json")
+        assert r.status_code == 400
+        assert "start_date" in r.data
+
+    def test_end_date_required(self, auth_client, base_payload):
+        payload = {**base_payload}
+        del payload["end_date"]
+
+        r = auth_client.post("/api/projects/", payload, format="json")
+        assert r.status_code == 400
+        assert "end_date" in r.data
+
+    def test_whitespace_only_name_rejected(self, auth_client, base_payload):
+        payload = {
+            **base_payload,
+            "name": "     ",
+        }
+
+        r = auth_client.post("/api/projects/", payload, format="json")
+        assert r.status_code == 400
+        assert "name" in r.data
+
+    def test_name_is_trimmed_before_save(self, auth_client, base_payload):
+        payload = {
+            **base_payload,
+            "name": "  Valid Project Trimmed  ",
+        }
+
+        r = auth_client.post("/api/projects/", payload, format="json")
+        assert r.status_code in (200, 201)
+        assert r.data["name"] == "Valid Project Trimmed"
+
+    def test_end_date_cannot_be_before_start_date(self, auth_client, base_payload):
+        payload = {
+            **base_payload,
+            "start_date": "2025-12-31",
+            "end_date": "2025-01-01",
+        }
+
+        r = auth_client.post("/api/projects/", payload, format="json")
+        assert r.status_code == 400
+        assert "end_date" in r.data
+
+    def test_invalid_status_rejected(self, auth_client, base_payload):
+        r = auth_client.post(
+            "/api/projects/",
+            {**base_payload, "status": "In progress"},
+            format="json",
+        )
+        assert r.status_code == 400
+        assert "status" in r.data
+
+    def test_valid_status_values_accepted(self, auth_client, base_payload):
+        valid_statuses = ["Active", "On Hold", "Completed", "Cancelled"]
+
+        for i, status in enumerate(valid_statuses):
+            r = auth_client.post(
+                "/api/projects/",
+                {**base_payload, "name": f"Project {i}", "status": status},
+                format="json",
+            )
+            assert r.status_code in (200, 201)
+
+    def test_duplicate_name_rejected(self, auth_client, base_payload):
+        auth_client.post("/api/projects/", base_payload, format="json")
+
+        r = auth_client.post("/api/projects/", base_payload, format="json")
+        assert r.status_code == 400
+        assert "name" in r.data
+
+    def test_invalid_security_level_rejected(self, auth_client, base_payload):
+        r = auth_client.post(
+            "/api/projects/",
+            {**base_payload, "security_level": "TopSecret"},
+            format="json",
+        )
+        assert r.status_code == 400
+        assert "security_level" in r.data
+
+    def test_patch_rejects_invalid_date_range(self, auth_client, base_payload):
+        create = auth_client.post("/api/projects/", base_payload, format="json")
+        assert create.status_code in (200, 201)
+
+        project_id = create.data["id"]
+
+        r = auth_client.patch(
+            f"/api/projects/{project_id}/",
+            {"end_date": "2024-01-01"},
+            format="json",
+        )
+        assert r.status_code == 400
+        assert "end_date" in r.data
+
+    def test_put_rejects_invalid_date_range(self, auth_client, base_payload):
+        create = auth_client.post("/api/projects/", base_payload, format="json")
+        assert create.status_code in (200, 201)
+
+        project_id = create.data["id"]
+
+        payload = {
+            **base_payload,
+            "name": "Updated Project",
+            "start_date": "2025-10-01",
+            "end_date": "2025-01-01",
+        }
+
+        r = auth_client.put(f"/api/projects/{project_id}/", payload, format="json")
+        assert r.status_code == 400
+        assert "end_date" in r.data
+
+    def test_comments_defaults_to_empty_string_when_omitted(self, auth_client, base_payload):
+        """
+        Submitting a payload with no `comments` key must succeed and store "".
+
+        This documents the serializer contract introduced alongside the NOT NULL
+        migration: the `comments` CharField on ProjectWriteSerializer declares
+        default="" so that an absent key never reaches the DB as NULL.
+        """
+        payload = {k: v for k, v in base_payload.items() if k != "comments"}
+
+        r = auth_client.post("/api/projects/", payload, format="json")
+        assert r.status_code in (200, 201), r.data
+
+        get = auth_client.get(f"/api/projects/{r.data['id']}/")
+        assert get.status_code == 200
+        assert get.data["comments"] == ""
+
+===== config\asgi.py =====
+"""
+ASGI config for config project.
+
+It exposes the ASGI callable as a module-level variable named ``application``.
+
+For more information on this file, see
+https://docs.djangoproject.com/en/4.2/howto/deployment/asgi/
+"""
+
+import os
+
+from django.core.asgi import get_asgi_application
+
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
+
+application = get_asgi_application()
+
+
+===== config\settings.py =====
+from datetime import timedelta
+from pathlib import Path
+import os
+
+BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Optional .env loading for local dev (keep .env out of git)
+try:
+    from dotenv import load_dotenv  # type: ignore
+    load_dotenv(BASE_DIR / ".env", override=True)
+except Exception:
+    pass
+
+
+DEBUG = os.getenv("DJANGO_DEBUG", "0") == "1"
+
+# SECURITY: In production, SECRET_KEY must be explicitly set via environment variable.
+# Failing loudly on startup is far safer than running with a weak default key.
+# In development (DEBUG=True), fall back to a placeholder so local setup stays easy.
+if DEBUG:
+    SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "dev-only-insecure-key-change-me")
+else:
+    _secret = os.getenv("DJANGO_SECRET_KEY")
+    if not _secret:
+        raise RuntimeError(
+            "DJANGO_SECRET_KEY environment variable is not set. "
+            "This is required in production. Set it to a long random string."
+        )
+    SECRET_KEY = _secret
+
+ALLOWED_HOSTS = [
+    h.strip()
+    for h in os.getenv("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
+    if h.strip()
+]
+
+AUTH_REFRESH_COOKIE_ENABLED = os.getenv("DJANGO_AUTH_REFRESH_COOKIE", "0") == "1"
+
+
+INSTALLED_APPS = [
+    "django.contrib.admin",
+    "django.contrib.auth",
+    "django.contrib.contenttypes",
+    "django.contrib.sessions",
+    "django.contrib.messages",
+    "django.contrib.staticfiles",
+
+    "rest_framework",
+    "corsheaders",
+    "django_filters",
+
+    # Required for refresh token blacklisting (used by HybridLogoutView)
+    "rest_framework_simplejwt.token_blacklist",
+
+    "api",
+]
+
+MIDDLEWARE = [
+    "corsheaders.middleware.CorsMiddleware",
+    "django.middleware.security.SecurityMiddleware",
+    "django.contrib.sessions.middleware.SessionMiddleware",
+    "django.middleware.common.CommonMiddleware",
+    "django.middleware.csrf.CsrfViewMiddleware",
+    "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "django.contrib.messages.middleware.MessageMiddleware",
+    "django.middleware.clickjacking.XFrameOptionsMiddleware",
+]
+
+ROOT_URLCONF = "config.urls"
+
+TEMPLATES = [
+    {
+        "BACKEND": "django.template.backends.django.DjangoTemplates",
+        "DIRS": [],
+        "APP_DIRS": True,
+        "OPTIONS": {
+            "context_processors": [
+                "django.template.context_processors.debug",
+                "django.template.context_processors.request",
+                "django.contrib.auth.context_processors.auth",
+                "django.contrib.messages.context_processors.messages",
+            ],
+        },
+    },
+]
+
+WSGI_APPLICATION = "config.wsgi.application"
+
+
+# Database (PostgreSQL only)
+DATABASES = {
+    "default": {
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": os.getenv("POSTGRES_DB", "myappdb"),
+        "USER": os.getenv("POSTGRES_USER", "postgres"),
+        "PASSWORD": os.getenv("POSTGRES_PASSWORD", ""),
+        "HOST": os.getenv("POSTGRES_HOST", "localhost"),
+        "PORT": os.getenv("POSTGRES_PORT", "5432"),
+        "CONN_MAX_AGE": int(os.getenv("POSTGRES_CONN_MAX_AGE", "60")),
+    }
+}
+
+
+AUTH_PASSWORD_VALIDATORS = [
+    {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
+    {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator"},
+    {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
+    {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
+]
+
+
+LANGUAGE_CODE = "en-us"
+TIME_ZONE = os.getenv("DJANGO_TIME_ZONE", "UTC")
+USE_I18N = True
+USE_TZ = True
+
+
+STATIC_URL = "static/"
+
+# STATIC_ROOT is required by collectstatic in production.
+# `python manage.py collectstatic` will copy all static files here,
+# and your web server (nginx/gunicorn) should serve from this directory.
+STATIC_ROOT = BASE_DIR / "staticfiles"
+
+# MEDIA_ROOT stores user-uploaded files (not currently used, but set explicitly
+# so any future file upload feature has a correct base path from the start).
+MEDIA_URL = "media/"
+MEDIA_ROOT = BASE_DIR / "media"
+
+DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+
+REST_FRAMEWORK = {
+    "DEFAULT_AUTHENTICATION_CLASSES": (
+        "rest_framework_simplejwt.authentication.JWTAuthentication",
+    ),
+    "DEFAULT_PERMISSION_CLASSES": (
+        "rest_framework.permissions.IsAuthenticated",
+    ),
+    "DEFAULT_FILTER_BACKENDS": [
+        "django_filters.rest_framework.DjangoFilterBackend",
+        "rest_framework.filters.SearchFilter",
+        "rest_framework.filters.OrderingFilter",
+    ],
+    "DEFAULT_PAGINATION_CLASS": "api.pagination.ProjectPagination",
+    "PAGE_SIZE": int(os.getenv("DRF_PAGE_SIZE", "50")),
+    "DEFAULT_THROTTLE_CLASSES": [
+        "rest_framework.throttling.AnonRateThrottle",
+        "rest_framework.throttling.UserRateThrottle",
+    ],
+    "DEFAULT_THROTTLE_RATES": {
+        "anon": os.getenv("THROTTLE_ANON_RATE", "20/min"),
+        "user": os.getenv("THROTTLE_USER_RATE", "200/min"),
+    },
+}
+
+_jwt_signing_key = os.environ.get("DJANGO_JWT_SIGNING_KEY")
+if not DEBUG and not _jwt_signing_key:
+    raise RuntimeError(
+        "DJANGO_JWT_SIGNING_KEY environment variable is not set. "
+        "Set it to a separate secret from DJANGO_SECRET_KEY for production use."
+    )
+
+SIMPLE_JWT = {
+    # Token lifetimes are set explicitly here so they are visible and auditable.
+    # The defaults (5 min access, 1 day refresh) are reasonable but should not
+    # be left implicit — a future reader should not have to look up SimpleJWT
+    # docs to know how long tokens live in this application.
+    #
+    # Access token: short-lived. The frontend stores this in memory + sessionStorage.
+    # Keeping this ≤ 15 minutes limits exposure if a token is somehow leaked,
+    # since it will expire quickly without any server-side action needed.
+    #
+    # Refresh token: 1 day. Stored in localStorage (local mode) or HttpOnly
+    # cookie (cookie mode). Rotation + blacklisting are both enabled, so a
+    # stolen refresh token can only be used once before it is invalidated.
+    "ACCESS_TOKEN_LIFETIME": timedelta(
+        minutes=int(os.getenv("JWT_ACCESS_TTL_MINUTES", "15"))
+    ),
+    "REFRESH_TOKEN_LIFETIME": timedelta(
+        days=int(os.getenv("JWT_REFRESH_TTL_DAYS", "1"))
+    ),
+    "ROTATE_REFRESH_TOKENS": True,
+    "BLACKLIST_AFTER_ROTATION": True,
+    "SIGNING_KEY": _jwt_signing_key or SECRET_KEY,
+}
+
+CORS_ALLOWED_ORIGINS = [
+    o.strip()
+    for o in os.getenv("CORS_ALLOWED_ORIGINS", "http://localhost:5173").split(",")
+    if o.strip()
+]
+
+CSRF_TRUSTED_ORIGINS = [
+    o.strip()
+    for o in os.getenv("CSRF_TRUSTED_ORIGINS", "").split(",")
+    if o.strip()
+]
+
+
+# Production security settings — only applied when DEBUG is off.
+if not DEBUG:
+    SECURE_SSL_REDIRECT = os.getenv("DJANGO_SECURE_SSL_REDIRECT", "1") == "1"
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_HSTS_SECONDS = int(os.getenv("DJANGO_HSTS_SECONDS", "31536000"))
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+    X_FRAME_OPTIONS = "DENY"
+
+# ---------------------------------------------------------------------------
+# Logging
+# ---------------------------------------------------------------------------
+#
+# In development (DEBUG=True): human-readable output to the console.
+# In production (DEBUG=False): structured JSON output so log aggregators
+# (Datadog, CloudWatch, etc.) can parse fields without regex.
+#
+# Loggers:
+#   django        — framework-level messages (startup, requests, errors)
+#   django.request — 4xx/5xx responses; outputs WARNING+ so 404s are visible
+#   api           — application logger; use logging.getLogger("api") in views
+#
+# Usage in application code:
+#   import logging
+#   logger = logging.getLogger("api")
+#   logger.info("project created", extra={"project_id": instance.id})
+
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "human": {
+            "format": "[{asctime}] {levelname} {name}: {message}",
+            "style": "{",
+        },
+        "json": {
+            "()": "pythonjsonlogger.jsonlogger.JsonFormatter",
+            "fmt": "%(asctime)s %(levelname)s %(name)s %(message)s",
+        },
+    },
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "formatter": "human" if DEBUG else "json",
+        },
+    },
+    "root": {
+        "handlers": ["console"],
+        "level": "WARNING",
+    },
+    "loggers": {
+        "django": {
+            "handlers": ["console"],
+            "level": "INFO",
+            "propagate": False,
+        },
+        "django.request": {
+            "handlers": ["console"],
+            "level": "WARNING",
+            "propagate": False,
+        },
+        "api": {
+            "handlers": ["console"],
+            "level": "DEBUG" if DEBUG else "INFO",
+            "propagate": False,
+        },
+    },
+}
+
+===== config\urls.py =====
+from django.contrib import admin
+from django.http import JsonResponse
+from django.urls import include, path
+
+from api.auth_views import HybridLogoutView, HybridTokenObtainPairView, HybridTokenRefreshView
+
+
+def root(request):
+    return JsonResponse({"status": "ok"})
+
+
+urlpatterns = [
+    path("", root),
+
+    path("admin/", admin.site.urls),
+    path("api/", include("api.urls")),
+
+    # Auth (JWT)
+    path("api/auth/login/", HybridTokenObtainPairView.as_view(), name="token_obtain_pair"),
+    path("api/auth/refresh/", HybridTokenRefreshView.as_view(), name="token_refresh"),
+    path("api/auth/logout/", HybridLogoutView.as_view(), name="token_logout"),
+]
+
+
+===== config\wsgi.py =====
+import os
+from django.core.wsgi import get_wsgi_application
+
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")
+
+application = get_wsgi_application()
+
+
+===== config\__init__.py =====
+
+
+===== README.md =====
+# Project Tracker Backend
+
+Backend API for the Project Tracker application.
+
+- Django and Django REST Framework
+- PostgreSQL
+- Structured JSON logging (production) / human-readable logging (development)
+- Optional cookie based refresh auth mode
+
+---
+
+## Table of Contents
+
+- [Tech Stack](#tech-stack)
+- [Prerequisites](#prerequisites)
+- [Setup](#setup)
+- [Environment Variables](#environment-variables)
+- [Database and Migrations](#database-and-migrations)
+- [Running the Server](#running-the-server)
+- [Seeding Data](#seeding-data)
+- [Admin](#admin)
+- [API Notes](#api-notes)
+- [Auth Modes](#auth-modes)
+- [CORS and CSRF](#cors-and-csrf)
+- [Logging](#logging)
+- [Testing](#testing)
+- [Troubleshooting](#troubleshooting)
+- [Production Notes](#production-notes)
+
+---
+
+## Tech Stack
+
+- Django
+- Django REST Framework
+- django-filter
+- python-json-logger
+- PostgreSQL
+- Optional environment loading with `python-dotenv`
+
+---
+
+## Prerequisites
+
+- Python 3.11 or newer recommended
+- PostgreSQL 14 or newer recommended
+- Windows PowerShell commands are shown, but the steps work on macOS and Linux with equivalent commands
+
+---
+
+## Setup
+
+From `backend/`:
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
+```
+
+---
+
+## Environment Variables
+
+1) Copy the example file:
+
+```powershell
+Copy-Item .env.example .env
+```
+
+2) Update `backend/.env` as needed.
+
+Common variables:
+
+Django:
+- `DJANGO_DEBUG=1`
+- `DJANGO_SECRET_KEY=...`
+- `DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1`
+
+PostgreSQL:
+- `POSTGRES_DB=myappdb`
+- `POSTGRES_USER=postgres`
+- `POSTGRES_PASSWORD=admin`
+- `POSTGRES_HOST=127.0.0.1`
+- `POSTGRES_PORT=5432`
+
+Cookie mode support (only if enabled in your settings):
+- `DJANGO_AUTH_REFRESH_COOKIE=0|1`
+- `CORS_ALLOWED_ORIGINS=http://localhost:5173`
+- `CSRF_TRUSTED_ORIGINS=http://localhost:5173`
+
+Pagination:
+- `DRF_PAGE_SIZE=50` default page size for the project list (default: 50)
+
+Tips:
+- Treat `.env` as a secret. Track `.env.example`, not `.env`.
+- Restart the server after changing `.env`.
+
+---
+
+## Database and Migrations
+
+Create a database and user that match your `.env.example`.
+
+Run migrations:
+
+```powershell
+python manage.py migrate
+```
+
+Create migrations after model changes:
+
+```powershell
+python manage.py makemigrations
+python manage.py migrate
+```
+
+Show applied migrations:
+
+```powershell
+python manage.py showmigrations
+```
+
+---
+
+## Running the Server
+
+```powershell
+python manage.py runserver
+```
+
+Default URL:
+- `http://127.0.0.1:8000/`
+
+---
+
+## Seeding Data
+
+A management command is included to populate the database with sample projects for development and testing.
+
+Place the command file at:
+```
+backend/api/management/commands/seed_projects.py
+```
+
+You will need the directory structure with empty `__init__.py` files if they do not exist:
+```
+backend/api/management/__init__.py
+backend/api/management/commands/__init__.py
+```
+
+Usage:
+
+```powershell
+# Seed 50 projects using existing managers and employees
+python manage.py seed_projects
+
+# Seed a different number of projects
+python manage.py seed_projects --count 100
+
+# Delete all existing projects first, then seed
+python manage.py seed_projects --clear
+
+# Delete all projects, managers, and employees, then seed everything from scratch
+python manage.py seed_projects --clear-all
+```
+
+Notes:
+- If no managers or employees exist, the command creates a set of named seed records automatically.
+- `--clear` removes projects only. Managers and employees are kept.
+- `--clear-all` removes projects, managers, and employees, then rebuilds all from scratch.
+- Running without `--clear` is safe to repeat — projects with duplicate names are skipped.
+
+---
+
+## Admin
+
+Create a superuser:
+
+```powershell
+python manage.py createsuperuser
+```
+
+Admin site:
+- `http://127.0.0.1:8000/admin/`
+
+---
+
+## API Notes
+
+Endpoints:
+
+- `GET /api/projects/` list projects (paginated)
+- `POST /api/projects/` create project
+- `GET /api/projects/<id>/` project detail
+- `PUT /api/projects/<id>/` update project
+- `PATCH /api/projects/<id>/` partial update
+- `DELETE /api/projects/<id>/` delete project
+
+Related lists (no pagination — always returns full list):
+- `GET /api/employees/`
+- `GET /api/projectmanager/`
+
+### Project list query parameters
+
+The list endpoint supports filtering, searching, ordering, and pagination:
+
+| Parameter        | Example                   | Description                                         |
+|------------------|---------------------------|-----------------------------------------------------|
+| `page`           | `?page=2`                 | Page number (default: 1)                            |
+| `page_size`      | `?page_size=25`           | Results per page (default: 50, max: 200)            |
+| `search`         | `?search=alpha`           | Search project name and comments (case-insensitive) |
+| `status`         | `?status=Active`          | Exact match on status                               |
+| `security_level` | `?security_level=Internal`| Exact match on security level                       |
+| `ordering`       | `?ordering=-start_date`   | Sort field, prefix with `-` for descending          |
+
+Valid `ordering` fields: `name`, `status`, `start_date`, `end_date`, `security_level`, `modified`
+
+List response envelope:
+```json
+{
+  "count": 50,
+  "next": "http://...",
+  "previous": null,
+  "results": [...]
+}
+```
+
+Project fields:
+- `id`
+- `name`
+- `status` — one of `Active`, `On Hold`, `Completed`, `Cancelled`
+- `comments`
+- `projectmanager` — nested object on reads, ID on writes
+- `employees` — list of nested objects on reads, list of IDs on writes
+- `start_date` and `end_date` in `YYYY-MM-DD`
+- `security_level` — one of `Public`, `Internal`, `Confidential`, `Restricted`
+
+---
+
+## Auth Modes
+
+The frontend supports two modes using `VITE_AUTH_MODE`. Backend configuration must align.
+
+Local token mode:
+- Access token in memory and sessionStorage
+- Refresh token in localStorage
+
+Cookie refresh mode:
+- Refresh token stored in an HttpOnly cookie
+- Refresh calls include credentials
+
+---
+
+## CORS and CSRF
+
+Cookie refresh mode requires correct cross origin configuration.
+
+Backend `.env` example:
+- `DJANGO_AUTH_REFRESH_COOKIE=1`
+- `CORS_ALLOWED_ORIGINS=http://localhost:5173`
+- `CSRF_TRUSTED_ORIGINS=http://localhost:5173`
+
+Common symptoms:
+- Refresh works in Postman but fails in browser: credentials or CORS mismatch
+- 403 errors: CSRF trusted origins missing or misconfigured
+
+---
+
+## Logging
+
+Logging behaviour is controlled by `DJANGO_DEBUG`:
+
+- `DEBUG=1` (development): human-readable output to the console
+- `DEBUG=0` (production): structured JSON output for log aggregators (Datadog, CloudWatch, etc.)
+
+The `api` logger is available for application-level log statements:
+
+```python
+import logging
+logger = logging.getLogger("api")
+logger.info("project created", extra={"project_id": instance.id})
+```
+
+Log levels by logger:
+- `django` — INFO and above
+- `django.request` — WARNING and above (captures 4xx/5xx)
+- `api` — DEBUG in development, INFO in production
+
+---
+
+## Testing
+
+Pytest:
+
+```powershell
+pytest
+```
+
+Run a specific test file:
+
+```powershell
+pytest api/tests/test_projects_crud.py
+```
+
+Test files:
+- `test_auth.py` — login and `/me` endpoint
+- `test_auth_throttle.py` — login rate limiting
+- `test_jwt_refresh.py` — token refresh and rejection
+- `test_project_auth.py` — endpoint authentication and logout blacklisting
+- `test_project_filtering.py` — pagination, filtering, search, ordering, lookup endpoints
+- `test_project_queries.py` — N+1 query prevention
+- `test_project_validation.py` — field validation and TextChoices enforcement
+- `test_projects_crud.py` — full CRUD including PATCH and nested serializer reads
+
+---
+
+## Troubleshooting
+
+Database connection errors:
+- Confirm Postgres is running
+- Confirm `.env` DB values match the DB and user
+- Confirm port 5432 is reachable
+
+Migration failures:
+- Run `python manage.py showmigrations`
+- Fix data constraint issues and rerun migrations
+
+CORS and CSRF issues:
+- Confirm allowed origins match the frontend origin exactly
+- Confirm refresh requests include credentials in cookie mode
+
+Requirements install issues:
+- Confirm you activated the venv
+- Upgrade pip: `python -m pip install --upgrade pip`
+- Ensure `requirements.txt` is UTF-8 encoded
+
+---
+
+## Production Notes
+
+Minimum hardening:
+- HTTPS / reverse proxy
+- Run behind a production server such as Gunicorn or Uvicorn and a reverse proxy
+
+Recommended next steps:
+- Sentry error tracking (`sentry-sdk`)
+- Security headers and content security policy (`django-csp`)
+- Dependency vulnerability scanning (`pip-audit`)
+
+
+===== requirements.txt =====
+asgiref==3.11.1
+colorama==0.4.6
+Django==6.0.2
+django-cors-headers==4.9.0
+django-filter==24.3
+djangorestframework==3.16.1
+djangorestframework_simplejwt==5.5.1
+iniconfig==2.3.0
+packaging==26.0
+pluggy==1.6.0
+psycopg2-binary==2.9.11
+Pygments==2.19.2
+PyJWT==2.11.0
+pytest==9.0.2
+pytest-django==4.12.0
+python-dotenv==1.0.1
+python-json-logger==2.0.7
+setuptools==82.0.0
+sqlparse==0.5.5
+tzdata==2025.3
+wheel==0.46.3
+
+
+

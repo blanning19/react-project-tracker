@@ -51,3 +51,8 @@ test-results/
 
 # TypeDoc
 docs/
+
+# Docs - Astro build output
+docs-astro/dist/
+docs-astro/node_modules/
+docs-astro/src/data/components.json

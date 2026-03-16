@@ -1,0 +1,94 @@
+---
+/**
+ * index.astro — Overview / home page
+ *
+ * Shows a summary grid of all components with stats.
+ */
+import Layout from "../layouts/Layout.astro";
+import data from "../data/components.json";
+
+const components = data.components;
+const allComps   = Object.values(components);
+
+const componentCount   = allComps.filter(c => c.isComponent).length;
+const hookCount        = allComps.filter(c => c.isHook).length;
+const viewPanelCount   = allComps.reduce((n, c) => n + c.viewPanels.length, 0);
+const helperCount      = allComps.reduce((n, c) => n + c.internalHelpers.length, 0);
+
+// Group for display
+const groups = [
+  { label: "Pages",        color: "teal",   items: allComps.filter(c => c.isComponent && c.file.includes("/pages/")) },
+  { label: "Views",        color: "teal",   items: allComps.filter(c => c.isComponent && c.file.includes("/views/")) },
+  { label: "Hooks",        color: "purple", items: allComps.filter(c => c.isHook) },
+  { label: "Controllers",  color: "coral",  items: allComps.filter(c => !c.isComponent && !c.isHook && c.file.includes("/controllers/")) },
+  { label: "Models",       color: "coral",  items: allComps.filter(c => !c.isComponent && !c.isHook && (c.file.includes("/models/") || c.file.includes("ViewModel"))) },
+  { label: "Utils",        color: "accent", items: allComps.filter(c => !c.isComponent && !c.isHook && c.file.includes("/utils/")) },
+].filter(g => g.items.length > 0);
+---
+
+<Layout components={components} title="Overview">
+
+  <div class="breadcrumb">
+    <span>Source Docs</span>
+  </div>
+
+  <div class="comp-header">
+    <div class="comp-name" style="font-size: 1.6em;">ICT Dashboard</div>
+    <div class="comp-desc">
+      Auto-generated from source. Every component, hook, utility, and internal
+      helper — extracted directly from inside your function bodies.
+      Last parsed: {new Date(data.generatedAt).toLocaleString()}.
+    </div>
+  </div>
+
+  <div class="stats-bar">
+    <div class="stat">
+      <div class="stat-value">{data.totalFiles}</div>
+      <div class="stat-label">Files</div>
+    </div>
+    <div class="stat">
+      <div class="stat-value">{componentCount}</div>
+      <div class="stat-label">Components</div>
+    </div>
+    <div class="stat">
+      <div class="stat-value">{hookCount}</div>
+      <div class="stat-label">Hooks</div>
+    </div>
+    <div class="stat">
+      <div class="stat-value">{viewPanelCount}</div>
+      <div class="stat-label">View Panels</div>
+    </div>
+    <div class="stat">
+      <div class="stat-value">{helperCount}</div>
+      <div class="stat-label">Internal Helpers</div>
+    </div>
+  </div>
+
+  {groups.map(group => (
+    <div class="section">
+      <div class="section-title">{group.label}</div>
+      <div class="index-grid">
+        {group.items.map(comp => (
+          <a href={`/${comp.name}/`} class="index-card">
+            <div class="index-card-name">{comp.name}</div>
+            <div class="index-card-file">{comp.file}</div>
+            {comp.jsDoc?.description && (
+              <div class="index-card-desc">
+                {comp.jsDoc.description.slice(0, 100)}
+                {comp.jsDoc.description.length > 100 ? "…" : ""}
+              </div>
+            )}
+            {comp.viewPanels.length > 0 && (
+              <div style="margin-top: 8px;">
+                <span class="badge badge-panel">
+                  {comp.viewPanels.reduce((n, p) => n + p.children.length, 0)} panels
+                </span>
+              </div>
+            )}
+          </a>
+        ))}
+      </div>
+    </div>
+  ))}
+
+</Layout>

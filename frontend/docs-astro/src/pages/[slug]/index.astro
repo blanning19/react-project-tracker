@@ -1,0 +1,208 @@
+---
+/**
+ * [slug].astro — Individual component page
+ *
+ * Astro calls getStaticPaths() at build time to generate
+ * one HTML page per component found in components.json.
+ *
+ * Each page surfaces everything the AST parser extracted
+ * from inside the function body — not just the signature.
+ */
+import Layout from "../../layouts/Layout.astro";
+import data from "../../data/components.json";
+
+export function getStaticPaths() {
+  return Object.keys(data.components).map((name) => ({
+    params: { slug: name },
+  }));
+}
+
+const { slug } = Astro.params;
+const components = data.components;
+const comp = components[slug];
+
+// Build signature string
+function buildSig(comp) {
+  if (comp.isHook) return `function ${comp.name}()`;
+  if (comp.isComponent) return `function ${comp.name}(): JSX.Element`;
+  return `${comp.name}`;
+}
+
+// Resolve a child component name to its doc page URL (if it exists)
+function resolveChildUrl(name) {
+  return components[name] ? `/${name}/` : null;
+}
+
+// Categorise imports for display
+const internalImports = (comp.imports ?? []).filter(
+  i => i.source.startsWith(".") || i.source.startsWith("@/")
+);
+const externalImports = (comp.imports ?? []).filter(
+  i => !i.source.startsWith(".") && !i.source.startsWith("@/")
+);
+---
+
+<Layout components={components} currentSlug={slug} title={comp.name}>
+
+  <!-- Breadcrumb -->
+  <div class="breadcrumb">
+    <a href="/">Overview</a>
+    <span class="breadcrumb-sep">/</span>
+    <span>{comp.file.split("/").slice(0, -1).join("/")}</span>
+    <span class="breadcrumb-sep">/</span>
+    <span>{comp.name}</span>
+  </div>
+
+  <!-- Header -->
+  <div class="comp-header">
+    <div class="comp-badges">
+      {comp.isComponent && <span class="badge badge-component">component</span>}
+      {comp.isHook      && <span class="badge badge-hook">hook</span>}
+      {!comp.isComponent && !comp.isHook && <span class="badge badge-util">utility</span>}
+      {comp.isDefault   && <span class="badge badge-default">default export</span>}
+      {comp.viewPanels.length > 0 && (
+        <span class="badge badge-panel">
+          {comp.viewPanels.reduce((n, p) => n + p.children.length, 0)} view panels
+        </span>
+      )}
+    </div>
+
+    <div class="comp-name">{comp.name}</div>
+    <div class="comp-file">{comp.file}</div>
+    <div class="comp-sig">{buildSig(comp)}</div>
+
+    {comp.jsDoc?.description && (
+      <div class="comp-desc">{comp.jsDoc.description}</div>
+    )}
+  </div>
+
+  <!-- ── ViewPanel section ──────────────────────────────────────────── -->
+  {comp.viewPanels.length > 0 && comp.viewPanels.map(panel => (
+    <div class="section">
+      <div class="section-title">
+        View panel — {panel.children.length} child component{panel.children.length !== 1 ? "s" : ""}
+        {panel.line && <span style="margin-left: 8px; font-weight: 400; opacity: 0.5;">line {panel.line}</span>}
+      </div>
+      <div class="panel-grid">
+        {panel.children.map((child, i) => {
+          const url = resolveChildUrl(child.name);
+          const Tag = url ? "a" : "div";
+          return (
+            <Tag href={url ?? undefined} class="panel-card">
+              <div class="panel-card-number">Panel {i + 1}</div>
+              <div class="panel-card-name">{child.name}</div>
+              {child.importPath && (
+                <div class="panel-card-path">{child.importPath}</div>
+              )}
+            </Tag>
+          );
+        })}
+      </div>
+    </div>
+  ))}
+
+  <!-- ── Internal helpers (inside function body) ───────────────────── -->
+  {comp.internalHelpers.length > 0 && (
+    <div class="section">
+      <div class="section-title">
+        Internal helpers — defined inside {comp.name}
+      </div>
+      <div class="helper-list">
+        {comp.internalHelpers.map(helper => (
+          <div class="helper-item">
+            <div class="helper-sig">
+              function {helper.name}()
+            </div>
+            <div class="helper-return">
+              returns {helper.returnType}
+            </div>
+            {helper.jsDoc?.description && (
+              <div class="helper-desc">{helper.jsDoc.description}</div>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  )}
+
+  <!-- ── useEffect calls ───────────────────────────────────────────── -->
+  {comp.effects.length > 0 && (
+    <div class="section">
+      <div class="section-title">
+        useEffect — {comp.effects.length} effect{comp.effects.length !== 1 ? "s" : ""}
+      </div>
+      <div class="effect-list">
+        {comp.effects.map((effect, i) => (
+          <div class="effect-item">
+            {effect.isMount
+              ? <span class="effect-mount">Runs once on mount</span>
+              : effect.deps === null
+                ? <span>Runs on every render</span>
+                : <span>Deps: <span class="effect-deps">[{effect.deps.join(", ")}]</span></span>
+            }
+          </div>
+        ))}
+      </div>
+    </div>
+  )}
+
+  <!-- ── Hooks used ────────────────────────────────────────────────── -->
+  {comp.hooksUsed.length > 0 && (
+    <div class="section">
+      <div class="section-title">Hooks used</div>
+      <div class="hook-chips">
+        {comp.hooksUsed.map(hook => (
+          components[hook]
+            ? <a href={`/${hook}/`} class="hook-chip">{hook}</a>
+            : <span class="hook-chip">{hook}</span>
+        ))}
+      </div>
+    </div>
+  )}
+
+  <!-- ── JSDoc tags (returns, params, etc.) ───────────────────────── -->
+  {comp.jsDoc?.tags && Object.keys(comp.jsDoc.tags).length > 0 && (
+    <div class="section">
+      <div class="section-title">JSDoc tags</div>
+      <div class="import-list">
+        {Object.entries(comp.jsDoc.tags).map(([tag, lines]) => (
+          <div class="import-item">
+            <span class="import-source">@{tag}</span>
+            <span class="import-specifiers">{lines.join(" ")}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  )}
+
+  <!-- ── Internal imports ──────────────────────────────────────────── -->
+  {internalImports.length > 0 && (
+    <div class="section">
+      <div class="section-title">Internal imports</div>
+      <div class="import-list">
+        {internalImports.map(imp => (
+          <div class="import-item">
+            <span class="import-source">{imp.source}</span>
+            <span class="import-specifiers">{imp.specifiers.join(", ")}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  )}
+
+  <!-- ── External imports ──────────────────────────────────────────── -->
+  {externalImports.length > 0 && (
+    <div class="section">
+      <div class="section-title">External imports</div>
+      <div class="import-list">
+        {externalImports.map(imp => (
+          <div class="import-item">
+            <span class="import-source">{imp.source}</span>
+            <span class="import-specifiers">{imp.specifiers.join(", ")}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  )}
+
+</Layout>

@@ -18,14 +18,6 @@ import SubjectAreaMixed from "./views/SubjectAreaMixed";
  * This page serves as the main dashboard surface for the feature and presents
  * a high-level readiness snapshot for the current day.
  *
- * Layout overview:
- * - Header showing the dashboard title, description, and last-updated date
- * - Main panel grid containing:
- *   - {@link IctCompletion} for completion status metrics
- *   - {@link PendingApprovals} for outstanding approval counts
- *   - {@link IctCountByWindow} for readiness counts by window
- *   - {@link SubjectAreaMixed} for subject-area breakdown details
- *
  * Data behavior:
  * - Requests the latest task list once when the page mounts
  * - Re-renders when the timeline task list changes in the shared store

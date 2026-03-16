@@ -6,6 +6,8 @@
     "scripts": {
         "docs": "typedoc",
         "docs:watch": "typedoc --watch",
+        "docs:astro": "node docs-astro/parse-source.mjs && cd docs-astro && npm run build",
+        "docs:astro:preview": "cd docs-astro && npm run preview",
         "dev": "vite",
         "build": "vite build",
         "preview": "vite preview",
@@ -37,6 +39,8 @@
         "yup": "^1.3.2"
     },
     "devDependencies": {
+        "@babel/parser": "^7.29.0",
+        "@babel/traverse": "^7.29.0",
         "@eslint/eslintrc": "^3.3.4",
         "@playwright/test": "^1.58.2",
         "@testing-library/jest-dom": "^6.9.1",

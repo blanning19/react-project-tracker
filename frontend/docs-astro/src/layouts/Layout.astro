@@ -1,0 +1,96 @@
+---
+/**
+ * Layout.astro
+ *
+ * Base shell — sidebar nav + main content area.
+ * Receives the full components map and the current slug
+ * so it can mark the active nav item.
+ */
+import "../styles/global.css";
+
+const { components, currentSlug, title } = Astro.props;
+
+// Build nav sections
+const allComps = Object.values(components);
+
+const pages      = allComps.filter(c => c.isComponent && c.file.includes("/pages/"));
+const views      = allComps.filter(c => c.isComponent && c.file.includes("/views/"));
+const hooks      = allComps.filter(c => c.isHook);
+const utils      = allComps.filter(c =>
+  !c.isComponent && !c.isHook && c.file.includes("/utils/")
+);
+const controllers = allComps.filter(c =>
+  !c.isComponent && !c.isHook && c.file.includes("/controllers/")
+);
+const models     = allComps.filter(c =>
+  !c.isComponent && !c.isHook &&
+  (c.file.includes("/models/") || c.file.includes("ViewModel"))
+);
+const other      = allComps.filter(c =>
+  !pages.includes(c) && !views.includes(c) && !hooks.includes(c) &&
+  !utils.includes(c) && !controllers.includes(c) && !models.includes(c)
+);
+
+const sections = [
+  { label: "Pages",       items: pages },
+  { label: "Views",       items: views },
+  { label: "Hooks",       items: hooks },
+  { label: "Controllers", items: controllers },
+  { label: "Models",      items: models },
+  { label: "Utils",       items: utils },
+  { label: "Other",       items: other },
+].filter(s => s.items.length > 0);
+---
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{title} — Source Docs</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap"
+    rel="stylesheet"
+  />
+</head>
+<body>
+  <div class="shell">
+
+    <nav class="nav">
+      <div class="nav-header">
+        <span class="nav-logo">Source Docs</span>
+        <span class="nav-title">ICT Dashboard</span>
+      </div>
+
+      <a
+        href="/"
+        class={`nav-item ${!currentSlug ? "active" : ""}`}
+        style="margin-top: 8px; font-weight: 600;"
+      >
+        Overview
+      </a>
+
+      {sections.map(section => (
+        <div>
+          <div class="nav-section-label">{section.label}</div>
+          {section.items.map(comp => (
+            <a
+              href={`/${comp.name}/`}
+              class={`nav-item ${currentSlug === comp.name ? "active" : ""}`}
+            >
+              {comp.name}
+            </a>
+          ))}
+        </div>
+      ))}
+    </nav>
+
+    <main class="main">
+      <slot />
+    </main>
+
+  </div>
+</body>
+</html>

@@ -1,0 +1,18 @@
+{
+  "name": "docs-astro",
+  "type": "module",
+  "scripts": {
+    "parse": "node parse-source.mjs",
+    "build": "astro build",
+    "dev": "astro dev",
+    "docs": "node parse-source.mjs && astro build",
+    "preview": "astro preview"
+  },
+  "dependencies": {
+    "astro": "^6.0.5"
+  },
+  "devDependencies": {
+    "@babel/parser": "^7.24.0",
+    "@babel/traverse": "^7.24.0"
+  }
+}

@@ -56,3 +56,8 @@ docs/
 docs-astro/dist/
 docs-astro/node_modules/
 docs-astro/src/data/components.json
+
+# Docs - Eleventy build output
+docs-eleventy/dist/
+docs-eleventy/node_modules/
+docs-eleventy/src/_data/components.json

@@ -23,7 +23,7 @@ import { join, relative, extname, basename } from "path";
 // ─── Configuration ────────────────────────────────────────────────────────────
 
 const SRC_DIR = "./src";                          // your source root
-const OUT_FILE = "./docs-astro/src/data/components.json";
+const OUT_FILE = "./docs-eleventy/src/_data/components.json";
 const COMPONENT_EXTENSIONS = [".tsx", ".ts"];
 const IGNORE_DIRS = ["node_modules", ".next", "dist", "build", ".git"];
 
@@ -181,6 +181,7 @@ function extractFromFile(filePath) {
       const decl = path.node.declaration;
       if (!decl) {
         // export { Foo } or export { Foo as Bar }
+        // Resolve each specifier back to its top-level function
         for (const spec of path.node.specifiers ?? []) {
           const localName = spec.local?.name;
           if (!localName || registered.has(localName)) continue;
@@ -505,7 +506,7 @@ const finalOutput = {
   components: componentMap,
 };
 
-mkdirSync("./docs-astro/src/data", { recursive: true });
+mkdirSync("./docs-eleventy/src/_data", { recursive: true });
 writeFileSync(OUT_FILE, JSON.stringify(finalOutput, null, 2));
 
 console.log(`\n✅ Done. ${Object.keys(componentMap).length} components written to ${OUT_FILE}`);

@@ -1,0 +1,163 @@
+---
+layout: layout.njk
+title: Overview
+permalink: /
+---
+
+<div class="breadcrumb">
+  <span>Source Docs</span>
+</div>
+
+<div class="comp-header">
+  <div class="comp-name" style="font-size:1.6em;">ICT Dashboard</div>
+  <div class="comp-desc">
+    Auto-generated from source. Every component, hook, utility, and internal helper
+    extracted directly from inside your function bodies.
+    Last parsed: {{ components.generatedAt | dateFormat }}.
+  </div>
+</div>
+
+{% set allComps = components.components | values %}
+{% set componentCount = allComps | where("isComponent", true) %}
+{% set hookCount = allComps | where("isHook", true) %}
+
+<div class="stats-bar">
+  <div class="stat">
+    <div class="stat-value">{{ components.totalFiles }}</div>
+    <div class="stat-label">Files</div>
+  </div>
+  <div class="stat">
+    <div class="stat-value">{{ componentCount.length }}</div>
+    <div class="stat-label">Components</div>
+  </div>
+  <div class="stat">
+    <div class="stat-value">{{ hookCount.length }}</div>
+    <div class="stat-label">Hooks</div>
+  </div>
+  <div class="stat">
+    <div class="stat-value">{{ components.totalComponents }}</div>
+    <div class="stat-label">Total exports</div>
+  </div>
+</div>
+
+{% set pageComps = allComps | byCategory("page") %}
+{% if pageComps.length %}
+  <div class="section">
+    <div class="section-title">Pages</div>
+    <div class="index-grid">
+      {% for comp in pageComps %}
+        <a href="/components/{{ comp.name }}/" class="index-card">
+          <div class="index-card-name">{{ comp.name }}</div>
+          <div class="index-card-file">{{ comp.file }}</div>
+          {% if comp.jsDoc and comp.jsDoc.description %}
+            <div class="index-card-desc">{{ comp.jsDoc.description | truncate(100) }}</div>
+          {% endif %}
+          {% if comp.viewPanels and comp.viewPanels.length %}
+            <div style="margin-top:8px;">
+              <span class="badge badge-panel">{{ comp.viewPanels[0].children.length }} panels</span>
+            </div>
+          {% endif %}
+        </a>
+      {% endfor %}
+    </div>
+  </div>
+{% endif %}
+
+{% set viewComps = allComps | byCategory("view") %}
+{% if viewComps.length %}
+  <div class="section">
+    <div class="section-title">Views</div>
+    <div class="index-grid">
+      {% for comp in viewComps %}
+        <a href="/components/{{ comp.name }}/" class="index-card">
+          <div class="index-card-name">{{ comp.name }}</div>
+          <div class="index-card-file">{{ comp.file }}</div>
+          {% if comp.jsDoc and comp.jsDoc.description %}
+            <div class="index-card-desc">{{ comp.jsDoc.description | truncate(100) }}</div>
+          {% endif %}
+        </a>
+      {% endfor %}
+    </div>
+  </div>
+{% endif %}
+
+{% set hookComps = allComps | byCategory("hook") %}
+{% if hookComps.length %}
+  <div class="section">
+    <div class="section-title">Hooks</div>
+    <div class="index-grid">
+      {% for comp in hookComps %}
+        <a href="/components/{{ comp.name }}/" class="index-card">
+          <div class="index-card-name">{{ comp.name }}</div>
+          <div class="index-card-file">{{ comp.file }}</div>
+          {% if comp.jsDoc and comp.jsDoc.description %}
+            <div class="index-card-desc">{{ comp.jsDoc.description | truncate(100) }}</div>
+          {% endif %}
+        </a>
+      {% endfor %}
+    </div>
+  </div>
+{% endif %}
+
+{% set ctrlComps = allComps | byCategory("controller") %}
+{% if ctrlComps.length %}
+  <div class="section">
+    <div class="section-title">Controllers</div>
+    <div class="index-grid">
+      {% for comp in ctrlComps %}
+        <a href="/components/{{ comp.name }}/" class="index-card">
+          <div class="index-card-name">{{ comp.name }}</div>
+          <div class="index-card-file">{{ comp.file }}</div>
+          {% if comp.jsDoc and comp.jsDoc.description %}
+            <div class="index-card-desc">{{ comp.jsDoc.description | truncate(100) }}</div>
+          {% endif %}
+        </a>
+      {% endfor %}
+    </div>
+  </div>
+{% endif %}
+
+{% set modelComps = allComps | byCategory("model") %}
+{% if modelComps.length %}
+  <div class="section">
+    <div class="section-title">Models</div>
+    <div class="index-grid">
+      {% for comp in modelComps %}
+        <a href="/components/{{ comp.name }}/" class="index-card">
+          <div class="index-card-name">{{ comp.name }}</div>
+          <div class="index-card-file">{{ comp.file }}</div>
+        </a>
+      {% endfor %}
+    </div>
+  </div>
+{% endif %}
+
+{% set utilComps = allComps | byCategory("util") %}
+{% if utilComps.length %}
+  <div class="section">
+    <div class="section-title">Utils</div>
+    <div class="index-grid">
+      {% for comp in utilComps %}
+        <a href="/components/{{ comp.name }}/" class="index-card">
+          <div class="index-card-name">{{ comp.name }}</div>
+          <div class="index-card-file">{{ comp.file }}</div>
+        </a>
+      {% endfor %}
+    </div>
+  </div>
+{% endif %}
+
+{% set otherComps = allComps | byCategory("other") %}
+{% if otherComps.length %}
+  <div class="section">
+    <div class="section-title">Other</div>
+    <div class="index-grid">
+      {% for comp in otherComps %}
+        <a href="/components/{{ comp.name }}/" class="index-card">
+          <div class="index-card-name">{{ comp.name }}</div>
+          <div class="index-card-file">{{ comp.file }}</div>
+        </a>
+      {% endfor %}
+    </div>
+  </div>
+{% endif %}

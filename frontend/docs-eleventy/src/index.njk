@@ -43,7 +43,7 @@ permalink: /
 {% set pageComps = allComps | byCategory("page") %}
 {% if pageComps.length %}
   <div class="section">
-    <div class="section-title">Pages</div>
+    <div class="overview-section-title">Pages</div>
     <div class="index-grid">
       {% for comp in pageComps %}
         <a href="/components/{{ comp.name }}/" class="index-card">
@@ -66,9 +66,27 @@ permalink: /
 {% set viewComps = allComps | byCategory("view") %}
 {% if viewComps.length %}
   <div class="section">
-    <div class="section-title">Views</div>
+    <div class="overview-section-title">Views</div>
     <div class="index-grid">
       {% for comp in viewComps %}
+        <a href="/components/{{ comp.name }}/" class="index-card">
+          <div class="index-card-name">{{ comp.name }}</div>
+          <div class="index-card-file">{{ comp.file }}</div>
+          {% if comp.jsDoc and comp.jsDoc.description %}
+            <div class="index-card-desc">{{ comp.jsDoc.description | truncate(100) }}</div>
+          {% endif %}
+        </a>
+      {% endfor %}
+    </div>
+  </div>
+{% endif %}
+
+{% set layoutComps = allComps | byCategory("layout") %}
+{% if layoutComps.length %}
+  <div class="section">
+    <div class="overview-section-title">Layout</div>
+    <div class="index-grid">
+      {% for comp in layoutComps %}
         <a href="/components/{{ comp.name }}/" class="index-card">
           <div class="index-card-name">{{ comp.name }}</div>
           <div class="index-card-file">{{ comp.file }}</div>
@@ -84,7 +102,7 @@ permalink: /
 {% set hookComps = allComps | byCategory("hook") %}
 {% if hookComps.length %}
   <div class="section">
-    <div class="section-title">Hooks</div>
+    <div class="overview-section-title">Hooks</div>
     <div class="index-grid">
       {% for comp in hookComps %}
         <a href="/components/{{ comp.name }}/" class="index-card">
@@ -102,7 +120,7 @@ permalink: /
 {% set ctrlComps = allComps | byCategory("controller") %}
 {% if ctrlComps.length %}
   <div class="section">
-    <div class="section-title">Controllers</div>
+    <div class="overview-section-title">Controllers</div>
     <div class="index-grid">
       {% for comp in ctrlComps %}
         <a href="/components/{{ comp.name }}/" class="index-card">
@@ -120,7 +138,7 @@ permalink: /
 {% set modelComps = allComps | byCategory("model") %}
 {% if modelComps.length %}
   <div class="section">
-    <div class="section-title">Models</div>
+    <div class="overview-section-title">Models</div>
     <div class="index-grid">
       {% for comp in modelComps %}
         <a href="/components/{{ comp.name }}/" class="index-card">
@@ -135,7 +153,7 @@ permalink: /
 {% set utilComps = allComps | byCategory("util") %}
 {% if utilComps.length %}
   <div class="section">
-    <div class="section-title">Utils</div>
+    <div class="overview-section-title">Utils</div>
     <div class="index-grid">
       {% for comp in utilComps %}
         <a href="/components/{{ comp.name }}/" class="index-card">
@@ -150,7 +168,7 @@ permalink: /
 {% set otherComps = allComps | byCategory("other") %}
 {% if otherComps.length %}
   <div class="section">
-    <div class="section-title">Other</div>
+    <div class="overview-section-title">Other</div>
     <div class="index-grid">
       {% for comp in otherComps %}
         <a href="/components/{{ comp.name }}/" class="index-card">

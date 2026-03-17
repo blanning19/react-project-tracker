@@ -1,8 +1,150 @@
 {
-  "generatedAt": "2026-03-16T19:24:20.587Z",
+  "generatedAt": "2026-03-17T18:50:57.200Z",
   "totalFiles": 60,
-  "totalComponents": 31,
+  "totalComponents": 40,
   "components": {
+    "App": {
+      "name": "App",
+      "isComponent": true,
+      "isHook": false,
+      "isDefault": true,
+      "jsDoc": {
+        "description": "Root component that owns the React Router route tree. `/login` is deliberately kept outside the `Navbar` layout route so the login page remains standalone and cannot get caught in a protected-layout redirect loop. `/about` is public but lives inside the `Navbar` shell so users retain the application navigation when browsing there.",
+        "tags": {}
+      },
+      "internalHelpers": [],
+      "internalSubComponents": [],
+      "effects": [],
+      "viewPanels": [],
+      "jsxRootElements": [
+        "Routes",
+        "Route",
+        "Login",
+        "DashboardPage",
+        "Navbar",
+        "About",
+        "RequireAuth",
+        "Home",
+        "Create",
+        "Edit"
+      ],
+      "hooksUsed": [],
+      "returnShape": null,
+      "file": "src/App.tsx",
+      "fileName": "App.tsx",
+      "imports": [
+        {
+          "source": "./App.css",
+          "specifiers": []
+        },
+        {
+          "source": "react-router-dom",
+          "specifiers": [
+            "Route",
+            "Routes"
+          ]
+        },
+        {
+          "source": "./features/about/About",
+          "specifiers": [
+            "About"
+          ]
+        },
+        {
+          "source": "./features/auth/Login",
+          "specifiers": [
+            "Login"
+          ]
+        },
+        {
+          "source": "./features/auth/RequireAuth",
+          "specifiers": [
+            "RequireAuth"
+          ]
+        },
+        {
+          "source": "./features/dashboard/DashboardPage",
+          "specifiers": [
+            "DashboardPage"
+          ]
+        },
+        {
+          "source": "./features/home/Home",
+          "specifiers": [
+            "Home"
+          ]
+        },
+        {
+          "source": "./features/projects/create/Create",
+          "specifiers": [
+            "Create"
+          ]
+        },
+        {
+          "source": "./features/projects/edit/Edit",
+          "specifiers": [
+            "Edit"
+          ]
+        },
+        {
+          "source": "./shared/layout/Navbar",
+          "specifiers": [
+            "Navbar"
+          ]
+        }
+      ]
+    },
+    "About": {
+      "name": "About",
+      "isComponent": true,
+      "isHook": false,
+      "isDefault": true,
+      "jsDoc": null,
+      "internalHelpers": [],
+      "internalSubComponents": [
+        {
+          "name": "AboutHero",
+          "jsDoc": null
+        },
+        {
+          "name": "FeatureCard",
+          "jsDoc": null
+        },
+        {
+          "name": "DataModelCard",
+          "jsDoc": null
+        }
+      ],
+      "effects": [],
+      "viewPanels": [],
+      "jsxRootElements": [
+        "Container",
+        "AboutHero",
+        "Row",
+        "Col",
+        "Card",
+        "FeatureCard",
+        "ListGroup",
+        "DataModelCard"
+      ],
+      "hooksUsed": [],
+      "returnShape": null,
+      "file": "src/features/about/About.tsx",
+      "fileName": "About.tsx",
+      "imports": [
+        {
+          "source": "react-bootstrap",
+          "specifiers": [
+            "Badge",
+            "Card",
+            "Col",
+            "Container",
+            "ListGroup",
+            "Row"
+          ]
+        }
+      ]
+    },
     "Login": {
       "name": "Login",
       "isComponent": true,
@@ -17,6 +159,7 @@
         }
       },
       "internalHelpers": [],
+      "internalSubComponents": [],
       "effects": [],
       "viewPanels": [],
       "jsxRootElements": [
@@ -25,6 +168,7 @@
       "hooksUsed": [
         "useLoginController"
       ],
+      "returnShape": null,
       "file": "src/features/auth/Login.tsx",
       "fileName": "Login.tsx",
       "imports": [
@@ -52,6 +196,7 @@
         "tags": {}
       },
       "internalHelpers": [],
+      "internalSubComponents": [],
       "effects": [],
       "viewPanels": [],
       "jsxRootElements": [
@@ -63,6 +208,7 @@
         "Spinner"
       ],
       "hooksUsed": [],
+      "returnShape": null,
       "file": "src/features/auth/LoginView.tsx",
       "fileName": "LoginView.tsx",
       "imports": [
@@ -95,6 +241,7 @@
         "tags": {}
       },
       "internalHelpers": [],
+      "internalSubComponents": [],
       "effects": [],
       "viewPanels": [],
       "jsxRootElements": [
@@ -104,6 +251,7 @@
         "useAuth",
         "useLocation"
       ],
+      "returnShape": null,
       "file": "src/features/auth/RequireAuth.tsx",
       "fileName": "RequireAuth.tsx",
       "imports": [
@@ -159,6 +307,7 @@
           }
         }
       ],
+      "internalSubComponents": [],
       "effects": [],
       "viewPanels": [],
       "jsxRootElements": [],
@@ -167,6 +316,43 @@
         "useAuth",
         "useNavigate",
         "useLocation"
+      ],
+      "returnShape": [
+        {
+          "key": "username",
+          "kind": "ref",
+          "nested": []
+        },
+        {
+          "key": "password",
+          "kind": "ref",
+          "nested": []
+        },
+        {
+          "key": "error",
+          "kind": "ref",
+          "nested": []
+        },
+        {
+          "key": "isSubmitting",
+          "kind": "ref",
+          "nested": []
+        },
+        {
+          "key": "onUsernameChange",
+          "kind": "ref",
+          "nested": []
+        },
+        {
+          "key": "onPasswordChange",
+          "kind": "ref",
+          "nested": []
+        },
+        {
+          "key": "onSubmit",
+          "kind": "ref",
+          "nested": []
+        }
       ],
       "file": "src/features/auth/useLoginController.ts",
       "fileName": "useLoginController.ts",
@@ -219,6 +405,7 @@
           "jsDoc": null
         }
       ],
+      "internalSubComponents": [],
       "effects": [
         {
           "deps": [],
@@ -260,6 +447,7 @@
         "useStore",
         "useEffect"
       ],
+      "returnShape": null,
       "file": "src/features/dashboard/DashboardPage.tsx",
       "fileName": "DashboardPage.tsx",
       "imports": [
@@ -340,10 +528,12 @@
         }
       },
       "internalHelpers": [],
+      "internalSubComponents": [],
       "effects": [],
       "viewPanels": [],
       "jsxRootElements": [],
       "hooksUsed": [],
+      "returnShape": null,
       "file": "src/features/dashboard/views/IctCompletion.tsx",
       "fileName": "IctCompletion.tsx",
       "imports": [
@@ -369,10 +559,12 @@
         }
       },
       "internalHelpers": [],
+      "internalSubComponents": [],
       "effects": [],
       "viewPanels": [],
       "jsxRootElements": [],
       "hooksUsed": [],
+      "returnShape": null,
       "file": "src/features/dashboard/views/IctCountByWindow.tsx",
       "fileName": "IctCountByWindow.tsx",
       "imports": [
@@ -398,10 +590,12 @@
         }
       },
       "internalHelpers": [],
+      "internalSubComponents": [],
       "effects": [],
       "viewPanels": [],
       "jsxRootElements": [],
       "hooksUsed": [],
+      "returnShape": null,
       "file": "src/features/dashboard/views/PendingApprovals.tsx",
       "fileName": "PendingApprovals.tsx",
       "imports": [
@@ -427,10 +621,12 @@
         }
       },
       "internalHelpers": [],
+      "internalSubComponents": [],
       "effects": [],
       "viewPanels": [],
       "jsxRootElements": [],
       "hooksUsed": [],
+      "returnShape": null,
       "file": "src/features/dashboard/views/SubjectAreaMixed.tsx",
       "fileName": "SubjectAreaMixed.tsx",
       "imports": [
@@ -438,6 +634,93 @@
           "source": "react",
           "specifiers": [
             "JSX"
+          ]
+        }
+      ]
+    },
+    "Home": {
+      "name": "Home",
+      "isComponent": true,
+      "isHook": false,
+      "isDefault": true,
+      "jsDoc": {
+        "description": "Wires {@link useHomeController} directly to {@link HomeView}.",
+        "tags": {
+          "returns": [
+            "The rendered Home page."
+          ]
+        }
+      },
+      "internalHelpers": [],
+      "internalSubComponents": [],
+      "effects": [],
+      "viewPanels": [],
+      "jsxRootElements": [
+        "HomeView"
+      ],
+      "hooksUsed": [
+        "useHomeController"
+      ],
+      "returnShape": null,
+      "file": "src/features/home/Home.tsx",
+      "fileName": "Home.tsx",
+      "imports": [
+        {
+          "source": "./HomeView",
+          "specifiers": [
+            "HomeView"
+          ]
+        },
+        {
+          "source": "./useHomeController",
+          "specifiers": [
+            "useHomeController"
+          ]
+        }
+      ]
+    },
+    "HomeView": {
+      "name": "HomeView",
+      "isComponent": true,
+      "isHook": false,
+      "isDefault": true,
+      "jsDoc": null,
+      "internalHelpers": [
+        {
+          "name": "SortTh",
+          "returnType": "unknown",
+          "jsDoc": null
+        }
+      ],
+      "internalSubComponents": [
+        {
+          "name": "SortIndicator",
+          "jsDoc": null
+        }
+      ],
+      "effects": [],
+      "viewPanels": [],
+      "jsxRootElements": [
+        "SortTh"
+      ],
+      "hooksUsed": [],
+      "returnShape": null,
+      "file": "src/features/home/HomeView.tsx",
+      "fileName": "HomeView.tsx",
+      "imports": [
+        {
+          "source": "./home.constants",
+          "specifiers": [
+            "HOME_STATUS_FILTER_OPTIONS",
+            "HOME_SORT_LABELS"
+          ]
+        },
+        {
+          "source": "./home.types",
+          "specifiers": [
+            "HomeSortKey",
+            "HomeViewProps",
+            "HomeStatusFilter"
           ]
         }
       ]
@@ -465,6 +748,7 @@
           "jsDoc": null
         }
       ],
+      "internalSubComponents": [],
       "effects": [],
       "viewPanels": [],
       "jsxRootElements": [],
@@ -474,6 +758,78 @@
         "useQueryClient",
         "useState",
         "useQuery"
+      ],
+      "returnShape": [
+        {
+          "key": "rows",
+          "kind": "derived",
+          "nested": []
+        },
+        {
+          "key": "pagination",
+          "kind": "object",
+          "nested": [
+            "page",
+            "pageSize",
+            "total",
+            "totalPages",
+            "displayStart",
+            "displayEnd",
+            "onPageChange",
+            "onPageSizeChange"
+          ]
+        },
+        {
+          "key": "sort",
+          "kind": "object",
+          "nested": [
+            "key",
+            "dir",
+            "toggleSort"
+          ]
+        },
+        {
+          "key": "filters",
+          "kind": "object",
+          "nested": [
+            "searchTerm",
+            "statusFilter",
+            "hasActiveFilters",
+            "onSearchChange",
+            "onStatusFilterChange"
+          ]
+        },
+        {
+          "key": "state",
+          "kind": "object",
+          "nested": [
+            "loading",
+            "refreshing",
+            "apiError",
+            "successMessage",
+            "deleteError",
+            "deleteLoading"
+          ]
+        },
+        {
+          "key": "actions",
+          "kind": "object",
+          "nested": [
+            "getData",
+            "onDeleteConfirm"
+          ]
+        },
+        {
+          "key": "navigation",
+          "kind": "object",
+          "nested": [
+            "onNavigateCreate",
+            "onNavigateEdit",
+            "deleteTarget",
+            "onDeleteRequest",
+            "onDeleteCancel"
+          ]
+        }
       ],
       "file": "src/features/home/useHomeController.ts",
       "fileName": "useHomeController.ts",
@@ -527,6 +883,60 @@
         }
       ]
     },
+    "Create": {
+      "name": "Create",
+      "isComponent": true,
+      "isHook": false,
+      "isDefault": true,
+      "jsDoc": {
+        "description": "Wires {@link useCreateController} to {@link ProjectFormPageView}. Responsibilities: - Gather create-page state and handlers from the controller hook. - Pass the prepared controller output to the shared form page view. Intentionally thin — no logic, no state. All behaviour lives in the controller; all rendering lives in the view. ### Why the casts on `control` and `handleSubmit` `useForm<ProjectFormValues>` spreads through `useProjectFormController` and back up to `useCreateController`. By the time TypeScript sees the destructured values here, the type parameter has been widened to the generic `TFieldValues` variable. `ProjectFormPageView` expects the concrete `Control<ProjectFormValues>` / `UseFormHandleSubmit<ProjectFormValues>` types, so we cast. The runtime values are identical — this is a TypeScript generic resolution issue only.",
+        "tags": {
+          "returns": [
+            "The rendered Create Project page."
+          ]
+        }
+      },
+      "internalHelpers": [],
+      "internalSubComponents": [],
+      "effects": [],
+      "viewPanels": [],
+      "jsxRootElements": [
+        "ProjectFormPageView"
+      ],
+      "hooksUsed": [
+        "useCreateController"
+      ],
+      "returnShape": null,
+      "file": "src/features/projects/create/Create.tsx",
+      "fileName": "Create.tsx",
+      "imports": [
+        {
+          "source": "react-hook-form",
+          "specifiers": [
+            "Control",
+            "UseFormHandleSubmit"
+          ]
+        },
+        {
+          "source": "../models/project.types",
+          "specifiers": [
+            "ProjectFormValues"
+          ]
+        },
+        {
+          "source": "../shared/ProjectFormPageView",
+          "specifiers": [
+            "ProjectFormPageView"
+          ]
+        },
+        {
+          "source": "./useCreateController",
+          "specifiers": [
+            "useCreateController"
+          ]
+        }
+      ]
+    },
     "useCreateController": {
       "name": "useCreateController",
       "isComponent": false,
@@ -556,12 +966,14 @@
         }
       },
       "internalHelpers": [],
+      "internalSubComponents": [],
       "effects": [],
       "viewPanels": [],
       "jsxRootElements": [],
       "hooksUsed": [
         "useProjectFormController"
       ],
+      "returnShape": null,
       "file": "src/features/projects/create/useCreateController.ts",
       "fileName": "useCreateController.ts",
       "imports": [
@@ -569,6 +981,130 @@
           "source": "../shared/useProjectFormController",
           "specifiers": [
             "useProjectFormController"
+          ]
+        }
+      ]
+    },
+    "DeleteModal": {
+      "name": "DeleteModal",
+      "isComponent": true,
+      "isHook": false,
+      "isDefault": true,
+      "jsDoc": {
+        "description": "Confirmation modal that deletes a project when the user clicks \"Delete\". ### Error display (Fix #10) The error shown in the modal is extracted from `deleteMutation.error` using `getApiErrorMessage`. Previously the modal showed a hardcoded \"Something went wrong.\" string regardless of what the API returned. Now it surfaces field-level messages and HTTP status codes consistently with the project form pages. ### Cache invalidation (Fix #14) `onSuccess` invalidates `projectKeys.lists()` directly. Callers must not perform a second invalidation in `onDeleted` — doing so causes two back-to-back list fetches.",
+        "tags": {
+          "param": [
+            "props - See {@link DeleteModalProps}."
+          ]
+        }
+      },
+      "internalHelpers": [],
+      "internalSubComponents": [],
+      "effects": [],
+      "viewPanels": [],
+      "jsxRootElements": [
+        "Modal",
+        "Alert",
+        "Button"
+      ],
+      "hooksUsed": [
+        "useQueryClient",
+        "useMutation"
+      ],
+      "returnShape": null,
+      "file": "src/features/projects/delete/DeleteModal.tsx",
+      "fileName": "DeleteModal.tsx",
+      "imports": [
+        {
+          "source": "@tanstack/react-query",
+          "specifiers": [
+            "useMutation",
+            "useQueryClient"
+          ]
+        },
+        {
+          "source": "react-bootstrap/Alert",
+          "specifiers": [
+            "Alert"
+          ]
+        },
+        {
+          "source": "react-bootstrap/Button",
+          "specifiers": [
+            "Button"
+          ]
+        },
+        {
+          "source": "react-bootstrap/Modal",
+          "specifiers": [
+            "Modal"
+          ]
+        },
+        {
+          "source": "../models/project.api",
+          "specifiers": [
+            "deleteProject",
+            "projectKeys"
+          ]
+        },
+        {
+          "source": "../shared/getApiErrorMessage",
+          "specifiers": [
+            "getApiErrorMessage"
+          ]
+        }
+      ]
+    },
+    "Edit": {
+      "name": "Edit",
+      "isComponent": true,
+      "isHook": false,
+      "isDefault": true,
+      "jsDoc": {
+        "description": "Wires {@link useEditController} to {@link ProjectFormPageView}. Responsibilities: - Gather edit-page state and handlers from the controller hook. - Pass the prepared controller output to the shared form page view. Intentionally thin — no logic, no state. All behaviour lives in the controller (including route-param extraction via `useParams`); all rendering lives in the view. ### Why the casts on `control` and `handleSubmit` Same generic resolution issue as `Create.tsx` — see that file for the full explanation. The casts are safe; runtime behaviour is unaffected.",
+        "tags": {
+          "returns": [
+            "The rendered Edit Project page."
+          ]
+        }
+      },
+      "internalHelpers": [],
+      "internalSubComponents": [],
+      "effects": [],
+      "viewPanels": [],
+      "jsxRootElements": [
+        "ProjectFormPageView"
+      ],
+      "hooksUsed": [
+        "useEditController"
+      ],
+      "returnShape": null,
+      "file": "src/features/projects/edit/Edit.tsx",
+      "fileName": "Edit.tsx",
+      "imports": [
+        {
+          "source": "react-hook-form",
+          "specifiers": [
+            "Control",
+            "UseFormHandleSubmit"
+          ]
+        },
+        {
+          "source": "../models/project.types",
+          "specifiers": [
+            "ProjectFormValues"
+          ]
+        },
+        {
+          "source": "../shared/ProjectFormPageView",
+          "specifiers": [
+            "ProjectFormPageView"
+          ]
+        },
+        {
+          "source": "./useEditController",
+          "specifiers": [
+            "useEditController"
           ]
         }
       ]
@@ -603,6 +1139,7 @@
         }
       },
       "internalHelpers": [],
+      "internalSubComponents": [],
       "effects": [],
       "viewPanels": [],
       "jsxRootElements": [],
@@ -610,6 +1147,7 @@
         "useParams",
         "useProjectFormController"
       ],
+      "returnShape": null,
       "file": "src/features/projects/edit/useEditController.ts",
       "fileName": "useEditController.ts",
       "imports": [
@@ -650,10 +1188,12 @@
         }
       },
       "internalHelpers": [],
+      "internalSubComponents": [],
       "effects": [],
       "viewPanels": [],
       "jsxRootElements": [],
       "hooksUsed": [],
+      "returnShape": null,
       "file": "src/features/projects/models/project.api.ts",
       "fileName": "project.api.ts",
       "imports": [
@@ -701,10 +1241,12 @@
         }
       },
       "internalHelpers": [],
+      "internalSubComponents": [],
       "effects": [],
       "viewPanels": [],
       "jsxRootElements": [],
       "hooksUsed": [],
+      "returnShape": null,
       "file": "src/features/projects/models/project.api.ts",
       "fileName": "project.api.ts",
       "imports": [
@@ -752,10 +1294,12 @@
         }
       },
       "internalHelpers": [],
+      "internalSubComponents": [],
       "effects": [],
       "viewPanels": [],
       "jsxRootElements": [],
       "hooksUsed": [],
+      "returnShape": null,
       "file": "src/features/projects/models/project.api.ts",
       "fileName": "project.api.ts",
       "imports": [
@@ -805,10 +1349,12 @@
         }
       },
       "internalHelpers": [],
+      "internalSubComponents": [],
       "effects": [],
       "viewPanels": [],
       "jsxRootElements": [],
       "hooksUsed": [],
+      "returnShape": null,
       "file": "src/features/projects/models/project.api.ts",
       "fileName": "project.api.ts",
       "imports": [
@@ -850,10 +1396,12 @@
         }
       },
       "internalHelpers": [],
+      "internalSubComponents": [],
       "effects": [],
       "viewPanels": [],
       "jsxRootElements": [],
       "hooksUsed": [],
+      "returnShape": null,
       "file": "src/features/projects/models/project.api.ts",
       "fileName": "project.api.ts",
       "imports": [
@@ -895,10 +1443,12 @@
         }
       },
       "internalHelpers": [],
+      "internalSubComponents": [],
       "effects": [],
       "viewPanels": [],
       "jsxRootElements": [],
       "hooksUsed": [],
+      "returnShape": null,
       "file": "src/features/projects/models/project.api.ts",
       "fileName": "project.api.ts",
       "imports": [
@@ -961,10 +1511,12 @@
         }
       },
       "internalHelpers": [],
+      "internalSubComponents": [],
       "effects": [],
       "viewPanels": [],
       "jsxRootElements": [],
       "hooksUsed": [],
+      "returnShape": null,
       "file": "src/features/projects/shared/getApiErrorMessage.ts",
       "fileName": "getApiErrorMessage.ts",
       "imports": [
@@ -993,10 +1545,53 @@
         }
       },
       "internalHelpers": [],
+      "internalSubComponents": [],
       "effects": [],
       "viewPanels": [],
       "jsxRootElements": [],
       "hooksUsed": [],
+      "returnShape": [
+        {
+          "key": "name",
+          "kind": "derived",
+          "nested": []
+        },
+        {
+          "key": "comments",
+          "kind": "derived",
+          "nested": []
+        },
+        {
+          "key": "status",
+          "kind": "derived",
+          "nested": []
+        },
+        {
+          "key": "managerId",
+          "kind": "value",
+          "nested": []
+        },
+        {
+          "key": "employees",
+          "kind": "value",
+          "nested": []
+        },
+        {
+          "key": "start_date",
+          "kind": "derived",
+          "nested": []
+        },
+        {
+          "key": "end_date",
+          "kind": "derived",
+          "nested": []
+        },
+        {
+          "key": "security_level",
+          "kind": "derived",
+          "nested": []
+        }
+      ],
       "file": "src/features/projects/shared/projectFormConfig.ts",
       "fileName": "projectFormConfig.ts",
       "imports": [
@@ -1036,10 +1631,53 @@
         }
       },
       "internalHelpers": [],
+      "internalSubComponents": [],
       "effects": [],
       "viewPanels": [],
       "jsxRootElements": [],
       "hooksUsed": [],
+      "returnShape": [
+        {
+          "key": "name",
+          "kind": "value",
+          "nested": []
+        },
+        {
+          "key": "comments",
+          "kind": "derived",
+          "nested": []
+        },
+        {
+          "key": "status",
+          "kind": "value",
+          "nested": []
+        },
+        {
+          "key": "manager",
+          "kind": "value",
+          "nested": []
+        },
+        {
+          "key": "employees",
+          "kind": "value",
+          "nested": []
+        },
+        {
+          "key": "start_date",
+          "kind": "derived",
+          "nested": []
+        },
+        {
+          "key": "end_date",
+          "kind": "derived",
+          "nested": []
+        },
+        {
+          "key": "security_level",
+          "kind": "value",
+          "nested": []
+        }
+      ],
       "file": "src/features/projects/shared/projectFormConfig.ts",
       "fileName": "projectFormConfig.ts",
       "imports": [
@@ -1058,6 +1696,168 @@
             "ProjectRecord",
             "ProjectWritePayload",
             "SecurityLevel"
+          ]
+        }
+      ]
+    },
+    "ProjectFormFields": {
+      "name": "ProjectFormFields",
+      "isComponent": true,
+      "isHook": false,
+      "isDefault": true,
+      "jsDoc": {
+        "description": "Renders all input fields for the project form, organised into four numbered sections: Basics, People, Schedule, and Comments. Every field is wired to React Hook Form via `<Controller>`, so this component itself holds no form state — it delegates entirely to the `control` prop provided by the parent controller hook. ### Sections 1. **Basics** — project name, status, security level 2. **People** — project manager dropdown, employee checkbox list with search 3. **Schedule** — start date, end date 4. **Comments** — free-text textarea",
+        "tags": {
+          "param": [
+            "props - See {@link ProjectFormFieldsProps}."
+          ]
+        }
+      },
+      "internalHelpers": [],
+      "internalSubComponents": [
+        {
+          "name": "SectionLabel",
+          "jsDoc": {
+            "description": "Numbered section label used within the form to visually group fields.",
+            "tags": {
+              "internal": []
+            }
+          }
+        },
+        {
+          "name": "FieldGroup",
+          "jsDoc": {
+            "description": "Wraps a single form input with a label, validation error, and optional hint.",
+            "tags": {
+              "internal": []
+            }
+          }
+        }
+      ],
+      "effects": [],
+      "viewPanels": [
+        {
+          "marker": "ViewPanel (auto-detected)",
+          "line": 179,
+          "autoDetected": true,
+          "children": [
+            {
+              "name": "FieldGroup",
+              "importPath": null
+            },
+            {
+              "name": "FieldGroup",
+              "importPath": null
+            }
+          ]
+        }
+      ],
+      "jsxRootElements": [
+        "FieldGroup"
+      ],
+      "hooksUsed": [
+        "useState",
+        "useMemo"
+      ],
+      "returnShape": null,
+      "file": "src/features/projects/shared/ProjectFormFields.tsx",
+      "fileName": "ProjectFormFields.tsx",
+      "imports": [
+        {
+          "source": "react",
+          "specifiers": [
+            "useMemo",
+            "useState"
+          ]
+        },
+        {
+          "source": "react-hook-form",
+          "specifiers": [
+            "Controller",
+            "Control",
+            "FieldErrors"
+          ]
+        },
+        {
+          "source": "../models/project.types",
+          "specifiers": [
+            "ManagerOption",
+            "EmployeeOption",
+            "ProjectFormValues"
+          ]
+        },
+        {
+          "source": "./projectFormConfig",
+          "specifiers": [
+            "SECURITY_LEVEL_OPTIONS"
+          ]
+        },
+        {
+          "source": "./ProjectFormFields.module.css",
+          "specifiers": [
+            "styles"
+          ]
+        }
+      ]
+    },
+    "ProjectFormPageView": {
+      "name": "ProjectFormPageView",
+      "isComponent": true,
+      "isHook": false,
+      "isDefault": true,
+      "jsDoc": null,
+      "internalHelpers": [],
+      "internalSubComponents": [],
+      "effects": [],
+      "viewPanels": [],
+      "jsxRootElements": [
+        "ProjectFormFields",
+        "Link"
+      ],
+      "hooksUsed": [],
+      "returnShape": null,
+      "file": "src/features/projects/shared/ProjectFormPageView.tsx",
+      "fileName": "ProjectFormPageView.tsx",
+      "imports": [
+        {
+          "source": "react-hook-form",
+          "specifiers": [
+            "Control",
+            "FieldErrors",
+            "UseFormHandleSubmit"
+          ]
+        },
+        {
+          "source": "react-router-dom",
+          "specifiers": [
+            "Link"
+          ]
+        },
+        {
+          "source": "../models/project.types",
+          "specifiers": [
+            "EmployeeOption",
+            "ManagerOption",
+            "PersonOption",
+            "ProjectFormValues"
+          ]
+        },
+        {
+          "source": "../shared/projectFormConfig",
+          "specifiers": [
+            "STATUS_OPTIONS"
+          ]
+        },
+        {
+          "source": "../shared/ProjectFormFields",
+          "specifiers": [
+            "ProjectFormFields"
+          ]
+        },
+        {
+          "source": "./ProjectFormPageView.module.css",
+          "specifiers": [
+            "styles"
           ]
         }
       ]
@@ -1091,6 +1891,7 @@
           "jsDoc": null
         }
       ],
+      "internalSubComponents": [],
       "effects": [
         {
           "deps": [
@@ -1110,6 +1911,43 @@
         "useQuery",
         "useEffect",
         "useMutation"
+      ],
+      "returnShape": [
+        {
+          "key": "submission",
+          "kind": "ref",
+          "nested": []
+        },
+        {
+          "key": "reloadData",
+          "kind": "ref",
+          "nested": []
+        },
+        {
+          "key": "managers",
+          "kind": "ref",
+          "nested": []
+        },
+        {
+          "key": "employees",
+          "kind": "ref",
+          "nested": []
+        },
+        {
+          "key": "loading",
+          "kind": "ref",
+          "nested": []
+        },
+        {
+          "key": "apiError",
+          "kind": "ref",
+          "nested": []
+        },
+        {
+          "key": "isSubmitting",
+          "kind": "value",
+          "nested": []
+        }
       ],
       "file": "src/features/projects/shared/useProjectFormController.ts",
       "fileName": "useProjectFormController.ts",
@@ -1196,10 +2034,12 @@
       "isDefault": false,
       "jsDoc": null,
       "internalHelpers": [],
+      "internalSubComponents": [],
       "effects": [],
       "viewPanels": [],
       "jsxRootElements": [],
       "hooksUsed": [],
+      "returnShape": null,
       "file": "src/library/hooks/UseStore.ts",
       "fileName": "UseStore.ts",
       "imports": []
@@ -1232,10 +2072,12 @@
         }
       },
       "internalHelpers": [],
+      "internalSubComponents": [],
       "effects": [],
       "viewPanels": [],
       "jsxRootElements": [],
       "hooksUsed": [],
+      "returnShape": null,
       "file": "src/shared/auth/authApi.ts",
       "fileName": "authApi.ts",
       "imports": [
@@ -1283,10 +2125,12 @@
         }
       },
       "internalHelpers": [],
+      "internalSubComponents": [],
       "effects": [],
       "viewPanels": [],
       "jsxRootElements": [],
       "hooksUsed": [],
+      "returnShape": null,
       "file": "src/shared/auth/authApi.ts",
       "fileName": "authApi.ts",
       "imports": [
@@ -1330,6 +2174,7 @@
         }
       },
       "internalHelpers": [],
+      "internalSubComponents": [],
       "effects": [
         {
           "deps": [
@@ -1346,6 +2191,33 @@
         "useCallback",
         "useEffect",
         "useMemo"
+      ],
+      "returnShape": [
+        {
+          "key": "accessToken",
+          "kind": "ref",
+          "nested": []
+        },
+        {
+          "key": "isAuthenticated",
+          "kind": "value",
+          "nested": []
+        },
+        {
+          "key": "login",
+          "kind": "ref",
+          "nested": []
+        },
+        {
+          "key": "logout",
+          "kind": "ref",
+          "nested": []
+        },
+        {
+          "key": "handleSessionExpired",
+          "kind": "ref",
+          "nested": []
+        }
       ],
       "file": "src/shared/auth/AuthProvider.tsx",
       "fileName": "AuthProvider.tsx",
@@ -1419,12 +2291,14 @@
         }
       },
       "internalHelpers": [],
+      "internalSubComponents": [],
       "effects": [],
       "viewPanels": [],
       "jsxRootElements": [],
       "hooksUsed": [
         "useContext"
       ],
+      "returnShape": null,
       "file": "src/shared/auth/useAuth.ts",
       "fileName": "useAuth.ts",
       "imports": [
@@ -1470,10 +2344,12 @@
         }
       },
       "internalHelpers": [],
+      "internalSubComponents": [],
       "effects": [],
       "viewPanels": [],
       "jsxRootElements": [],
       "hooksUsed": [],
+      "returnShape": null,
       "file": "src/shared/http/fetchClient.ts",
       "fileName": "fetchClient.ts",
       "imports": [
@@ -1513,10 +2389,12 @@
         }
       },
       "internalHelpers": [],
+      "internalSubComponents": [],
       "effects": [],
       "viewPanels": [],
       "jsxRootElements": [],
       "hooksUsed": [],
+      "returnShape": null,
       "file": "src/shared/http/fetchClient.ts",
       "fileName": "fetchClient.ts",
       "imports": [
@@ -1571,6 +2449,7 @@
           "jsDoc": null
         }
       ],
+      "internalSubComponents": [],
       "effects": [
         {
           "deps": [
@@ -1597,6 +2476,7 @@
         "useEffect",
         "useMemo"
       ],
+      "returnShape": null,
       "file": "src/shared/layout/Navbar.tsx",
       "fileName": "Navbar.tsx",
       "imports": [
@@ -1676,6 +2556,7 @@
           "jsDoc": null
         }
       ],
+      "internalSubComponents": [],
       "effects": [
         {
           "deps": [
@@ -1690,6 +2571,7 @@
         "useState",
         "useEffect"
       ],
+      "returnShape": null,
       "file": "src/shared/theme/ThemeToggle.tsx",
       "fileName": "ThemeToggle.tsx",
       "imports": [

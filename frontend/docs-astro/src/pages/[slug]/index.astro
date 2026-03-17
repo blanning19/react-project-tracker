@@ -101,6 +101,52 @@ const externalImports = (comp.imports ?? []).filter(
     </div>
   ))}
 
+  <!-- ── Return shape ──────────────────────────────────────────────── -->
+  {comp.returnShape && comp.returnShape.length > 0 && (
+    <div class="section">
+      <div class="section-title">Return shape</div>
+      <div class="return-shape">
+        {comp.returnShape.map(item => (
+          <div class="return-key">
+            <div class="return-key-header">
+              <span class="return-key-name">{item.key}</span>
+              <span class={`return-key-kind ${
+                item.kind === "function" ? "kind-function" :
+                item.kind === "async function" ? "kind-async" :
+                item.kind === "object" ? "kind-object" :
+                item.kind === "derived" ? "kind-derived" : ""
+              }`}>{item.kind}</span>
+            </div>
+            {item.nested && item.nested.length > 0 && (
+              <div class="return-key-nested">
+                {item.nested.map(n => (
+                  <span class="return-nested-chip">{n}</span>
+                ))}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  )}
+
+  <!-- ── Internal sub-components ──────────────────────────────────── -->
+  {comp.internalSubComponents && comp.internalSubComponents.length > 0 && (
+    <div class="section">
+      <div class="section-title">Internal sub-components — defined in this file</div>
+      <div class="helper-list">
+        {comp.internalSubComponents.map(sub => (
+          <div class="helper-item">
+            <div class="helper-sig">function {sub.name}(): JSX.Element</div>
+            {sub.jsDoc?.description && (
+              <div class="helper-desc">{sub.jsDoc.description}</div>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  )}
+
   <!-- ── Internal helpers (inside function body) ───────────────────── -->
   {comp.internalHelpers.length > 0 && (
     <div class="section">

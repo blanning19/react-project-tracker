@@ -55,28 +55,32 @@ module.exports = function (eleventyConfig) {
   );
 
   // ── Page registry ──────────────────────────────────────────────────────────
-  // Explicit list of routable screen components shown in the app navbar.
-  // Add new pages here as the app grows — both the base name and any
-  // suffixed variants (e.g. "Home" matches Home, HomeView, HomePage).
-  const PAGE_NAMES = [
-    "Home", "HomeView", "HomePage",
-    "About", "AboutView", "AboutPage",
-    "Login", "LoginView", "LoginPage",
-    "Create", "CreateView", "CreatePage",
-    "DashboardPage", "Dashboard",
-  ];
+  // Routable screens only — components the router renders at a URL.
+  // HomeView/LoginView are Views, not Pages, so excluded here.
+  const PAGE_NAMES = new Set([
+    "Home", "About", "Login", "Create", "DashboardPage",
+  ]);
 
-  // Categorise by explicit page list first, then file path, then isComponent.
+  // Layout components — app structure, not feature screens or views.
+  const LAYOUT_NAMES = new Set([
+    "App", "Navbar", "AuthProvider", "RequireAuth", "ThemeToggle",
+  ]);
+
+  // View suffix — components ending in View are presentation layers.
+  const isViewName = (name) => name.endsWith("View") || name.endsWith("PageView");
+
   eleventyConfig.addFilter("byCategory", (arr, cat) =>
     (arr ?? []).filter((item) => {
-      if (item.isHook)                                        return cat === "hook";
-      if (PAGE_NAMES.includes(item.name))                     return cat === "page";
-      if (item.isComponent && item.file.includes("/views/"))  return cat === "view";
-      if (item.isComponent)                                   return cat === "view";
-      if (item.file.includes("/controllers/"))                return cat === "controller";
+      if (item.isHook)                          return cat === "hook";
+      if (PAGE_NAMES.has(item.name))            return cat === "page";
+      if (LAYOUT_NAMES.has(item.name))          return cat === "layout";
+      if (isViewName(item.name) && item.isComponent) return cat === "view";
+      if (item.isComponent && item.file.includes("/views/")) return cat === "view";
+      if (item.isComponent)                     return cat === "view";
+      if (item.file.includes("/controllers/"))  return cat === "controller";
       if (item.file.includes("/models/") ||
-          item.name.includes("ViewModel"))                    return cat === "model";
-      if (item.file.includes("/utils/"))                      return cat === "util";
+          item.name.includes("ViewModel"))      return cat === "model";
+      if (item.file.includes("/utils/"))        return cat === "util";
       return cat === "other";
     })
   );

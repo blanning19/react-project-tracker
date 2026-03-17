@@ -40,6 +40,14 @@
       {% endfor %}
     {% endif %}
 
+    {% set layoutComps = allComps | byCategory("layout") %}
+    {% if layoutComps.length %}
+      <div class="nav-section-label">Layout</div>
+      {% for comp in layoutComps %}
+        <a href="/components/{{ comp.name }}/" class="nav-item {% if currentSlug == comp.name %}active{% endif %}">{{ comp.name }}</a>
+      {% endfor %}
+    {% endif %}
+
     {% set hookComps = allComps | byCategory("hook") %}
     {% if hookComps.length %}
       <div class="nav-section-label">Hooks</div>

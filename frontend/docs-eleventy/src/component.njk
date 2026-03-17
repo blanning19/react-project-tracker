@@ -100,6 +100,54 @@ permalink: /components/{{ comp.name }}/
   {% endfor %}
 {% endif %}
 
+{# ── Return shape ─────────────────────────────────────────────── #}
+{% if comp.returnShape and comp.returnShape.length %}
+  <div class="section">
+    <div class="section-title">Return shape</div>
+    <div class="return-shape">
+      {% for item in comp.returnShape %}
+        <div class="return-key">
+          <div class="return-key-header">
+            <span class="return-key-name">{{ item.key }}</span>
+            <span class="return-key-kind
+              {% if item.kind == 'function' %} kind-function
+              {% elif item.kind == 'async function' %} kind-async
+              {% elif item.kind == 'object' %} kind-object
+              {% elif item.kind == 'derived' %} kind-derived
+              {% endif %}">
+              {{ item.kind }}
+            </span>
+          </div>
+          {% if item.nested and item.nested.length %}
+            <div class="return-key-nested">
+              {% for n in item.nested %}
+                <span class="return-nested-chip">{{ n }}</span>
+              {% endfor %}
+            </div>
+          {% endif %}
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+{% endif %}
+
+{# ── Internal sub-components ─────────────────────────────────── #}
+{% if comp.internalSubComponents and comp.internalSubComponents.length %}
+  <div class="section">
+    <div class="section-title">Internal sub-components — defined in this file</div>
+    <div class="helper-list">
+      {% for sub in comp.internalSubComponents %}
+        <div class="helper-item">
+          <div class="helper-sig">function {{ sub.name }}(): JSX.Element</div>
+          {% if sub.jsDoc and sub.jsDoc.description %}
+            <div class="helper-desc">{{ sub.jsDoc.description }}</div>
+          {% endif %}
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+{% endif %}
+
 {# ── Internal helpers ─────────────────────────────────────────── #}
 {% if comp.internalHelpers.length %}
   <div class="section">

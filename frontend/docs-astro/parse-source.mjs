@@ -186,7 +186,7 @@ function extractFromFile(filePath) {
           if (!localName || registered.has(localName)) continue;
           const fn = topLevelFunctions.get(localName);
           if (!fn) continue;
-          const comp = extractComponent(fn, path.node, result.imports, filePath, localName);
+          const comp = extractComponent(fn, path.node, result.imports, filePath, localName, topLevelFunctions, registered);
           if (comp) { registered.add(localName); result.components.push(comp); }
         }
         return;
@@ -195,7 +195,7 @@ function extractFromFile(filePath) {
       if (decl.type === "FunctionDeclaration") {
         const name = decl.id?.name;
         if (name && !registered.has(name)) {
-          const comp = extractComponent(decl, path.node, result.imports, filePath);
+          const comp = extractComponent(decl, path.node, result.imports, filePath, undefined, topLevelFunctions, registered);
           if (comp) { registered.add(name); result.components.push(comp); }
         }
       }
@@ -211,7 +211,7 @@ function extractFromFile(filePath) {
             (init.type === "ArrowFunctionExpression" ||
               init.type === "FunctionExpression")
           ) {
-            const comp = extractComponent(init, path.node, result.imports, filePath, name);
+            const comp = extractComponent(init, path.node, result.imports, filePath, name, topLevelFunctions, registered);
             if (comp) { registered.add(name); result.components.push(comp); }
           }
         }
@@ -229,7 +229,7 @@ function extractFromFile(filePath) {
         if (registered.has(name)) return;
         const fn = topLevelFunctions.get(name);
         if (!fn) return;
-        const comp = extractComponent(fn, path.node, result.imports, filePath, name);
+        const comp = extractComponent(fn, path.node, result.imports, filePath, name, topLevelFunctions, registered);
         if (comp) {
           comp.isDefault = true;
           registered.add(name);
@@ -245,7 +245,7 @@ function extractFromFile(filePath) {
       ) {
         const name = decl.id?.name;
         if (name && registered.has(name)) return;
-        const comp = extractComponent(decl, path.node, result.imports, filePath);
+        const comp = extractComponent(decl, path.node, result.imports, filePath, undefined, topLevelFunctions, registered);
         if (comp) {
           comp.isDefault = true;
           if (name) registered.add(name);
@@ -258,7 +258,7 @@ function extractFromFile(filePath) {
   return result;
 }
 
-function extractComponent(funcNode, exportNode, imports, filePath, nameOverride) {
+function extractComponent(funcNode, exportNode, imports, filePath, nameOverride, topLevelFunctions = new Map(), registered = new Set()) {
   const name = nameOverride ?? funcNode.id?.name;
   if (!name) return null;
 
@@ -340,6 +340,40 @@ function extractComponent(funcNode, exportNode, imports, filePath, nameOverride)
     }));
   }
 
+  // Known third-party PascalCase components that should never be treated
+  // as ViewPanel children. Add to this list as needed.
+  const LIBRARY_COMPONENTS = new Set([
+    // React Bootstrap
+    "Container", "Row", "Col", "Card", "Badge", "Button", "Form",
+    "ListGroup", "Modal", "Nav", "Navbar", "Offcanvas", "Table",
+    "Alert", "Spinner", "Stack", "Image", "Figure", "Accordion",
+    "Breadcrumb", "Dropdown", "InputGroup", "Pagination", "Tab",
+    "Tabs", "Toast", "Tooltip", "Popover", "ProgressBar",
+    // React Router
+    "BrowserRouter", "Route", "Routes", "Link", "NavLink", "Outlet",
+    "Navigate", "Router",
+    // React Hook Form
+    "FormProvider", "Controller",
+    // TanStack Query
+    "QueryClientProvider", "QueryClient",
+    // Generic React
+    "Fragment", "StrictMode", "Suspense", "ErrorBoundary",
+    // Common UI lib components
+    "ThemeToggle",
+  ]);
+
+  // ── Internal sub-components (PascalCase functions in same file, not the main export) ──
+  const internalSubComponents = [];
+  for (const [fnName, fnNode] of topLevelFunctions.entries()) {
+    if (fnName === name) continue;
+    if (!registered.has(fnName) && /^[A-Z]/.test(fnName)) {
+      internalSubComponents.push({
+        name: fnName,
+        jsDoc: extractJsDoc(fnNode) ?? null,
+      });
+    }
+  }
+
   // Strategy 1: explicit {/*ViewPanel*/} comment marker
   traverse({ type: "File", program: { type: "Program", body: body.body } }, {
     JSXExpressionContainer(p) {
@@ -353,31 +387,28 @@ function extractComponent(funcNode, exportNode, imports, filePath, nameOverride)
       const idx = siblings.indexOf(p.node);
       const nextEl = siblings.slice(idx + 1).find((n) => n.type === "JSXElement");
       const children = nextEl ? collectJsxChildren(nextEl) : [];
+      const ownChildren = children.filter(n => !LIBRARY_COMPONENTS.has(n));
 
       viewPanels.push({
         marker: comment.value.trim(),
         line: p.node.loc?.start.line ?? null,
         autoDetected: false,
-        children: resolveChildren(children),
+        children: resolveChildren(ownChildren),
       });
     },
   });
 
-  // Strategy 2: auto-detect — any JSX element whose direct children
-  // are exclusively PascalCase components (no HTML tags mixed in).
-  // Only runs if no explicit marker was found in this component.
+  // Strategy 2: auto-detect — only when ALL children are own PascalCase components,
+  // none of which appear in the known library exclusion list.
   if (viewPanels.length === 0) {
     traverse({ type: "File", program: { type: "Program", body: body.body } }, {
       JSXElement(p) {
-        // Only look at direct JSXElement children (skip text nodes, expressions)
         const directChildren = (p.node.children ?? []).filter(
           (n) => n.type === "JSXElement"
         );
 
-        // Need at least 2 child components to be worth calling a panel group
         if (directChildren.length < 2) return;
 
-        // All direct children must be PascalCase (components, not html tags)
         const names = directChildren
           .map((n) => n.openingElement?.name?.name)
           .filter(Boolean);
@@ -385,7 +416,9 @@ function extractComponent(funcNode, exportNode, imports, filePath, nameOverride)
         if (names.length !== directChildren.length) return;
         if (!names.every((n) => /^[A-Z]/.test(n))) return;
 
-        // Avoid double-registering the exact same set of names
+        // Reject if any child is a known library component
+        if (names.some((n) => LIBRARY_COMPONENTS.has(n))) return;
+
         const alreadyCaptured = viewPanels.some(
           (vp) =>
             vp.children.length === names.length &&
@@ -426,6 +459,67 @@ function extractComponent(funcNode, exportNode, imports, filePath, nameOverride)
     },
   });
 
+  // ── Return shape extraction ───────────────────────────────────────────────────
+  let returnShape = null;
+
+  traverse({ type: "File", program: { type: "Program", body: body.body } }, {
+    ReturnStatement(p) {
+      const arg = p.node.argument;
+      if (!arg || arg.type !== "ObjectExpression") return;
+
+      const keys = arg.properties
+        .filter(prop => prop.type === "ObjectProperty" || prop.type === "Property")
+        .map(prop => prop.key?.name ?? prop.key?.value)
+        .filter(Boolean);
+
+      if (keys.length === 0) return;
+
+      const shape = keys.map(key => {
+        const prop = arg.properties.find(
+          p => (p.key?.name ?? p.key?.value) === key
+        );
+
+        let nested = [];
+        if (prop?.value?.type === "ObjectExpression") {
+          nested = prop.value.properties
+            .filter(np => np.type === "ObjectProperty" || np.type === "Property")
+            .map(np => np.key?.name ?? np.key?.value)
+            .filter(Boolean);
+        }
+
+        let kind = "value";
+        const val = prop?.value;
+        if (val) {
+          if (val.type === "ArrowFunctionExpression" || val.type === "FunctionExpression") {
+            kind = val.async ? "async function" : "function";
+          } else if (val.type === "ObjectExpression") {
+            kind = "object";
+          } else if (val.type === "ArrayExpression") {
+            kind = "array";
+          } else if (val.type === "StringLiteral" || val.type === "TemplateLiteral") {
+            kind = "string";
+          } else if (val.type === "BooleanLiteral") {
+            kind = "boolean";
+          } else if (val.type === "NumericLiteral") {
+            kind = "number";
+          } else if (val.type === "NullLiteral") {
+            kind = "null";
+          } else if (val.type === "Identifier") {
+            kind = "ref";
+          } else if (val.type === "ConditionalExpression" || val.type === "LogicalExpression") {
+            kind = "derived";
+          }
+        }
+
+        return { key, kind, nested };
+      });
+
+      if (shape.length >= 2) {
+        returnShape = shape;
+      }
+    },
+  });
+
   // ── Debug: log ViewPanel results for every component ────────────────────────
   if (isComponent) {
     if (viewPanels.length > 0) {
@@ -434,7 +528,6 @@ function extractComponent(funcNode, exportNode, imports, filePath, nameOverride)
         console.log(`     Panel ${i + 1} (${vp.autoDetected ? "auto" : "marker"}) — ${vp.children.length} children: ${vp.children.map(c => c.name).join(", ")}`);
       });
     } else {
-      // Show what JSX elements were seen, to help diagnose misses
       const seen = [];
       traverse({ type: "File", program: { type: "Program", body: body.body } }, {
         JSXElement(p) {
@@ -459,10 +552,12 @@ function extractComponent(funcNode, exportNode, imports, filePath, nameOverride)
     isDefault: false,
     jsDoc: jsDoc ?? null,
     internalHelpers,
+    internalSubComponents,
     effects,
     viewPanels,
     jsxRootElements,
     hooksUsed,
+    returnShape,
   };
 }
 

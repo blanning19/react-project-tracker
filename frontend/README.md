@@ -26,6 +26,7 @@ Frontend UI for the Project Tracker application.
 - [Server state and caching](#server-state-and-caching)
 - [Testing](#testing)
 - [Linting and formatting](#linting-and-formatting)
+- [Documentation](#documentation)
 - [Troubleshooting](#troubleshooting)
 - [Conventions](#conventions)
 
@@ -110,7 +111,10 @@ Run these from `frontend/`:
 - `npm run lint` lint the codebase
 - `npm run format` format with Prettier
 - `npm run format:check` verify formatting
-
+- `npm run docs` generate TypeDoc API reference
+- `npm run docs:watch` TypeDoc in watch mode
+- `npm run docs:astro` parse source and build Astro doc site
+- `npm run docs:astro:preview` preview the Astro doc site at localhost:4321
 ---
 
 ## Project structure
@@ -136,6 +140,7 @@ src/
   __tests__/
 e2e/
   smoke.spec.ts
+docs-astro/  
 ```
 
 ---
@@ -263,6 +268,19 @@ npm run format:check
 ```
 
 ---
+
+## Documentation
+
+### TypeDoc
+Generates API reference from TypeScript types and JSDoc comments.
+Run `npm run docs` to build, or `npm run docs:watch` during development.
+
+### Astro source docs
+Generates a browsable site from your source files — components, hooks,
+return shapes, ViewPanel relationships, internal helpers, and import graphs.
+Run `npm run docs:astro` to build, then `npm run docs:astro:preview` to view.
+Always run the build before the preview — the preview serves static output
+from the last build and does not rebuild automatically.
 
 ## Troubleshooting
 

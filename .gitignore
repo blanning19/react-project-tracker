@@ -15,13 +15,12 @@ db.sqlite3
 # Env / secrets
 .env
 .env.*
-*.pem
-*.key
+!.env.example
 
 # Node / frontend
 node_modules/
-dist/
-dist-ssr/
+/dist/
+/dist-ssr/
 *.local
 
 # Frontend package manager logs

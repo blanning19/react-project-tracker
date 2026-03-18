@@ -9,7 +9,7 @@ import TaskViewModel from "../tasks/models/ViewModel";
 
 import IctCompletion from "./views/IctCompletion";
 import IctCountByWindow from "./views/IctCountByWindow";
-import PendingApprovals from "./views/PendingApprovals";
+import PendingApprovals, { type AstroDocComponentLink } from "./views/PendingApprovals";
 import SubjectAreaMixed from "./views/SubjectAreaMixed";
 
 /**
@@ -32,19 +32,32 @@ export function DashboardPage(): JSX.Element
 
     const today: Date = DateUtils.currentDateAtNoon();
 
-    function getViewWrapperStyles(): string
-    {
-        const combined: Array<string> = [];
-
-        combined.push("relative");
-        combined.push("md:mx-auto w-full max-w-none mt-10 px-6 pt-10");
-        combined.push("overflow-y-scroll");
-        combined.push("shadow-[0_30px_80px_-60px_rgba(0,0,0,0.85)] ring-1 ring-white/10 ring-inset");
-        combined.push("md:rounded-3xl");
-        combined.push(" ");
-
-        return combined.join(" ");
-    }
+    const documentedComponents: Array<AstroDocComponentLink> = [
+        {
+            id: "dashboard-page",
+            title: "DashboardPage",
+            summary: "Main ICT readiness dashboard layout and panel composition.",
+            href: "/docs/components/dashboard-page/",
+        },
+        {
+            id: "ict-completion",
+            title: "IctCompletion",
+            summary: "Displays overall completion progress for the current readiness view.",
+            href: "/docs/components/ict-completion/",
+        },
+        {
+            id: "pending-approvals",
+            title: "PendingApprovals",
+            summary: "Dashboard panel for pending approvals and documentation quick access.",
+            href: "/docs/components/pending-approvals/",
+        },
+        {
+            id: "subject-area-mixed",
+            title: "SubjectAreaMixed",
+            summary: "Shows readiness breakdowns across mixed subject areas.",
+            href: "/docs/components/subject-area-mixed/",
+        },
+    ];
 
     useEffect(() =>
     {
@@ -56,33 +69,44 @@ export function DashboardPage(): JSX.Element
     }, []);
 
     return (
-        <div className={getViewWrapperStyles() + " "}>
-            <div className="pointer-events-none absolute -translate-x-24 -translate-y-24 w-full h-full bg-[radial-gradient(circle_at_top_left,rgba(247,198,0,0.1),transparent_90%)] blur-3xl" />
+        <div className="dashboard-page container-fluid px-3 px-lg-4 py-4">
+            <div className="dashboard-shell mx-auto">
+                <section className="dashboard-hero mb-4">
+                    <div className="d-flex flex-column flex-lg-row align-items-lg-end justify-content-lg-between gap-3">
+                        <div>
+                            <div className="dashboard-eyebrow">Dashboard</div>
 
-            <div className="space-y-6">
-                <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
-                    <div className="space-y-2">
-                        <p className="text-xs uppercase tracking-[0.4em] text-mist">Dashboard</p>
+                            <h1 className="dashboard-title mb-2">
+                                ICT readiness snapshot
+                            </h1>
 
-                        <h1 className="text-2xl font-semibold text-ink md:text-3xl">
-                            ICT readiness snapshot
-                        </h1>
+                            <p className="dashboard-subtitle mb-0">
+                                Overview of completion, approvals, and readiness by window.
+                            </p>
+                        </div>
 
-                        <p className="text-sm text-mist">
-                            Overview of completion, approvals, and readiness by window.
-                        </p>
+                        <div className="dashboard-updated-pill">
+                            Updated {FormatUtils.formatLongDate(today)}
+                        </div>
+                    </div>
+                </section>
+
+                <div className="row g-4">
+                    <div className="col-12 col-xl-6">
+                        <IctCompletion />
                     </div>
 
-                    <div className="inline-flex cursor-default items-center rounded-full border border-white/10 bg-[#0b0f13]/80 px-3 py-1 text-xs text-mist shadow-sm select-none">
-                        Updated {FormatUtils.formatLongDate(today)}
+                    <div className="col-12 col-xl-6">
+                        <PendingApprovals components={documentedComponents} docsHomeHref="/docs/components/" />
                     </div>
-                </div>
 
-                <div className="grid gap-4 lg:grid-cols-2">
-                    <IctCompletion />
-                    <PendingApprovals />
-                    <IctCountByWindow />
-                    <SubjectAreaMixed />
+                    <div className="col-12 col-xl-6">
+                        <IctCountByWindow />
+                    </div>
+
+                    <div className="col-12 col-xl-6">
+                        <SubjectAreaMixed />
+                    </div>
                 </div>
             </div>
         </div>

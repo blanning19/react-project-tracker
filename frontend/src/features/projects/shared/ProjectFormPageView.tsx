@@ -59,68 +59,78 @@ function ProjectFormPageView({
     onRetry,
 }: ProjectFormPageViewProps): JSX.Element {
     return (
-        <div className="p-4">
-            <div className="mb-4">
-                <h1 className="mb-1">{title}</h1>
-                <p className="text-body-secondary mb-0 fst-italic">
-                    Fill out each section below, then save when ready.
-                </p>
-            </div>
+        <div className="dashboard-page container-fluid px-3 px-lg-4 py-4">
+            <div className="dashboard-shell mx-auto">
+                <section className="dashboard-hero mb-4">
+                    <div className="d-flex flex-column flex-lg-row align-items-lg-end justify-content-lg-between gap-3">
+                        <div>
+                            <div className="dashboard-eyebrow">Projects</div>
 
-            <div
-                className="border rounded-4 p-4"
-                style={{ backgroundColor: "#f6f1e8" }}
-            >
-                {loading ? (
-                    <div className={styles.loading}>
-                        <div className={styles.spinner} />
-                        Loading form data…
+                            <h1 className="dashboard-title mb-2">{title}</h1>
+
+                            <p className="dashboard-subtitle mb-0">
+                                Fill out each section below, then save when ready.
+                            </p>
+                        </div>
+
+                        <Link to="/" className="dashboard-action-link text-decoration-none">
+                            Back to projects
+                        </Link>
                     </div>
-                ) : (
-                    <>
-                        {apiError && (
-                            <div className={styles.errorBanner}>
-                                <span>{apiError}</span>
-                                {onRetry && (
+                </section>
+
+                <section className="dashboard-card">
+                    {loading ? (
+                        <div className={styles.loading}>
+                            <div className={styles.spinner} />
+                            Loading form data...
+                        </div>
+                    ) : (
+                        <>
+                            {apiError && (
+                                <div className={`${styles.errorBanner} mb-4`}>
+                                    <span>{apiError}</span>
+                                    {onRetry && (
+                                        <button
+                                            type="button"
+                                            className={styles.retryBtn}
+                                            onClick={() => void onRetry()}
+                                        >
+                                            Retry
+                                        </button>
+                                    )}
+                                </div>
+                            )}
+
+                            <form onSubmit={handleSubmit(submission)}>
+                                <div className={styles.card}>
+                                    <ProjectFormFields
+                                        control={control}
+                                        errors={errors}
+                                        managers={managers as ManagerOption[] | undefined}
+                                        employees={employees as EmployeeOption[]}
+                                        statusOptions={STATUS_OPTIONS}
+                                    />
+                                </div>
+
+                                <div className={`${styles.footer} mt-4`}>
+                                    <Link to="/" className={styles.cancelBtn}>
+                                        Cancel
+                                    </Link>
+
                                     <button
-                                        type="button"
-                                        className={styles.retryBtn}
-                                        onClick={() => void onRetry()}
+                                        type="submit"
+                                        className={styles.submitBtn}
+                                        disabled={isSubmitting}
                                     >
-                                        Retry
+                                        {isSubmitting && <span className={styles.submitSpinner} />}
+                                        {isSubmitting ? submittingLabel : submitLabel}
                                     </button>
-                                )}
-                            </div>
-                        )}
-
-                        <form onSubmit={handleSubmit(submission)}>
-                            <div className={styles.card}>
-                                <ProjectFormFields
-                                    control={control}
-                                    errors={errors}
-                                    managers={managers as ManagerOption[] | undefined}
-                                    employees={employees as EmployeeOption[]}
-                                    statusOptions={STATUS_OPTIONS}
-                                />
-                            </div>
-
-                            <div className={`${styles.footer} mt-4`}>
-                                <Link to="/" className={styles.cancelBtn}>
-                                    Cancel
-                                </Link>
-
-                                <button
-                                    type="submit"
-                                    className={styles.submitBtn}
-                                    disabled={isSubmitting}
-                                >
-                                    {isSubmitting && <span className={styles.submitSpinner} />}
-                                    {isSubmitting ? submittingLabel : submitLabel}
-                                </button>
-                            </div>
-                        </form>
-                    </>
-                )}
+                                </div>
+                            </form>
+                        </>
+                    )}
+                </section>
             </div>
         </div>
     );

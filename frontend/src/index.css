@@ -357,3 +357,102 @@
     border-color: rgba(239, 68, 68, 0.35);
     color: #fca5a5;
 }
+
+/* ── Shared page controls / table styling ──────────────────────────────── */
+.dashboard-filter-bar {
+    background: #f8fafc;
+    border: 1px solid rgba(15, 23, 42, 0.08);
+    border-radius: 1rem;
+    padding: 1rem;
+}
+
+[data-bs-theme='dark'] .dashboard-filter-bar {
+    background: #0f1720;
+    border-color: rgba(255, 255, 255, 0.08);
+}
+
+.dashboard-filter-label {
+    color: #5b6673;
+    display: inline-block;
+    font-size: 0.82rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    margin-bottom: 0.45rem;
+    text-transform: uppercase;
+}
+
+[data-bs-theme='dark'] .dashboard-filter-label {
+    color: #9fb0c3;
+}
+
+.dashboard-form-control {
+    border-radius: 0.9rem;
+    min-height: 2.9rem;
+}
+
+.dashboard-action-link-strong {
+    background: rgba(255, 255, 255, 0.16);
+    border-color: rgba(255, 255, 255, 0.22);
+    color: #ffffff;
+}
+
+.dashboard-action-link-strong:hover {
+    background: rgba(255, 255, 255, 0.22);
+    border-color: rgba(255, 255, 255, 0.28);
+    color: #ffffff;
+}
+
+.dashboard-table {
+    --bs-table-bg: transparent;
+    --bs-table-striped-bg: transparent;
+    --bs-table-hover-bg: rgba(15, 23, 42, 0.03);
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+[data-bs-theme='dark'] .dashboard-table {
+    --bs-table-color: #f8fafc;
+    --bs-table-border-color: rgba(255, 255, 255, 0.08);
+    --bs-table-hover-bg: rgba(255, 255, 255, 0.03);
+}
+
+.dashboard-table tbody td {
+    padding-bottom: 0.95rem;
+    padding-top: 0.95rem;
+    vertical-align: middle;
+}
+
+.dashboard-table thead th {
+    white-space: nowrap;
+}
+
+.sortable-header {
+    cursor: pointer;
+    user-select: none;
+}
+
+.sort-indicator {
+    display: inline-flex;
+    font-size: 0.8rem;
+    line-height: 1;
+}
+
+.sort-indicator.inactive {
+    opacity: 0.45;
+}
+
+.sort-indicator.active {
+    opacity: 1;
+}
+
+.active-sort {
+    position: relative;
+}
+
+.pagination .page-link {
+    border-radius: 0.7rem;
+}
+
+.pagination .page-item + .page-item {
+    margin-left: 0.35rem;
+}

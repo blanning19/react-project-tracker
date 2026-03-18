@@ -1,6 +1,7 @@
 # Python
 .venv/
 venv/
+backend/venv/
 **/__pycache__/
 *.py[cod]
 *.pyo
@@ -11,6 +12,7 @@ venv/
 staticfiles/
 media/
 db.sqlite3
+backend/.pytest_cache/
 
 # Env / secrets
 .env
@@ -49,10 +51,6 @@ test-results/
 *.sln
 *.sw?
 
-# TypeDoc
-docs/
-
-# Docs - Astro build output
-docs-astro/dist/
-docs-astro/node_modules/
-docs-astro/src/data/components.json
+# Astro generated output
+frontend/docs-astro/.astro/
+frontend/docs-astro/src/data/components.json

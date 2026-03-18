@@ -98,11 +98,11 @@ code, pre {
 }
 
 .nav-section-label {
-  font-size: 0.68em;
+  font-size: 0.88em;
   font-weight: 600;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--color-text-tertiary);
+  color: var(--color-text-primary);
   padding: 16px 20px 6px;
 }
 

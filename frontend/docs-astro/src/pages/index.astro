@@ -1,28 +1,49 @@
 ---
-/**
- * index.astro — Overview / home page
- *
- * Shows a summary grid of all components with stats.
- */
 import Layout from "../layouts/Layout.astro";
 import data from "../data/components.json";
 
 const components = data.components;
-const allComps   = Object.values(components);
+const allComps   = Object.values(components) as any[];
 
-const componentCount   = allComps.filter(c => c.isComponent).length;
-const hookCount        = allComps.filter(c => c.isHook).length;
-const viewPanelCount   = allComps.reduce((n, c) => n + c.viewPanels.length, 0);
-const helperCount      = allComps.reduce((n, c) => n + c.internalHelpers.length, 0);
+const componentCount = allComps.filter(c => c.isComponent).length;
+const hookCount      = allComps.filter(c => c.isHook).length;
+const viewPanelCount = allComps.reduce((n, c) => n + (c.viewPanels?.length ?? 0), 0);
+const helperCount    = allComps.reduce((n, c) => n + (c.internalHelpers?.length ?? 0), 0);
 
-// Group for display
+const PAGE_NAMES = new Set([
+  "Home", "About", "Login", "Create", "DashboardPage",
+]);
+
+const LAYOUT_NAMES = new Set([
+  "App", "Navbar", "AuthProvider", "RequireAuth", "ThemeToggle",
+]);
+
+const isViewName = (name: string) =>
+  name.endsWith("View") || name.endsWith("PageView");
+
+function categorise(comp: any): string {
+  if (comp.isHook)                                          return "hook";
+  if (PAGE_NAMES.has(comp.name))                            return "page";
+  if (LAYOUT_NAMES.has(comp.name))                          return "layout";
+  if (isViewName(comp.name) && comp.isComponent)            return "view";
+  if (comp.isComponent && comp.file.includes("/views/"))    return "view";
+  if (comp.isComponent)                                     return "view";
+  if (comp.file.includes("/controllers/"))                  return "controller";
+  if (comp.file.includes("/models/") ||
+      comp.name.includes("ViewModel"))                      return "model";
+  if (comp.file.includes("/utils/"))                        return "util";
+  return "other";
+}
+
 const groups = [
-  { label: "Pages",        color: "teal",   items: allComps.filter(c => c.isComponent && c.file.includes("/pages/")) },
-  { label: "Views",        color: "teal",   items: allComps.filter(c => c.isComponent && c.file.includes("/views/")) },
-  { label: "Hooks",        color: "purple", items: allComps.filter(c => c.isHook) },
-  { label: "Controllers",  color: "coral",  items: allComps.filter(c => !c.isComponent && !c.isHook && c.file.includes("/controllers/")) },
-  { label: "Models",       color: "coral",  items: allComps.filter(c => !c.isComponent && !c.isHook && (c.file.includes("/models/") || c.file.includes("ViewModel"))) },
-  { label: "Utils",        color: "accent", items: allComps.filter(c => !c.isComponent && !c.isHook && c.file.includes("/utils/")) },
+  { label: "Pages",       items: allComps.filter(c => categorise(c) === "page") },
+  { label: "Views",       items: allComps.filter(c => categorise(c) === "view") },
+  { label: "Layout",      items: allComps.filter(c => categorise(c) === "layout") },
+  { label: "Hooks",       items: allComps.filter(c => categorise(c) === "hook") },
+  { label: "Controllers", items: allComps.filter(c => categorise(c) === "controller") },
+  { label: "Models",      items: allComps.filter(c => categorise(c) === "model") },
+  { label: "Utils",       items: allComps.filter(c => categorise(c) === "util") },
+  { label: "Other",       items: allComps.filter(c => categorise(c) === "other") },
 ].filter(g => g.items.length > 0);
 ---
 
@@ -66,7 +87,7 @@ const groups = [
 
   {groups.map(group => (
     <div class="section">
-      <div class="section-title">{group.label}</div>
+      <div class="overview-section-title">{group.label}</div>
       <div class="index-grid">
         {group.items.map(comp => (
           <a href={`/${comp.name}/`} class="index-card">
@@ -78,10 +99,10 @@ const groups = [
                 {comp.jsDoc.description.length > 100 ? "…" : ""}
               </div>
             )}
-            {comp.viewPanels.length > 0 && (
+            {comp.viewPanels?.length > 0 && (
               <div style="margin-top: 8px;">
                 <span class="badge badge-panel">
-                  {comp.viewPanels.reduce((n, p) => n + p.children.length, 0)} panels
+                  {comp.viewPanels.reduce((n: number, p: any) => n + p.children.length, 0)} panels
                 </span>
               </div>
             )}

@@ -8,8 +8,6 @@
         "docs:watch": "typedoc --watch",
         "docs:astro": "node docs-astro/parse-source.mjs && cd docs-astro && npm run build",
         "docs:astro:preview": "cd docs-astro && npm run preview",
-        "docs:eleventy":         "node docs-eleventy/parse-source.mjs && cd docs-eleventy && npm run build",
-        "docs:eleventy:preview": "cd docs-eleventy && npm run dev",
         "dev": "vite",
         "build": "vite build",
         "preview": "vite preview",

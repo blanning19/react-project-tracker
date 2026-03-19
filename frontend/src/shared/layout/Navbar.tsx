@@ -54,8 +54,9 @@ const iconProps = { size: 18, strokeWidth: 2.2 };
 /** Navigation items shown in both the desktop sidebar and mobile drawer. */
 const navItems: NavItem[] = [
     { to: "/", label: "Home", end: true, icon: <Home {...iconProps} /> },
-    { to: "/about", label: "About", icon: <Info {...iconProps} /> },
+    { to: "/dashboard", label: "Dashboard", icon: <Info {...iconProps} /> },
     { to: "/create", label: "Create", icon: <Plus {...iconProps} /> },
+    { to: "/about", label: "About", icon: <Info {...iconProps} /> },
 ];
 
 /** Pixel width of the sidebar when fully expanded. */

@@ -57,13 +57,15 @@ const HIGHLIGHT_ITEMS: string[] = [
     "Production-hardened with token blacklisting, rate limiting, and HTTPS security headers.",
 ];
 
-// ---------------------------------------------------------------------------
-// Sub-components
-// ---------------------------------------------------------------------------
-
-function AboutHero(): JSX.Element {
+/**
+ * Renders the hero section for the About page.
+ *
+ * @returns The rendered About hero section.
+ */
+function AboutHero(): JSX.Element
+{
     return (
-        <div className="rounded border bg-body-tertiary p-4 mb-4">
+        <section className="dashboard-hero mb-4">
             <Row className="g-4 align-items-center">
                 <Col lg={8}>
                     <div className="d-flex flex-wrap gap-2 mb-3">
@@ -74,11 +76,13 @@ function AboutHero(): JSX.Element {
                         <Badge bg="secondary">JWT</Badge>
                     </div>
 
-                    <h1 className="h3 fw-bold mb-2">
+                    <div className="dashboard-eyebrow">About</div>
+
+                    <h1 className="dashboard-title mb-2">
                         Organize projects with a cleaner, more practical workflow.
                     </h1>
 
-                    <p className="text-body-secondary mb-0">
+                    <p className="dashboard-subtitle mb-0">
                         Project Tracker helps teams manage project ownership, assignments, status,
                         and scheduling in one structured interface backed by a modern full-stack
                         architecture.
@@ -86,36 +90,29 @@ function AboutHero(): JSX.Element {
                 </Col>
 
                 <Col lg={4}>
-                    <Card className="border shadow-sm">
-                        <Card.Body>
-                            <div className="fw-semibold mb-3">Quick snapshot</div>
-                            {[
-                                { label: "Frontend",  value: "React + Vite + TypeScript" },
-                                { label: "Backend",   value: "Django REST Framework" },
-                                { label: "Database",  value: "PostgreSQL" },
-                                { label: "Auth",      value: "JWT + token rotation" },
-                            ].map(({ label, value }) => (
-                                <div key={label} className="d-flex justify-content-between py-1 border-bottom last-border-0">
-                                    <span className="text-body-secondary small">{label}</span>
-                                    <span className="fw-semibold small text-end">{value}</span>
-                                </div>
-                            ))}
-                        </Card.Body>
-                    </Card>
+                    <div className="dashboard-updated-pill d-inline-flex">
+                        Full-stack project management snapshot
+                    </div>
                 </Col>
             </Row>
-        </div>
+        </section>
     );
 }
 
-function FeatureCard({ icon, title, body }: FeatureItem): JSX.Element {
+/**
+ * Renders a single feature card.
+ *
+ * @param props The feature item content.
+ * @returns The rendered feature card.
+ */
+function FeatureCard({ icon, title, body }: FeatureItem): JSX.Element
+{
     return (
-        <Card className="h-100 border shadow-sm">
+        <Card className="dashboard-inner-card h-100">
             <Card.Body>
                 <div className="d-flex align-items-start gap-3">
                     <div
-                        className="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0 bg-body-tertiary"
-                        style={{ width: 44, height: 44, fontSize: 20 }}
+                        className="about-icon-circle"
                         aria-hidden="true"
                     >
                         {icon}
@@ -131,63 +128,66 @@ function FeatureCard({ icon, title, body }: FeatureItem): JSX.Element {
     );
 }
 
-function DataModelCard(): JSX.Element {
+/**
+ * Renders the data model summary card.
+ *
+ * @returns The rendered data model section.
+ */
+function DataModelCard(): JSX.Element
+{
     return (
-        <Card className="border shadow-sm mt-4">
-            <Card.Body className="p-4">
-                <Row className="g-4 align-items-start">
-                    <Col lg={8}>
-                        <div className="text-uppercase small fw-semibold text-body-secondary mb-1">
-                            Data model
-                        </div>
-                        <div className="h5 mb-2">How project data is organized</div>
-                        <div className="text-body-secondary">
-                            Each project stores a name, comments, status, security level, start
-                            date, end date, one assigned project manager, and any number of
-                            employee assignments. Project managers and employees are managed
-                            independently and assigned to projects via dropdown selectors.
-                        </div>
-                    </Col>
+        <section className="dashboard-card mt-4">
+            <Row className="g-4 align-items-start">
+                <Col lg={8}>
+                    <div className="dashboard-card-label">Data model</div>
+                    <div className="h5 mb-2">How project data is organized</div>
+                    <div className="dashboard-card-description">
+                        Each project stores a name, comments, status, security level, start
+                        date, end date, one assigned project manager, and any number of
+                        employee assignments. Project managers and employees are managed
+                        independently and assigned to projects via dropdown selectors.
+                    </div>
+                </Col>
 
-                    <Col lg={4}>
-                        <Card className="border-0 bg-body-tertiary">
-                            <Card.Body className="p-3">
-                                <div className="fw-semibold mb-2 small">Relationships</div>
-                                <ul className="mb-0 ps-3 small text-body-secondary">
-                                    <li className="mb-1">Project → ProjectManager (many-to-one)</li>
-                                    <li className="mb-1">Project → Employees (many-to-many)</li>
-                                    <li>Deleting a manager sets the field to blank, not delete the project</li>
-                                </ul>
-                            </Card.Body>
-                        </Card>
-                    </Col>
-                </Row>
-            </Card.Body>
-        </Card>
+                <Col lg={4}>
+                    <Card className="dashboard-inner-card border-0">
+                        <Card.Body className="p-3">
+                            <div className="fw-semibold mb-2 small">Relationships</div>
+                            <ul className="mb-0 ps-3 small text-body-secondary">
+                                <li className="mb-1">Project → ProjectManager (many-to-one)</li>
+                                <li className="mb-1">Project → Employees (many-to-many)</li>
+                                <li>Deleting a manager sets the field to blank, not delete the project</li>
+                            </ul>
+                        </Card.Body>
+                    </Card>
+                </Col>
+            </Row>
+        </section>
     );
 }
 
-// ---------------------------------------------------------------------------
-// Page
-// ---------------------------------------------------------------------------
-
-function About(): JSX.Element {
+/**
+ * Renders the About page.
+ *
+ * @returns The rendered About page.
+ */
+function About(): JSX.Element
+{
     return (
-        <Container className="py-4">
-            <AboutHero />
+        <div className="dashboard-page container-fluid px-3 px-lg-4 py-4">
+            <div className="dashboard-shell mx-auto">
+                <AboutHero />
 
-            <Row className="g-4">
-                {/* Left: feature grid */}
-                <Col lg={8}>
-                    <Card className="border shadow-sm h-100">
-                        <Card.Body className="p-4">
-                            <div className="text-uppercase small fw-semibold text-body-secondary mb-1">
-                                Features
-                            </div>
-                            <div className="h5 mb-1">What this app does</div>
-                            <div className="text-body-secondary mb-4">
-                                A lightweight tool for organizing projects, tracking ownership,
-                                assigning team members, and monitoring status over time.
+                <Row className="g-4">
+                    <Col lg={8}>
+                        <section className="dashboard-card h-100">
+                            <div className="dashboard-card-header">
+                                <div className="dashboard-card-label">Features</div>
+                                <div className="h5 mb-1">What this app does</div>
+                                <p className="dashboard-card-description mb-4">
+                                    A lightweight tool for organizing projects, tracking ownership,
+                                    assigning team members, and monitoring status over time.
+                                </p>
                             </div>
 
                             <Row className="g-3">
@@ -197,42 +197,45 @@ function About(): JSX.Element {
                                     </Col>
                                 ))}
                             </Row>
-                        </Card.Body>
-                    </Card>
-                </Col>
+                        </section>
+                    </Col>
 
-                {/* Right: tech stack + highlights */}
-                <Col lg={4}>
-                    <Card className="border shadow-sm mb-4">
-                        <Card.Body>
-                            <div className="fw-semibold mb-3">Tech stack</div>
+                    <Col lg={4}>
+                        <section className="dashboard-card mb-4">
+                            <div className="dashboard-card-header">
+                                <div className="dashboard-card-label">Stack</div>
+                                <div className="h5 mb-1">Tech stack</div>
+                            </div>
+
                             <ListGroup variant="flush">
                                 {STACK_ITEMS.map((item) => (
-                                    <ListGroup.Item key={item} className="px-0 py-2 small">
+                                    <ListGroup.Item key={item} className="about-list-item px-0 py-2 small">
                                         {item}
                                     </ListGroup.Item>
                                 ))}
                             </ListGroup>
-                        </Card.Body>
-                    </Card>
+                        </section>
 
-                    <Card className="border shadow-sm">
-                        <Card.Body>
-                            <div className="fw-semibold mb-3">Why it is useful</div>
+                        <section className="dashboard-card">
+                            <div className="dashboard-card-header">
+                                <div className="dashboard-card-label">Highlights</div>
+                                <div className="h5 mb-1">Why it is useful</div>
+                            </div>
+
                             <ListGroup variant="flush">
                                 {HIGHLIGHT_ITEMS.map((item) => (
-                                    <ListGroup.Item key={item} className="px-0 py-2 small text-body-secondary">
+                                    <ListGroup.Item key={item} className="about-list-item px-0 py-2 small text-body-secondary">
                                         {item}
                                     </ListGroup.Item>
                                 ))}
                             </ListGroup>
-                        </Card.Body>
-                    </Card>
-                </Col>
-            </Row>
+                        </section>
+                    </Col>
+                </Row>
 
-            <DataModelCard />
-        </Container>
+                <DataModelCard />
+            </div>
+        </div>
     );
 }
 

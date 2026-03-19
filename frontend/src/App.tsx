@@ -44,12 +44,11 @@ function App() {
             <Routes>
                 {/* Public standalone route — no Navbar */}
                 <Route path="/login" element={<Login />} />
-                <Route path="/dashboard" element={<DashboardPage />} />
                 {/* Shared application shell with Navbar */}
                 <Route element={<Navbar />}>
                     {/* Public route that still shows the Navbar */}
                     <Route path="/about" element={<About />} />
-
+                    <Route path="/dashboard" element={<DashboardPage />} />
                     {/* All project routes are gated by RequireAuth */}
                     <Route element={<RequireAuth />}>
                         <Route path="/" element={<Home />} />

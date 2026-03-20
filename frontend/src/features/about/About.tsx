@@ -222,13 +222,7 @@ function About(): JSX.Element
                                 <div className="h5 mb-1">Why it is useful</div>
                             </div>
 
-                            <ListGroup variant="flush">
-                                {HIGHLIGHT_ITEMS.map((item) => (
-                                    <ListGroup.Item key={item} className="about-list-item px-0 py-2 small text-body-secondary">
-                                        {item}
-                                    </ListGroup.Item>
-                                ))}
-                            </ListGroup>
+
                         </section>
                     </Col>
                 </Row>

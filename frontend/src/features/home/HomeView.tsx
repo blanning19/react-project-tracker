@@ -30,6 +30,31 @@ function formatDate(value: string | null | undefined): string {
         : dateValue.toLocaleDateString("en-US", { dateStyle: "medium" });
 }
 
+function getStatusBadgeClass(status: string | null | undefined): string {
+    switch (status) {
+        case "Active":
+            return "bg-success-subtle text-success-emphasis border border-success-subtle";
+        case "On Hold":
+            return "bg-warning-subtle text-warning-emphasis border border-warning-subtle";
+        case "Completed":
+            return "bg-primary-subtle text-primary-emphasis border border-primary-subtle";
+        case "Cancelled":
+            return "bg-secondary-subtle text-secondary-emphasis border border-secondary-subtle";
+        default:
+            return "bg-light text-dark border";
+    }
+}
+
+function renderStatusPill(status: string | null | undefined): JSX.Element | string {
+    if (!status) return "—";
+
+    return (
+        <span className={`badge rounded-pill fw-semibold px-3 py-2 ${getStatusBadgeClass(status)}`}>
+            {status}
+        </span>
+    );
+}
+
 function HomeView({
     rows,
     pagination,
@@ -172,11 +197,11 @@ function HomeView({
                                         rows.map((project) => (
                                             <tr key={project.id}>
                                                 <td>{project.name}</td>
-                                                <td>{project.status ?? "—"}</td>
+                                                <td>{renderStatusPill(project.status)}</td>
                                                 <td>{project.comments ?? "—"}</td>
                                                 <td>{formatDate(project.start_date)}</td>
                                                 <td>{formatDate(project.end_date)}</td>
-                                                <td>{project.security_level}</td>
+                                                <td>{project.security_level ?? "—"}</td>
                                                 <td>
                                                     <div className="d-flex flex-wrap gap-2">
                                                         <button
